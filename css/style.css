@@ -174,6 +174,56 @@ body {
   font-weight: 300;
 }
 
+/* === Air Quality Card === */
+.aqi-info {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.aqi-value {
+  font-size: 2.5rem;
+  font-weight: 300;
+}
+
+.aqi-label {
+  font-size: 1rem;
+  color: var(--text-muted);
+}
+
+.aqi-details {
+  display: flex;
+  gap: 16px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+/* === UV Index Card === */
+.uv-info {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.uv-value {
+  font-size: 2.5rem;
+  font-weight: 300;
+}
+
+.uv-label {
+  font-size: 1rem;
+  color: var(--text-muted);
+}
+
+/* === Fact Card === */
+.fact-text {
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
 /* === Slideshow Card === */
 .card-slideshow {
   padding: 0;

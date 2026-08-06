@@ -45,15 +45,37 @@
       <h2>Sun</h2>
       <div class="sun-info">
         <div class="sun-item">
-          <span class="sun-icon">\u2600\uFE0F</span>
+          <span class="sun-icon">&#9728;&#65039;</span>
           <span class="sun-label">Sunrise</span>
           <span class="sun-time" id="sunrise-time">--:--</span>
         </div>
         <div class="sun-item">
-          <span class="sun-icon">\uD83C\uDF19</span>
+          <span class="sun-icon">&#127769;</span>
           <span class="sun-label">Sunset</span>
           <span class="sun-time" id="sunset-time">--:--</span>
         </div>
+      </div>
+    </section>
+
+    <!-- Air Quality -->
+    <section class="card card-aqi" id="aqi-card">
+      <h2>Air Quality</h2>
+      <div class="aqi-info">
+        <span class="aqi-value" id="aqi-value">--</span>
+        <span class="aqi-label" id="aqi-label">--</span>
+      </div>
+      <div class="aqi-details">
+        <span id="aqi-pm25">PM2.5: --</span>
+        <span id="aqi-pm10">PM10: --</span>
+      </div>
+    </section>
+
+    <!-- UV Index -->
+    <section class="card card-uv" id="uv-card">
+      <h2>UV Index</h2>
+      <div class="uv-info">
+        <span class="uv-value" id="uv-value">--</span>
+        <span class="uv-label" id="uv-label">--</span>
       </div>
     </section>
 
@@ -76,14 +98,23 @@
         </div>
       </div>
     </section>
+
+    <!-- Daily Fact -->
+    <section class="card card-fact" id="fact-card">
+      <h2>Useless Fact of the Day</h2>
+      <p class="fact-text" id="fact-text">Loading...</p>
+    </section>
   </div>
 
   <script src="js/config.js"></script>
   <script src="js/clock.js"></script>
   <script src="js/weather.js"></script>
   <script src="js/sun.js"></script>
+  <script src="js/airquality.js"></script>
+  <script src="js/uv.js"></script>
   <script src="js/calendar.js"></script>
   <script src="js/commute.js"></script>
+  <script src="js/facts.js"></script>
   <script src="js/slideshow.js"></script>
   <script src="js/app.js"></script>
 </body>

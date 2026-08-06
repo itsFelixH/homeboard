@@ -7,8 +7,8 @@ const HOMEBOARD_CONFIG = {
   // Location (used for weather + sunrise/sunset)
   // Find your coordinates at https://www.latlong.net/
   location: {
-    latitude: 52.52,      // e.g. Berlin
-    longitude: 13.41
+    latitude: 52.5075,    // Grolmanstr. 55, 10623 Berlin
+    longitude: 13.3220
   },
 
   // Weather via Open-Meteo (no API key needed!)
