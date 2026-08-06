@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#1a1a2e">
+  <title>Homeboard</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="manifest" href="manifest.json">
+</head>
+<body>
+  <div class="dashboard">
+    <!-- Time & Date -->
+    <section class="card card-clock" id="clock-card">
+      <div class="time" id="time">--:--</div>
+      <div class="date" id="date">---</div>
+    </section>
+
+    <!-- Weather -->
+    <section class="card card-weather" id="weather-card">
+      <h2>Weather</h2>
+      <div class="weather-current">
+        <span class="weather-icon" id="weather-icon">--</span>
+        <span class="weather-temp" id="weather-temp">--&deg;</span>
+      </div>
+      <div class="weather-desc" id="weather-desc">--</div>
+      <div class="weather-details">
+        <span id="weather-humidity">Humidity: --%</span>
+        <span id="weather-wind">Wind: -- km/h</span>
+      </div>
+    </section>
+
+    <!-- Calendar -->
+    <section class="card card-calendar" id="calendar-card">
+      <h2>Today</h2>
+      <ul class="event-list" id="event-list">
+        <li class="event-placeholder">No events configured</li>
+      </ul>
+    </section>
+
+    <!-- Commute -->
+    <section class="card card-commute" id="commute-card">
+      <h2>Commute</h2>
+      <div class="commute-info" id="commute-info">
+        <span class="commute-time" id="commute-time">-- min</span>
+        <span class="commute-route" id="commute-route">--</span>
+      </div>
+    </section>
+
+    <!-- Image Slideshow -->
+    <section class="card card-slideshow" id="slideshow-card">
+      <div class="slideshow">
+        <img class="slideshow-img" id="slideshow-img" src="" alt="Slideshow">
+        <div class="slideshow-controls">
+          <button id="slide-prev" aria-label="Previous image">&lsaquo;</button>
+          <button id="slide-next" aria-label="Next image">&rsaquo;</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/clock.js"></script>
+  <script src="js/weather.js"></script>
+  <script src="js/calendar.js"></script>
+  <script src="js/commute.js"></script>
+  <script src="js/slideshow.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

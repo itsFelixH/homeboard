@@ -1,0 +1,220 @@
+/* === Variables === */
+:root {
+  --bg: #1a1a2e;
+  --card-bg: #16213e;
+  --card-border: #0f3460;
+  --text: #e8e8e8;
+  --text-muted: #a0a0b0;
+  --accent: #e94560;
+  --accent-soft: #533483;
+  --radius: 12px;
+  --gap: 16px;
+}
+
+/* === Reset === */
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  padding: var(--gap);
+}
+
+/* === Dashboard Grid === */
+.dashboard {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--gap);
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* === Card Base === */
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+}
+
+.card h2 {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
+/* === Clock Card === */
+.card-clock {
+  align-items: center;
+  justify-content: center;
+}
+
+.time {
+  font-size: 4rem;
+  font-weight: 200;
+  letter-spacing: -2px;
+  line-height: 1;
+}
+
+.date {
+  font-size: 1.1rem;
+  color: var(--text-muted);
+  margin-top: 8px;
+}
+
+/* === Weather Card === */
+.weather-current {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.weather-icon {
+  font-size: 2.5rem;
+}
+
+.weather-temp {
+  font-size: 2.5rem;
+  font-weight: 300;
+}
+
+.weather-desc {
+  color: var(--text-muted);
+  margin-bottom: 12px;
+  text-transform: capitalize;
+}
+
+.weather-details {
+  display: flex;
+  gap: 16px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+/* === Calendar Card === */
+.event-list {
+  list-style: none;
+}
+
+.event-list li {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--card-border);
+  font-size: 0.95rem;
+}
+
+.event-list li:last-child {
+  border-bottom: none;
+}
+
+.event-placeholder {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.event-time {
+  color: var(--accent);
+  font-weight: 500;
+  margin-right: 8px;
+}
+
+/* === Commute Card === */
+.commute-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.commute-time {
+  font-size: 2rem;
+  font-weight: 300;
+}
+
+.commute-route {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+/* === Slideshow Card === */
+.card-slideshow {
+  padding: 0;
+  overflow: hidden;
+  position: relative;
+  min-height: 200px;
+}
+
+.slideshow {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.slideshow-img {
+  width: 100%;
+  height: 100%;
+  min-height: 200px;
+  max-height: 400px;
+  object-fit: cover;
+  border-radius: var(--radius);
+}
+
+.slideshow-controls {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  display: flex;
+  gap: 8px;
+}
+
+.slideshow-controls button {
+  background: rgba(0, 0, 0, 0.6);
+  color: var(--text);
+  border: none;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  font-size: 1.2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.slideshow-controls button:hover {
+  background: rgba(0, 0, 0, 0.85);
+}
+
+/* === Responsive === */
+@media (max-width: 600px) {
+  :root {
+    --gap: 12px;
+  }
+
+  .dashboard {
+    grid-template-columns: 1fr;
+  }
+
+  .time {
+    font-size: 3rem;
+  }
+
+  .card {
+    padding: 16px;
+  }
+}
+
+/* === PWA install prompt hide === */
+.hidden {
+  display: none !important;
+}

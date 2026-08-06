@@ -1,0 +1,17 @@
+# Local config with API keys
+js/config.local.js
+
+# Images (user-provided photos)
+images/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+*.swp
+*.swo
+
+# Node (if you add tooling later)
+node_modules/
