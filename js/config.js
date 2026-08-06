@@ -45,5 +45,19 @@ const HOMEBOARD_CONFIG = {
       // 'https://picsum.photos/800/400?random=1'
     ],
     intervalSeconds: 30
+  },
+
+  // S-Bahn departures via VBB transport.rest (free, no key, CORS)
+  departures: {
+    stopId: '900024203',  // S Savignyplatz (Berlin)
+    durationMinutes: 30,  // How far ahead to look
+    maxResults: 8,        // Max departures to show
+    refreshSeconds: 30    // Update every 30s for realtime
+  },
+
+  // Countdown to next vacation or event
+  countdown: {
+    date: '',             // e.g. '2026-12-20' (YYYY-MM-DD)
+    label: 'Vacation'     // What to display
   }
 };

@@ -9,6 +9,8 @@ document.addEventListener('DOMContentLoaded', () => {
   UV.init();
   Calendar.init();
   Commute.init();
+  Departures.init();
+  Countdown.init();
   Facts.init();
   Slideshow.init();
 });

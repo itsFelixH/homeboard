@@ -224,6 +224,106 @@ body {
   font-style: italic;
 }
 
+/* === Departures Card === */
+.card-departures {
+  grid-column: span 1;
+}
+
+.departures-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.departures-table thead th {
+  text-align: left;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--card-border);
+}
+
+.departures-table tbody tr {
+  border-bottom: 1px solid var(--card-border);
+}
+
+.departures-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.departures-table td {
+  padding: 6px 4px;
+  vertical-align: middle;
+}
+
+.dep-line {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.8rem;
+  min-width: 28px;
+  text-align: center;
+}
+
+.dep-direction {
+  color: var(--text);
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dep-time {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.dep-delay {
+  color: var(--accent);
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.departures-empty {
+  color: var(--text-muted);
+  font-style: italic;
+  text-align: center;
+  padding: 12px 0;
+}
+
+/* === Countdown Card === */
+.countdown-info {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.countdown-days {
+  font-size: 3rem;
+  font-weight: 200;
+  line-height: 1;
+}
+
+.countdown-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.countdown-label {
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+
+.countdown-sublabel {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
 /* === Slideshow Card === */
 .card-slideshow {
   padding: 0;
