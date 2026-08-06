@@ -4,25 +4,35 @@
  * config.local.js is gitignored so your keys stay private.
  */
 const HOMEBOARD_CONFIG = {
-  // OpenWeatherMap - get a free key at https://openweathermap.org/api
+  // Location (used for weather + sunrise/sunset)
+  // Find your coordinates at https://www.latlong.net/
+  location: {
+    latitude: 52.52,      // e.g. Berlin
+    longitude: 13.41
+  },
+
+  // Weather via Open-Meteo (no API key needed!)
   weather: {
-    apiKey: '',          // Your OWM API key
-    city: '',            // e.g. 'Berlin,DE'
-    units: 'metric',     // 'metric' or 'imperial'
+    units: 'celsius',     // 'celsius' or 'fahrenheit'
     refreshMinutes: 15
   },
 
-  // Commute - uses a simple time estimate or integrate with a transit API
+  // Commute via Transitous (free, open transit routing)
   commute: {
-    origin: '',          // e.g. 'Home address'
-    destination: '',     // e.g. 'Work address'
-    mode: 'transit',     // 'transit', 'driving', 'bicycling', 'walking'
+    origin: {
+      latitude: 0,        // Your home coordinates
+      longitude: 0
+    },
+    destination: {
+      latitude: 0,        // Your work coordinates
+      longitude: 0
+    },
     refreshMinutes: 10
   },
 
   // Calendar - ICS feed URL (Google Calendar, iCloud, etc.)
   calendar: {
-    icsUrl: '',          // Public .ics URL
+    icsUrl: '',           // Public .ics URL
     maxEvents: 5,
     refreshMinutes: 30
   },

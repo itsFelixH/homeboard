@@ -145,6 +145,35 @@ body {
   font-size: 0.9rem;
 }
 
+/* === Sun Card === */
+.sun-info {
+  display: flex;
+  gap: 24px;
+}
+
+.sun-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.sun-icon {
+  font-size: 1.5rem;
+}
+
+.sun-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.sun-time {
+  font-size: 1.4rem;
+  font-weight: 300;
+}
+
 /* === Slideshow Card === */
 .card-slideshow {
   padding: 0;

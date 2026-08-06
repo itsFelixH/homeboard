@@ -1,6 +1,9 @@
 # Homeboard
 
-Apartment dashboard showing weather, time, calendar, commute, and a photo slideshow.
+Apartment dashboard showing weather, time, calendar, commute, sunrise/sunset, and a photo slideshow.
+
+All weather and sun data comes from [Open-Meteo](https://open-meteo.com/) (no API key needed).
+Transit routing uses [Transitous](https://transitous.org/) (free, open, no key needed).
 
 ## Quick Start
 
@@ -10,13 +13,13 @@ Just serve the folder with any static file server:
 
 ```bash
 # Python
-python3 -m http.server 8080
+python3 -m http.server 7070
 
 # or npx
-npx serve -p 8080
+npx serve -p 7070
 ```
 
-Then open http://localhost:8080
+Then open http://localhost:7070
 
 ### Docker
 
@@ -24,7 +27,7 @@ Then open http://localhost:8080
 docker compose up -d
 ```
 
-Dashboard available at http://localhost:8080
+Dashboard available at http://localhost:7070
 
 ## Configuration
 
@@ -34,7 +37,11 @@ Dashboard available at http://localhost:8080
 
 ### Weather
 
-Get a free API key at [OpenWeatherMap](https://openweathermap.org/api) and set your city.
+Uses [Open-Meteo](https://open-meteo.com/) — no API key needed. Just set your latitude/longitude in the `location` block.
+
+### Sunrise/Sunset
+
+Automatically fetched from Open-Meteo based on your configured location.
 
 ### Calendar
 
@@ -42,7 +49,7 @@ Use a public ICS feed URL from Google Calendar, iCloud, or any CalDAV provider.
 
 ### Commute
 
-Currently shows a static placeholder. To integrate a real provider, edit `js/commute.js` and plug in Google Maps Directions API or a local transit API.
+Uses [Transitous](https://transitous.org/) for free public transit routing. Set your origin and destination coordinates in the config. Coverage is best in Europe but growing globally.
 
 ### Slideshow
 
@@ -64,9 +71,10 @@ homeboard/
 │   ├── config.js        # Configuration (template)
 │   ├── app.js           # Initializer
 │   ├── clock.js         # Time & date
-│   ├── weather.js       # OpenWeatherMap integration
+│   ├── weather.js       # Open-Meteo weather
+│   ├── sun.js           # Sunrise & sunset
 │   ├── calendar.js      # ICS feed parser
-│   ├── commute.js       # Commute time
+│   ├── commute.js       # Transitous transit routing
 │   └── slideshow.js     # Image slideshow
 ├── manifest.json        # PWA manifest
 ├── Dockerfile

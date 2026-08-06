@@ -3,5 +3,5 @@ services:
     build: .
     container_name: homeboard
     ports:
-      - "8080:8080"
+      - "7070:7070"
     restart: unless-stopped

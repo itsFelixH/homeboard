@@ -1,21 +1,16 @@
 /**
- * Commute module - displays estimated commute time
- *
- * For a fully functional version, integrate with:
- * - Google Maps Directions API
- * - Here Maps Routing API
- * - or a local transit API
- *
- * This starter version shows a placeholder that you can swap out.
+ * Commute module - uses Transitous (MOTIS) API for public transit routing
+ * https://transitous.org/
+ * API hosted at api.transitous.org (free, no key needed)
  */
 const Commute = (() => {
   let refreshInterval;
 
   function init() {
     const config = HOMEBOARD_CONFIG.commute;
-    if (!config.origin || !config.destination) {
+    if (!config.origin.latitude || !config.destination.latitude) {
       document.getElementById('commute-time').textContent = '--';
-      document.getElementById('commute-route').textContent = 'Configure in config.js';
+      document.getElementById('commute-route').textContent = 'Set origin/destination in config.js';
       return;
     }
     fetchCommute();
@@ -24,15 +19,20 @@ const Commute = (() => {
 
   async function fetchCommute() {
     const config = HOMEBOARD_CONFIG.commute;
+    const { origin, destination } = config;
 
-    // Placeholder: replace with actual API call
-    // Example with Google Directions API:
-    // const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${config.origin}&destination=${config.destination}&mode=${config.mode}&key=${config.apiKey}`;
+    // MOTIS API plan endpoint (OTP-compatible format used by Transitous)
+    const url = `https://api.transitous.org/api/v1/plan?` +
+      `fromPlace=${origin.latitude},${origin.longitude}` +
+      `&toPlace=${destination.latitude},${destination.longitude}` +
+      `&mode=TRANSIT,WALK` +
+      `&numItineraries=1`;
 
     try {
-      // Simulated response - replace with real API integration
-      const estimate = getStaticEstimate();
-      render(estimate);
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      render(data);
     } catch (err) {
       console.error('Commute fetch failed:', err);
       document.getElementById('commute-time').textContent = '--';
@@ -40,17 +40,24 @@ const Commute = (() => {
     }
   }
 
-  function getStaticEstimate() {
-    // Replace this with your actual API call
-    return {
-      duration: '25 min',
-      route: `${HOMEBOARD_CONFIG.commute.mode} to work`
-    };
-  }
-
   function render(data) {
-    document.getElementById('commute-time').textContent = data.duration;
-    document.getElementById('commute-route').textContent = data.route;
+    if (!data.itineraries || data.itineraries.length === 0) {
+      document.getElementById('commute-time').textContent = '--';
+      document.getElementById('commute-route').textContent = 'No route found';
+      return;
+    }
+
+    const itinerary = data.itineraries[0];
+    const durationMin = Math.round(itinerary.duration / 60);
+
+    // Build a summary of transit legs
+    const transitLegs = itinerary.legs
+      .filter(leg => leg.mode !== 'WALK')
+      .map(leg => leg.route || leg.mode)
+      .join(' \u2192 ');
+
+    document.getElementById('commute-time').textContent = `${durationMin} min`;
+    document.getElementById('commute-route').textContent = transitLegs || 'Walking only';
   }
 
   return { init };
