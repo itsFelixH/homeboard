@@ -2,14 +2,20 @@
  * News module - headlines from Tagesschau
  * API: https://tagesschau.api.bund.dev/
  * No API key needed
+ * Paginated list (5 per page), auto-cycles every 30s
  */
 const News = (() => {
   let refreshInterval;
-  const MAX_ITEMS = 5;
+  let cycleInterval;
+  let cachedArticles = [];
+  let currentPage = 0;
+  const PER_PAGE = 5;
+  const CYCLE_SECONDS = 30;
 
   function init() {
     fetchNews();
-    refreshInterval = setInterval(fetchNews, 10 * 60 * 1000); // every 10 min
+    refreshInterval = setInterval(fetchNews, 10 * 60 * 1000);
+    cycleInterval = setInterval(nextPage, CYCLE_SECONDS * 1000);
   }
 
   async function fetchNews() {
@@ -19,10 +25,9 @@ const News = (() => {
       const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      const articles = (data.news || [])
-        .filter(item => item.type === 'story' || item.type === 'webview')
-        .slice(0, MAX_ITEMS);
-      render(articles);
+      cachedArticles = (data.news || [])
+        .filter(item => item.type === 'story' || item.type === 'webview');
+      render();
     } catch (err) {
       console.error('News fetch failed:', err);
       document.getElementById('news-list').innerHTML =
@@ -30,15 +35,73 @@ const News = (() => {
     }
   }
 
-  function render(articles) {
-    const container = document.getElementById('news-list');
+  function reload() {
+    document.getElementById('news-list').innerHTML = '<div class="news-empty">Loading...</div>';
+    fetchNews();
+  }
 
-    if (articles.length === 0) {
+  function totalPages() {
+    return Math.max(1, Math.ceil(cachedArticles.length / PER_PAGE));
+  }
+
+  function nextPage() {
+    if (totalPages() <= 1) return;
+    currentPage = (currentPage + 1) % totalPages();
+    render();
+  }
+
+  function prevPage() {
+    if (totalPages() <= 1) return;
+    currentPage = (currentPage - 1 + totalPages()) % totalPages();
+    render();
+    resetCycle();
+  }
+
+  function goNext() {
+    nextPage();
+    resetCycle();
+  }
+
+  function resetCycle() {
+    clearInterval(cycleInterval);
+    cycleInterval = setInterval(nextPage, CYCLE_SECONDS * 1000);
+  }
+
+  function render() {
+    // Nav in header
+    let navContainer = document.querySelector('.card-news .news-nav');
+    if (!navContainer) {
+      navContainer = document.createElement('div');
+      navContainer.className = 'news-nav';
+      const header = document.querySelector('.card-news .card-header');
+      if (header) {
+        const extLink = header.querySelector('.card-header-link');
+        if (extLink) header.insertBefore(navContainer, extLink);
+        else header.appendChild(navContainer);
+      }
+    }
+
+    let navHtml = `<button class="news-reload-btn" onclick="News.reload()" title="Reload">↻</button>`;
+    if (totalPages() > 1) {
+      navHtml += `<div class="card-nav">
+        <button class="card-nav-btn" onclick="News.prevPage()" aria-label="Previous">‹</button>
+        <span class="card-nav-label">${currentPage + 1}/${totalPages()}</span>
+        <button class="card-nav-btn" onclick="News.goNext()" aria-label="Next">›</button>
+      </div>`;
+    }
+    navContainer.innerHTML = navHtml;
+
+    // Render page
+    const container = document.getElementById('news-list');
+    if (cachedArticles.length === 0) {
       container.innerHTML = '<div class="news-empty">Keine Nachrichten</div>';
       return;
     }
 
-    container.innerHTML = articles.map(article => {
+    const start = currentPage * PER_PAGE;
+    const pageArticles = cachedArticles.slice(start, start + PER_PAGE);
+
+    container.innerHTML = pageArticles.map(article => {
       const topline = article.topline || '';
       const title = article.title || '';
       const url = article.detailsweb || article.shareURL || '#';
@@ -68,5 +131,5 @@ const News = (() => {
     return d.toLocaleDateString('de-DE', { day: 'numeric', month: 'short' });
   }
 
-  return { init };
+  return { init, reload, prevPage, goNext };
 })();
