@@ -524,11 +524,8 @@ body {
 .plants-status-overdue { color: var(--red); }
 .plants-status-soon { color: var(--amber); }
 .plants-status-ok { color: var(--green); }
-.plants-last { font-size: 0.68rem; color: var(--text-3); }
 .plants-water-btn-main { background: var(--accent-dim); border: 1px solid var(--border); border-radius: 10px; font-size: 1.3rem; padding: 8px 14px; cursor: pointer; transition: background 0.2s, border-color 0.2s; }
 .plants-water-btn-main:hover { background: var(--accent); border-color: var(--accent); }
-.plants-prompt { display: flex; align-items: center; gap: 12px; }
-.plants-hint { font-size: 0.72rem; color: var(--text-3); }
 
 /* === EMAIL === */
 .email-content { display: flex; align-items: center; }
@@ -555,7 +552,7 @@ body {
 .xkcd-content { display: flex; flex-direction: column; align-items: center; }
 .xkcd-link { display: flex; flex-direction: column; align-items: center; gap: 8px; text-decoration: none; color: var(--text); width: 100%; }
 .xkcd-title { font-size: 0.75rem; font-weight: 600; color: var(--text-2); text-align: center; }
-.xkcd-img { max-width: 100%; max-height: 200px; object-fit: contain; border-radius: 6px; }
+.xkcd-img { max-width: 100%; max-height: 280px; object-fit: contain; border-radius: 6px; }
 .xkcd-error { color: var(--text-3); font-style: italic; font-size: 0.78rem; }
 
 /* === SLIDESHOW === */
