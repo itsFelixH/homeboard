@@ -38,6 +38,8 @@ const I18N_STRINGS = {
     history: 'An diesem Tag',
     fact: 'Unnützes Wissen',
     news: 'Nachrichten',
+    word: 'Wort des Tages',
+    spell: 'The Daily Prophet',
     birthdays: 'Geburtstage',
     birthdays_none: 'Keine Geburtstage heute',
     birthdays_error: 'Fehler beim Laden'
@@ -76,6 +78,8 @@ const I18N_STRINGS = {
     history: 'On This Day',
     fact: 'Useless Fact',
     news: 'News',
+    word: 'Word of the Day',
+    spell: 'The Daily Prophet',
     birthdays: 'Birthdays',
     birthdays_none: 'No birthdays today',
     birthdays_error: 'Error loading'
@@ -114,6 +118,8 @@ const I18N_STRINGS = {
     history: 'Un día como hoy',
     fact: 'Dato inútil',
     news: 'Noticias',
+    word: 'Palabra del día',
+    spell: 'The Daily Prophet',
     birthdays: 'Cumpleaños',
     birthdays_none: 'Sin cumpleaños hoy',
     birthdays_error: 'Error'
