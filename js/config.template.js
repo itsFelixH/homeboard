@@ -122,5 +122,14 @@ const HOMEBOARD_CONFIG = {
   github: {
     username: '',         // Your GitHub username
     refreshMinutes: 30
+  },
+
+  // Email unread count (Gmail Atom feed)
+  // Requires: Google account with 2FA + App Password
+  // Get app password: Google Account > Security > 2-Step Verification > App passwords
+  email: {
+    address: '',          // Gmail address
+    appPassword: '',      // App-specific password (NOT your regular password)
+    refreshMinutes: 5
   }
 };
