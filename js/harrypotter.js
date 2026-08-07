@@ -48,6 +48,12 @@ const Hogwarts = (() => {
 
   function init() {
     fetchData();
+    // Auto-cycle through views every 60 seconds
+    setInterval(() => {
+      const next = ((currentView >= 0 ? currentView : getDaySeed() % TOTAL_VIEWS) + 1) % TOTAL_VIEWS;
+      currentView = next;
+      render();
+    }, 60 * 1000);
   }
 
   async function fetchData() {
