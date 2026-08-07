@@ -32,17 +32,43 @@ const Weather = (() => {
   };
 
   const WMO_DESCRIPTIONS = {
-    0: 'Clear sky', 1: 'Mainly clear', 2: 'Partly cloudy', 3: 'Overcast',
-    45: 'Fog', 48: 'Rime fog',
-    51: 'Light drizzle', 53: 'Drizzle', 55: 'Dense drizzle',
-    61: 'Light rain', 63: 'Rain', 65: 'Heavy rain',
-    71: 'Light snow', 73: 'Snow', 75: 'Heavy snow', 77: 'Snow grains',
-    80: 'Light showers', 81: 'Showers', 82: 'Heavy showers',
-    85: 'Light snow showers', 86: 'Heavy snow showers',
-    95: 'Thunderstorm', 96: 'Thunderstorm + hail', 99: 'Severe thunderstorm'
+    de: {
+      0: 'Klar', 1: 'Überwiegend klar', 2: 'Teilweise bewölkt', 3: 'Bedeckt',
+      45: 'Nebel', 48: 'Reifnebel',
+      51: 'Leichter Nieselregen', 53: 'Nieselregen', 55: 'Starker Nieselregen',
+      61: 'Leichter Regen', 63: 'Regen', 65: 'Starker Regen',
+      71: 'Leichter Schnee', 73: 'Schnee', 75: 'Starker Schnee', 77: 'Schneegriesel',
+      80: 'Leichte Schauer', 81: 'Schauer', 82: 'Starke Schauer',
+      85: 'Leichte Schneeschauer', 86: 'Starke Schneeschauer',
+      95: 'Gewitter', 96: 'Gewitter + Hagel', 99: 'Starkes Gewitter'
+    },
+    en: {
+      0: 'Clear sky', 1: 'Mainly clear', 2: 'Partly cloudy', 3: 'Overcast',
+      45: 'Fog', 48: 'Rime fog',
+      51: 'Light drizzle', 53: 'Drizzle', 55: 'Dense drizzle',
+      61: 'Light rain', 63: 'Rain', 65: 'Heavy rain',
+      71: 'Light snow', 73: 'Snow', 75: 'Heavy snow', 77: 'Snow grains',
+      80: 'Light showers', 81: 'Showers', 82: 'Heavy showers',
+      85: 'Light snow showers', 86: 'Heavy snow showers',
+      95: 'Thunderstorm', 96: 'Thunderstorm + hail', 99: 'Severe thunderstorm'
+    },
+    es: {
+      0: 'Despejado', 1: 'Mayormente despejado', 2: 'Parcialmente nublado', 3: 'Nublado',
+      45: 'Niebla', 48: 'Niebla helada',
+      51: 'Llovizna ligera', 53: 'Llovizna', 55: 'Llovizna intensa',
+      61: 'Lluvia ligera', 63: 'Lluvia', 65: 'Lluvia intensa',
+      71: 'Nieve ligera', 73: 'Nieve', 75: 'Nieve intensa', 77: 'Granizo fino',
+      80: 'Chubascos ligeros', 81: 'Chubascos', 82: 'Chubascos fuertes',
+      85: 'Chubascos de nieve', 86: 'Fuertes chubascos de nieve',
+      95: 'Tormenta', 96: 'Tormenta + granizo', 99: 'Tormenta severa'
+    }
   };
 
-  const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const DAY_NAMES = {
+    de: ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'],
+    en: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+    es: ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
+  };
 
   let refreshInterval;
 
@@ -82,10 +108,12 @@ const Weather = (() => {
     const current = data.current;
     const code = current.weather_code;
     const unitSymbol = HOMEBOARD_CONFIG.weather.units === 'fahrenheit' ? 'F' : 'C';
+    const lang = Lang.get();
+    const descriptions = WMO_DESCRIPTIONS[lang] || WMO_DESCRIPTIONS.en;
 
     document.getElementById('weather-icon').textContent = WMO_ICONS[code] || '\u2600\uFE0F';
     document.getElementById('weather-temp').textContent = `${Math.round(current.temperature_2m)}\u00B0${unitSymbol}`;
-    document.getElementById('weather-desc').textContent = WMO_DESCRIPTIONS[code] || 'Unknown';
+    document.getElementById('weather-desc').textContent = descriptions[code] || 'Unknown';
     document.getElementById('weather-humidity').textContent = `${current.relative_humidity_2m}%`;
     document.getElementById('weather-wind').textContent = `${Math.round(current.wind_speed_10m)} km/h`;
   }
@@ -98,12 +126,14 @@ const Weather = (() => {
     if (!container) return;
 
     const unitSymbol = HOMEBOARD_CONFIG.weather.units === 'fahrenheit' ? 'F' : 'C';
+    const lang = Lang.get();
+    const dayNames = DAY_NAMES[lang] || DAY_NAMES.en;
 
     // Skip today (index 0), show next 4 days
     container.innerHTML = daily.time.slice(1, 5).map((dateStr, i) => {
       const idx = i + 1;
       const date = new Date(dateStr + 'T12:00:00');
-      const day = DAY_NAMES[date.getDay()];
+      const day = dayNames[date.getDay()];
       const code = daily.weather_code[idx];
       const high = Math.round(daily.temperature_2m_max[idx]);
       const low = Math.round(daily.temperature_2m_min[idx]);
