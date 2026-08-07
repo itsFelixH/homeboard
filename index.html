@@ -34,11 +34,17 @@
             <button data-lang="es"><svg viewBox="0 0 6 4"><rect width="6" height="1" fill="#AA151B"/><rect y="1" width="6" height="2" fill="#F1BF00"/><rect y="3" width="6" height="1" fill="#AA151B"/></svg> Español</button>
           </div>
         </div>
-        <select id="theme-select" aria-label="Theme">
-          <option value="dark">🌙 Dark Mode</option>
-          <option value="light">☀️ Light Mode</option>
-          <option value="pixel">👾 Pixel Mode</option>
-        </select>
+        <div class="custom-select" id="theme-dropdown">
+          <button class="custom-select-btn" id="theme-btn" aria-label="Theme">
+            <span class="theme-preview" id="theme-preview">🌙</span>
+            <span class="select-arrow">▾</span>
+          </button>
+          <div class="custom-select-menu" id="theme-menu">
+            <button data-theme="dark">🌙 Dark Mode</button>
+            <button data-theme="light">☀️ Light Mode</button>
+            <button data-theme="pixel">👾 Pixel Mode</button>
+          </div>
+        </div>
       </div>
     </header>
 

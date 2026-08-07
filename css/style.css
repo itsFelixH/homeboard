@@ -169,7 +169,7 @@ body {
   overflow: hidden;
   z-index: 100;
   box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-  min-width: 130px;
+  min-width: 100px;
 }
 
 .custom-select-menu.open { display: block; }
@@ -188,6 +188,7 @@ body {
   cursor: pointer;
   text-align: left;
   transition: background 0.15s;
+  white-space: nowrap;
 }
 
 .custom-select-menu button:hover { background: var(--surface-hover); }
@@ -200,19 +201,7 @@ body {
   flex-shrink: 0;
 }
 
-.topbar-right select {
-  background: var(--surface);
-  color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 4px 8px;
-  font-size: 0.8rem;
-  cursor: pointer;
-  transition: border-color 0.2s;
-}
-
-.topbar-right select:hover { border-color: var(--accent); }
-.topbar-right select:focus { outline: none; border-color: var(--accent); }
+.theme-preview { font-size: 0.85rem; line-height: 1; display: block; }
 
 /* === Disruption Banner === */
 .disruption-banner {
