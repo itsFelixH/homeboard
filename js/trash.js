@@ -103,8 +103,13 @@ const Trash = (() => {
     // Next pickup summary
     const next = upcoming[0];
     const daysUntil = Math.ceil((next.start - new Date()) / (1000 * 60 * 60 * 24));
-    const dayLabel = daysUntil === 0 ? 'Today' : daysUntil === 1 ? 'Tomorrow' : `In ${daysUntil} days`;
-    document.getElementById('trash-next').textContent = `Next: ${dayLabel}`;
+    const lang = Lang.get();
+    let dayLabel;
+    if (daysUntil === 0) dayLabel = lang === 'de' ? 'Heute' : lang === 'es' ? 'Hoy' : 'Today';
+    else if (daysUntil === 1) dayLabel = lang === 'de' ? 'Morgen' : lang === 'es' ? 'Mañana' : 'Tomorrow';
+    else dayLabel = lang === 'de' ? `In ${daysUntil} Tagen` : lang === 'es' ? `En ${daysUntil} días` : `In ${daysUntil} days`;
+    const nextLabel = lang === 'de' ? 'Nächste' : lang === 'es' ? 'Próxima' : 'Next';
+    document.getElementById('trash-next').textContent = `${nextLabel}: ${dayLabel}`;
 
     // List upcoming
     container.innerHTML = upcoming.map(ev => {
