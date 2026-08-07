@@ -16,11 +16,27 @@ ALLOWED_DOMAINS = [
     'v6.vbb.transport.rest',
     'api.transitous.org',
     'vbb.demo.hafas.cloud',
+    'nominatim.openstreetmap.org',
 ]
 
 # Simple in-memory cache (url -> (data, content_type, timestamp))
 _cache = {}
 CACHE_TTL = 300  # 5 minutes
+CACHE_MAX_ENTRIES = 50
+
+
+def _evict_cache():
+    """Remove expired entries; if still over limit, drop oldest."""
+    import time
+    now = time.time()
+    # Remove expired
+    expired = [k for k, (_, _, ts) in _cache.items() if now - ts >= CACHE_TTL]
+    for k in expired:
+        del _cache[k]
+    # If still too large, evict oldest entries
+    while len(_cache) > CACHE_MAX_ENTRIES:
+        oldest_key = min(_cache, key=lambda k: _cache[k][2])
+        del _cache[oldest_key]
 
 
 class HomeboardHandler(http.server.SimpleHTTPRequestHandler):
@@ -73,6 +89,7 @@ class HomeboardHandler(http.server.SimpleHTTPRequestHandler):
 
             # Store in cache
             _cache[url] = (data, ctype, now)
+            _evict_cache()
 
             self.send_response(200)
             self.send_header('Content-Type', ctype)
