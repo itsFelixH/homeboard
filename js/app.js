@@ -34,7 +34,6 @@ document.addEventListener('DOMContentLoaded', () => {
   Birthdays.init();
   Commute.init();
   Departures.init();
-  // Disruptions.init(); // Disabled
   Holiday.init();
   News.init();
   Trash.init();
