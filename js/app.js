@@ -43,5 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
   Word.init();
   Hogwarts.init();
   Moon.init();
+  GitHub.init();
+  XKCD.init();
   Slideshow.init();
 });
