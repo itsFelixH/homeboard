@@ -49,7 +49,7 @@
     <!-- ============================================ -->
 
     <section class="card card-wide card-weather">
-      <div class="card-header"><i data-lucide="cloud-sun"></i> <span data-i18n="weather">Wetter</span></div>
+      <div class="card-header"><i data-lucide="cloud-sun"></i> <span data-i18n="weather">Wetter</span><a href="https://open-meteo.com/en/docs#latitude=52.5075&longitude=13.322" target="_blank" class="card-header-link" title="Open-Meteo Details"><i data-lucide="external-link" class="icon-sm"></i></a></div>
       <div class="weather-main">
         <span class="weather-icon" id="weather-icon">--</span>
         <div class="weather-primary">
@@ -71,13 +71,13 @@
     <!-- ENVIRONMENT: Rain, AQI, UV, Pollen          -->
     <!-- ============================================ -->
     <section class="card card-wide card-rain">
-      <div class="card-header"><i data-lucide="cloud-rain"></i> <span data-i18n="rain">Regen</span></div>
+      <div class="card-header"><i data-lucide="cloud-rain"></i> <span data-i18n="rain">Regen</span><a href="https://www.windy.com/52.508/13.322?rain,52.508,13.322,12" target="_blank" class="card-header-link" title="Windy Radar"><i data-lucide="external-link" class="icon-sm"></i></a></div>
       <div class="rain-summary" id="rain-summary">Loading...</div>
       <div class="rain-bars" id="rain-bars"></div>
     </section>
 
     <section class="card card-aqi">
-      <div class="card-header"><i data-lucide="wind"></i> <span data-i18n="air_quality">Luftqualität</span></div>
+      <div class="card-header"><i data-lucide="wind"></i> <span data-i18n="air_quality">Luftqualität</span><a href="https://www.iqair.com/germany/berlin" target="_blank" class="card-header-link" title="IQAir Berlin"><i data-lucide="external-link" class="icon-sm"></i></a></div>
       <div class="metric-row">
         <span class="metric-value" id="aqi-value">--</span>
         <span class="metric-label" id="aqi-label">--</span>
@@ -86,7 +86,7 @@
     </section>
 
     <section class="card card-uv">
-      <div class="card-header"><i data-lucide="sun"></i> <span data-i18n="uv_index">UV-Index</span></div>
+      <div class="card-header"><i data-lucide="sun"></i> <span data-i18n="uv_index">UV-Index</span><a href="https://currentuvindex.com/index.html?lat=52.5075&lng=13.322" target="_blank" class="card-header-link" title="UV Details"><i data-lucide="external-link" class="icon-sm"></i></a></div>
       <div class="metric-row">
         <span class="metric-value" id="uv-value">--</span>
         <span class="metric-label" id="uv-label">--</span>
@@ -94,7 +94,7 @@
     </section>
 
     <section class="card card-pollen">
-      <div class="card-header"><i data-lucide="flower-2"></i> <span data-i18n="pollen">Pollen</span></div>
+      <div class="card-header"><i data-lucide="flower-2"></i> <span data-i18n="pollen">Pollen</span><a href="https://www.pollenflug-vorhersage.de/vorhersage/berlin/" target="_blank" class="card-header-link" title="Pollenflug"><i data-lucide="external-link" class="icon-sm"></i></a></div>
       <div class="pollen-list" id="pollen-list">Loading...</div>
     </section>
 
@@ -102,7 +102,7 @@
     <!-- TRANSPORT: Departures + Commute             -->
     <!-- ============================================ -->
     <section class="card card-wide card-departures">
-      <div class="card-header"><i data-lucide="train-front"></i> <span data-i18n="departures">S Savignyplatz</span><div class="departures-dots"></div></div>
+      <div class="card-header"><i data-lucide="train-front"></i> <span data-i18n="departures">S Savignyplatz</span><a href="https://www.bvg.de/de/verbindungen/fahrinfo" target="_blank" class="card-header-link" title="BVG Fahrinfo"><i data-lucide="external-link" class="icon-sm"></i></a><div class="departures-dots"></div></div>
       <div class="departures-split">
         <div class="departures-direction">
           <h3 class="dep-dir-label">Stadtmitte →</h3>
@@ -131,7 +131,10 @@
     <!-- PERSONAL: Calendar, Birthdays, Countdown    -->
     <!-- ============================================ -->
     <section class="card card-calendar">
-      <div class="card-header"><i data-lucide="calendar-days"></i> <span data-i18n="calendar_title">Heute</span></div>
+      <div class="card-header">
+        <i data-lucide="calendar-days"></i> <span data-i18n="calendar_title">Heute</span>
+        <a href="https://calendar.google.com/calendar/r/week" target="_blank" class="card-header-link" title="Open Calendar"><i data-lucide="external-link" class="icon-sm"></i></a>
+      </div>
       <ul class="event-list" id="event-list">
         <li class="event-placeholder">Loading...</li>
       </ul>
@@ -152,12 +155,23 @@
     </section>
 
     <!-- ============================================ -->
-    <!-- INFO: Fact, History, Trash, Packages          -->
+    <!-- INFO: News, Fact, History, Trash, Packages    -->
     <!-- ============================================ -->
+    <section class="card card-wide card-news">
+      <div class="card-header"><i data-lucide="newspaper"></i> <span data-i18n="news">Nachrichten</span><a href="https://www.tagesschau.de/" target="_blank" class="card-header-link" title="Tagesschau"><i data-lucide="external-link" class="icon-sm"></i></a></div>
+      <div class="news-list" id="news-list">
+        <div class="news-empty">Loading...</div>
+      </div>
+    </section>
 
-    <section class="card card-fact">
-      <div class="card-header"><i data-lucide="lightbulb"></i> <span data-i18n="fact">Unnützes Wissen</span></div>
-      <p class="fact-text" id="fact-text">Loading...</p>
+    <section class="card card-word">
+      <div class="card-header"><i data-lucide="book-a"></i> <span data-i18n="word">Wort des Tages</span></div>
+      <div class="word-content" id="word-content">Loading...</div>
+    </section>
+
+    <section class="card card-spell">
+      <div class="card-header"><i data-lucide="wand-sparkles"></i> <span data-i18n="spell">The Daily Prophet</span></div>
+      <div class="spell-content" id="spell-content">Loading...</div>
     </section>
 
     <section class="card card-history">
@@ -167,7 +181,7 @@
     </section>
 
     <section class="card card-trash">
-      <div class="card-header"><i data-lucide="trash-2"></i> <span data-i18n="trash">Müll</span></div>
+      <div class="card-header"><i data-lucide="trash-2"></i> <span data-i18n="trash">Müll</span><a href="https://www.bsr.de/abfuhrkalender-20520.php" target="_blank" class="card-header-link" title="BSR Abfuhrkalender"><i data-lucide="external-link" class="icon-sm"></i></a></div>
       <div class="trash-next" id="trash-next">Loading...</div>
       <div class="trash-list" id="trash-list"></div>
     </section>
@@ -221,10 +235,12 @@
   <script src="js/departures.js"></script>
   <script src="js/disruptions.js"></script>
   <script src="js/holiday.js"></script>
+  <script src="js/news.js"></script>
   <script src="js/trash.js"></script>
   <script src="js/packages.js"></script>
   <script src="js/history.js"></script>
-  <script src="js/facts.js"></script>
+  <script src="js/word.js"></script>
+  <script src="js/harrypotter.js"></script>
   <script src="js/moon.js"></script>
   <script src="js/slideshow.js"></script>
   <script src="js/app.js"></script>
