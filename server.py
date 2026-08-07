@@ -21,8 +21,20 @@ ALLOWED_DOMAINS = [
 
 # Simple in-memory cache (url -> (data, content_type, timestamp))
 _cache = {}
-CACHE_TTL = 300  # 5 minutes
 CACHE_MAX_ENTRIES = 50
+
+# Per-domain cache TTL (seconds)
+CACHE_TTL_MAP = {
+    'calendar.google.com': 900,        # 15 min — calendar/birthday feeds
+    'nominatim.openstreetmap.org': 3600,  # 1 hour — geocoding results don't change
+}
+CACHE_TTL_DEFAULT = 300  # 5 min for everything else
+
+
+def _get_ttl(url):
+    """Return cache TTL based on the URL's domain."""
+    parsed = urllib.parse.urlparse(url)
+    return CACHE_TTL_MAP.get(parsed.hostname, CACHE_TTL_DEFAULT)
 
 
 def _evict_cache():
@@ -30,7 +42,7 @@ def _evict_cache():
     import time
     now = time.time()
     # Remove expired
-    expired = [k for k, (_, _, ts) in _cache.items() if now - ts >= CACHE_TTL]
+    expired = [k for k, (_, _, ts) in _cache.items() if now - ts >= _get_ttl(k)]
     for k in expired:
         del _cache[k]
     # If still too large, evict oldest entries
@@ -67,7 +79,7 @@ class HomeboardHandler(http.server.SimpleHTTPRequestHandler):
             # Check cache
             if url in _cache:
                 data, ctype, ts = _cache[url]
-                if now - ts < CACHE_TTL:
+                if now - ts < _get_ttl(url):
                     self.send_response(200)
                     self.send_header('Content-Type', ctype)
                     self.send_header('Access-Control-Allow-Origin', '*')
