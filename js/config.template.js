@@ -116,5 +116,11 @@ const HOMEBOARD_CONFIG = {
   packages: {
     dhlApiKey: '',        // Optional: DHL API key for live status
     refreshMinutes: 30
+  },
+
+  // GitHub activity feed (public events)
+  github: {
+    username: '',         // Your GitHub username
+    refreshMinutes: 30
   }
 };
