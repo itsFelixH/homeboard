@@ -189,21 +189,28 @@ const Holiday = (() => {
       const label = customNames[dateKey] || configNames[dateKey] || vac.summary || 'Urlaub';
       const dateStr = vac.start.toLocaleDateString('de-DE', { day: 'numeric', month: 'short', year: 'numeric' });
 
+      // Google Calendar week view link for this vacation date
+      const calWeekUrl = `https://calendar.google.com/calendar/r/week/${vac.start.getFullYear()}/${vac.start.getMonth()+1}/${vac.start.getDate()}`;
+
       return `<div class="countdown-item">
-        <span class="countdown-days">${daysText}</span>
-        <div class="countdown-meta">
-          <span class="countdown-label" data-date-key="${dateKey}" title="Click to rename">${label}</span>
-          <span class="countdown-sublabel">${dateStr}${sublabel ? ' · ' + sublabel : ''}</span>
-        </div>
+        <a href="${calWeekUrl}" target="_blank" class="countdown-link-wrap">
+          <span class="countdown-days">${daysText}</span>
+          <div class="countdown-meta">
+            <span class="countdown-label" data-date-key="${dateKey}">${label}</span>
+            <span class="countdown-sublabel">${dateStr}${sublabel ? ' · ' + sublabel : ''}</span>
+          </div>
+        </a>
+        <button class="countdown-edit-btn" data-date-key="${dateKey}" title="Rename" aria-label="Rename">✏️</button>
       </div>`;
     }).join('');
 
-    // Bind click-to-edit on labels
-    container.querySelectorAll('.countdown-label[data-date-key]').forEach(el => {
-      el.style.cursor = 'pointer';
-      el.addEventListener('click', () => {
-        const dateKey = el.getAttribute('data-date-key');
-        startEdit(dateKey, el.textContent, el);
+    // Bind edit button click
+    container.querySelectorAll('.countdown-edit-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const dateKey = btn.getAttribute('data-date-key');
+        const labelEl = btn.parentNode.querySelector(`.countdown-label[data-date-key="${dateKey}"]`);
+        if (labelEl) startEdit(dateKey, labelEl.textContent, labelEl);
       });
     });
   }
