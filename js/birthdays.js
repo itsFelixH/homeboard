@@ -63,8 +63,12 @@ const Birthdays = (() => {
   }
 
   function getDaysUntilBirthday(startDate, now) {
-    const thisYear = new Date(now.getFullYear(), startDate.getMonth(), startDate.getDate());
     const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    let thisYear = new Date(now.getFullYear(), startDate.getMonth(), startDate.getDate());
+    // If the birthday already passed this year, check next year
+    if (thisYear < todayMidnight) {
+      thisYear = new Date(now.getFullYear() + 1, startDate.getMonth(), startDate.getDate());
+    }
     const diff = Math.round((thisYear - todayMidnight) / (1000 * 60 * 60 * 24));
     return diff;
   }
