@@ -1,10 +1,12 @@
 /**
  * Countdown module - finds the next 2-3 "🏝️ Urlaub" events from the calendar
  * and shows days remaining until each starts.
+ * Click on a vacation name to rename it (saved in localStorage).
  */
-const Countdown = (() => {
+const Holiday = (() => {
   let refreshInterval;
   const MAX_VACATIONS = 3;
+  const STORAGE_KEY = 'homeboard_countdown_names';
 
   function init() {
     const calConfig = HOMEBOARD_CONFIG.calendar;
@@ -15,6 +17,24 @@ const Countdown = (() => {
     // Wait a moment for Calendar module to fetch first (shared cache)
     setTimeout(fetchAndFind, 2000);
     refreshInterval = setInterval(fetchAndFind, 60 * 60 * 1000);
+  }
+
+  function getCustomNames() {
+    try {
+      return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+    } catch {
+      return {};
+    }
+  }
+
+  function saveCustomName(dateKey, name) {
+    const names = getCustomNames();
+    if (name && name.trim()) {
+      names[dateKey] = name.trim();
+    } else {
+      delete names[dateKey];
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(names));
   }
 
   function showFallback() {
@@ -103,10 +123,46 @@ const Countdown = (() => {
     return new Date(year, month, day, hour, minute);
   }
 
+  function makeDateKey(date) {
+    return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+  }
+
+  function startEdit(dateKey, currentLabel, labelEl) {
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'countdown-label-input';
+    input.value = currentLabel;
+    input.placeholder = 'Name...';
+
+    const finish = () => {
+      const newName = input.value.trim();
+      saveCustomName(dateKey, newName);
+      labelEl.textContent = newName || currentLabel;
+      labelEl.style.display = '';
+      input.remove();
+    };
+
+    input.addEventListener('blur', finish);
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') input.blur();
+      if (e.key === 'Escape') {
+        input.value = currentLabel;
+        input.blur();
+      }
+    });
+
+    labelEl.style.display = 'none';
+    labelEl.parentNode.insertBefore(input, labelEl);
+    input.focus();
+    input.select();
+  }
+
   function renderAll(vacations) {
     const container = document.getElementById('countdown-list');
     const now = new Date();
     const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const customNames = getCustomNames();
+    const configNames = HOMEBOARD_CONFIG.countdown?.names || {};
 
     container.innerHTML = vacations.map((vac, idx) => {
       const targetMidnight = new Date(
@@ -131,20 +187,27 @@ const Countdown = (() => {
           : (i18n('countdown_days') || 'days to go');
       }
 
-      // Check for custom name in config
-      const dateKey = `${vac.start.getFullYear()}-${String(vac.start.getMonth()+1).padStart(2,'0')}-${String(vac.start.getDate()).padStart(2,'0')}`;
-      const names = HOMEBOARD_CONFIG.countdown?.names || {};
-      const label = names[dateKey] || vac.summary || 'Urlaub';
+      const dateKey = makeDateKey(vac.start);
+      const label = customNames[dateKey] || configNames[dateKey] || vac.summary || 'Urlaub';
       const dateStr = vac.start.toLocaleDateString('de-DE', { day: 'numeric', month: 'short', year: 'numeric' });
 
       return `<div class="countdown-item">
         <span class="countdown-days">${daysText}</span>
         <div class="countdown-meta">
-          <span class="countdown-label">${label}</span>
+          <span class="countdown-label" data-date-key="${dateKey}" title="Click to rename">${label}</span>
           <span class="countdown-sublabel">${dateStr} · ${sublabel}</span>
         </div>
       </div>`;
     }).join('');
+
+    // Bind click-to-edit on labels
+    container.querySelectorAll('.countdown-label[data-date-key]').forEach(el => {
+      el.style.cursor = 'pointer';
+      el.addEventListener('click', () => {
+        const dateKey = el.getAttribute('data-date-key');
+        startEdit(dateKey, el.textContent, el);
+      });
+    });
   }
 
   return { init };
