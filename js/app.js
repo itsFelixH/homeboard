@@ -39,6 +39,8 @@ document.addEventListener('DOMContentLoaded', () => {
   News.init();
   Trash.init();
   Packages.init();
+  Plants.init();
+  Email.init();
   History.init();
   Word.init();
   Hogwarts.init();
