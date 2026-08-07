@@ -14,6 +14,8 @@ const Hogwarts = (() => {
   let characters = [];
   let books = [];
   let fedChars = [];
+  let currentView = -1; // -1 means "daily default"
+  const TOTAL_VIEWS = 6;
 
   const HOUSE_INFO = {
     Gryffindor: { emoji: '🦁', trait: 'Bravery & Courage', colors: 'Scarlet & Gold', founder: 'Godric Gryffindor' },
@@ -82,7 +84,23 @@ const Hogwarts = (() => {
 
   function render() {
     const container = document.getElementById('spell-content');
-    const dayType = getDaySeed() % 6;
+    const dayType = currentView >= 0 ? currentView : getDaySeed() % TOTAL_VIEWS;
+
+    // Add nav arrows in card header
+    let navContainer = document.querySelector('.card-spell .spell-nav');
+    if (!navContainer) {
+      navContainer = document.createElement('div');
+      navContainer.className = 'spell-nav';
+      const header = document.querySelector('.card-spell .card-header');
+      if (header) header.appendChild(navContainer);
+    }
+    const prevIdx = (dayType - 1 + TOTAL_VIEWS) % TOTAL_VIEWS;
+    const nextIdx = (dayType + 1) % TOTAL_VIEWS;
+    navContainer.innerHTML = `<div class="card-nav">
+      <button class="card-nav-btn" onclick="Hogwarts.switchTo(${prevIdx})" aria-label="Previous">‹</button>
+      <span class="card-nav-label">${dayType + 1}/${TOTAL_VIEWS}</span>
+      <button class="card-nav-btn" onclick="Hogwarts.switchTo(${nextIdx})" aria-label="Next">›</button>
+    </div>`;
 
     let html = '';
 
@@ -224,5 +242,10 @@ const Hogwarts = (() => {
     </div>`;
   }
 
-  return { init };
+  function switchTo(index) {
+    currentView = index;
+    render();
+  }
+
+  return { init, switchTo };
 })();
