@@ -362,25 +362,27 @@ body {
 .dep-delay { color: var(--red); font-size: 0.65rem; font-weight: 600; }
 .departures-empty { color: var(--text-3); font-style: italic; text-align: center; padding: 8px; }
 .departures-dots { margin-left: auto; }
+.departures-dots + .card-header-link { margin-left: 8px; }
 #departures-list-view .departures-table { font-size: 0.75rem; }
 #departures-list-view .dep-direction { max-width: 180px; }
 
 /* === COMMUTE === */
-.commute-list { display: flex; flex-direction: column; gap: 14px; min-height: 120px; }
-.commute-dest { padding-bottom: 12px; border-bottom: 1px solid var(--border); }
-.commute-dest:last-child { border-bottom: none; padding-bottom: 0; }
-.commute-dest-label { font-size: 0.82rem; font-weight: 600; display: block; }
-.commute-split { display: flex; gap: 0; }
-.commute-transit { flex: 1; padding-right: 12px; border-right: 1px solid var(--border); }
-.commute-bike { padding-left: 12px; text-align: right; min-width: 70px; }
-.commute-mode-label { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-2); display: block; margin-bottom: 2px; }
-.commute-mode-value { font-size: 0.95rem; font-weight: 400; display: block; }
-.commute-mode-sub { font-size: 0.65rem; color: var(--text-3); }
-.commute-route-legs { display: flex; gap: 4px; margin-top: 6px; flex-wrap: wrap; align-items: center; font-size: 0.7rem; color: var(--text-2); }
-.leg-line { font-weight: 600; color: var(--text); }
-.leg-dest { color: var(--text-3); }
-.leg-walk { color: var(--text-3); }
-.leg-sep { color: var(--text-3); margin: 0 2px; }
+.commute-list { display: flex; flex-direction: column; gap: 14px; min-height: 100px; }
+.commute-dest { display: flex; flex-direction: column; gap: 10px; }
+.commute-chips { display: flex; gap: 10px; }
+.commute-chip { flex: 1; display: flex; align-items: center; gap: 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; transition: border-color 0.2s; }
+.commute-chip:hover { border-color: var(--accent); }
+.commute-chip-icon { font-size: 1.2rem; }
+.commute-chip-info { display: flex; flex-direction: column; gap: 1px; }
+.commute-chip-eta { font-size: 1.1rem; font-weight: 600; font-family: 'JetBrains Mono', monospace; color: var(--text); }
+.commute-chip-duration { font-size: 0.65rem; color: var(--text-3); }
+.commute-chip-empty { opacity: 0.4; }
+.commute-chip-empty .commute-chip-duration { font-size: 0.8rem; }
+.commute-legs { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
+.commute-pill { display: inline-flex; align-items: center; gap: 3px; font-size: 0.65rem; padding: 3px 8px; border-radius: 100px; background: var(--bg); border: 1px solid var(--border); color: var(--text-2); white-space: nowrap; }
+.commute-pill small { color: var(--text-3); font-weight: 400; }
+.commute-pill-line { font-weight: 600; color: var(--text); }
+.commute-pill-walk { color: var(--text-3); }
 .commute-empty { color: var(--text-3); font-style: italic; }
 .commute-nav { margin-left: auto; }
 
@@ -403,14 +405,23 @@ body {
 
 /* === BIRTHDAYS === */
 .birthdays-list { display: flex; flex-direction: column; gap: 6px; }
-.birthday-item { display: flex; align-items: center; gap: 8px; font-size: 0.82rem; text-decoration: none; color: var(--text); padding: 4px 6px; border-radius: 6px; transition: background 0.2s; }
+.birthday-item { display: flex; align-items: center; gap: 6px; font-size: 0.82rem; padding: 4px 6px; border-radius: 6px; transition: background 0.2s; }
 .birthday-item:hover { background: var(--accent-dim); }
+.birthday-main { display: flex; align-items: center; gap: 8px; text-decoration: none; color: var(--text); flex: 1; min-width: 0; }
+.birthday-main:hover .birthday-name { color: var(--accent); }
+.birthday-info { display: flex; flex-direction: column; gap: 3px; }
+.birthday-links { display: inline-flex; gap: 6px; align-items: center; }
+.birthday-social { display: inline-flex; width: 16px; height: 16px; color: var(--text-3); transition: color 0.2s, transform 0.2s; }
+.birthday-social svg { width: 100%; height: 100%; }
+.birthday-social:hover { transform: scale(1.2); }
+.birthday-social-wa:hover { color: #25D366; }
+.birthday-social-ig:hover { color: #E4405F; }
+.birthday-social-tg:hover { color: #26A5E4; }
+.birthday-social-sig:hover { color: #3A76F0; }
+.birthday-social-li:hover { color: #0A66C2; }
 .birthday-icon { font-size: 1rem; }
 .birthday-name { font-weight: 500; }
-.birthday-when { font-size: 0.78rem; color: var(--text-2); font-weight: 500; white-space: nowrap; }
-.birthday-links { display: flex; gap: 4px; margin-left: auto; }
-.birthday-social { font-size: 0.82rem; text-decoration: none; opacity: 0.6; transition: opacity 0.2s, transform 0.2s; }
-.birthday-social:hover { opacity: 1; transform: scale(1.2); }
+.birthday-when { font-size: 0.78rem; color: var(--text-2); font-weight: 500; white-space: nowrap; flex-shrink: 0; }
 .birthday-none, .birthday-error { color: var(--text-3); font-style: italic; font-size: 0.78rem; }
 
 /* === COUNTDOWN === */
@@ -546,9 +557,8 @@ body {
   .dep-direction { max-width: none; }
 
   /* Commute */
-  .commute-split { flex-direction: column; gap: 8px; }
-  .commute-transit { padding-right: 0; border-right: none; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
-  .commute-bike { padding-left: 0; text-align: left; }
+  .commute-chips { flex-direction: column; gap: 8px; }
+  .commute-chip { padding: 8px 10px; }
 
   /* Rain */
   .rain-bars { height: 44px; }
