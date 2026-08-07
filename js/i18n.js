@@ -167,7 +167,7 @@ const Theme = (() => {
 
       // Mark active
       menu.querySelectorAll('button').forEach(item => {
-        if (item.getAttribute('data-theme') === current) {
+        if (item.getAttribute('data-value') === current) {
           item.classList.add('active');
         }
       });
@@ -184,7 +184,7 @@ const Theme = (() => {
       // Select theme
       menu.querySelectorAll('button').forEach(item => {
         item.addEventListener('click', () => {
-          current = item.getAttribute('data-theme');
+          current = item.getAttribute('data-value');
           localStorage.setItem(STORAGE_KEY, current);
           apply(current);
           if (preview) preview.textContent = THEME_ICONS[current] || '🌙';
