@@ -182,9 +182,7 @@ const Holiday = (() => {
         sublabel = i18n('countdown_today') || 'Today!';
       } else {
         daysText = diffDays;
-        sublabel = diffDays === 1
-          ? (i18n('countdown_day') || 'day to go')
-          : (i18n('countdown_days') || 'days to go');
+        sublabel = '';
       }
 
       const dateKey = makeDateKey(vac.start);
@@ -195,7 +193,7 @@ const Holiday = (() => {
         <span class="countdown-days">${daysText}</span>
         <div class="countdown-meta">
           <span class="countdown-label" data-date-key="${dateKey}" title="Click to rename">${label}</span>
-          <span class="countdown-sublabel">${dateStr} · ${sublabel}</span>
+          <span class="countdown-sublabel">${dateStr}${sublabel ? ' · ' + sublabel : ''}</span>
         </div>
       </div>`;
     }).join('');
