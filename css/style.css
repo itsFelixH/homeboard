@@ -277,7 +277,6 @@ body {
 .icon-sm { width: 12px; height: 12px; stroke-width: 2; display: inline; vertical-align: middle; }
 
 /* === Size Variants === */
-.card-hero { grid-column: span 4; }
 .card-wide { grid-column: span 2; }
 
 /* === WEATHER === */
@@ -566,12 +565,11 @@ body {
 /* === Responsive === */
 @media (max-width: 1100px) {
   .dashboard { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .card-hero { grid-column: span 2; }
 }
 
 @media (max-width: 650px) {
   .dashboard { grid-template-columns: 1fr; gap: 10px; }
-  .card-hero, .card-wide { grid-column: span 1; }
+  .card-wide { grid-column: span 1; }
   .card-calendar { grid-column: span 1; }
 
   body { padding: 8px; }
