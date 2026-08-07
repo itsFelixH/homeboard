@@ -155,33 +155,51 @@ const Commute = (() => {
       navContainer.innerHTML = '';
     }
 
-    const transitText = r.transit ? `${r.transit} min` : '--';
-    const bikeText = r.bike ? `${r.bike} min` : '--';
-    const bikeKm = r.bikeKm ? `${r.bikeKm} km` : '';
+    // Calculate ETAs
+    const now = new Date();
+    const transitETA = r.transit ? formatETA(now, r.transit) : null;
+    const bikeETA = r.bike ? formatETA(now, r.bike) : null;
 
+    // Build chips
+    const transitChip = r.transit
+      ? `<div class="commute-chip commute-chip-transit">
+          <span class="commute-chip-icon">🚋</span>
+          <div class="commute-chip-info">
+            <span class="commute-chip-eta">${transitETA}</span>
+            <span class="commute-chip-duration">${r.transit} min</span>
+          </div>
+        </div>`
+      : `<div class="commute-chip commute-chip-empty"><span class="commute-chip-icon">🚋</span><span class="commute-chip-duration">--</span></div>`;
+
+    const bikeChip = r.bike
+      ? `<div class="commute-chip commute-chip-bike">
+          <span class="commute-chip-icon">🚲</span>
+          <div class="commute-chip-info">
+            <span class="commute-chip-eta">${bikeETA}</span>
+            <span class="commute-chip-duration">${r.bike} min · ${r.bikeKm || '--'} km</span>
+          </div>
+        </div>`
+      : `<div class="commute-chip commute-chip-empty"><span class="commute-chip-icon">🚲</span><span class="commute-chip-duration">--</span></div>`;
+
+    // Build route legs as pills
     let legsHtml = '';
     if (r.transitLegs && r.transitLegs.length > 0) {
-      const parts = r.transitLegs.map(leg => {
-        if (leg.mode === 'WALK') return `<span class="leg-walk">🚶 ${leg.duration}′</span>`;
-        return `<span class="leg-line">${leg.icon} ${leg.line}</span><span class="leg-dest">→ ${leg.to}</span>`;
+      const pills = r.transitLegs.map(leg => {
+        if (leg.mode === 'WALK') return `<span class="commute-pill commute-pill-walk">🚶 ${leg.duration}′</span>`;
+        return `<span class="commute-pill commute-pill-line">${leg.icon} ${leg.line} <small>→ ${leg.to}</small></span>`;
       });
-      legsHtml = `<div class="commute-route-legs">${parts.join('<span class="leg-sep">·</span>')}</div>`;
+      legsHtml = `<div class="commute-legs">${pills.join('')}</div>`;
     }
 
     container.innerHTML = `<div class="commute-dest">
-      <div class="commute-split">
-        <div class="commute-transit">
-          <span class="commute-mode-label">🚋 ÖPNV</span>
-          <span class="commute-mode-value">${transitText}</span>
-          ${legsHtml}
-        </div>
-        <div class="commute-bike">
-          <span class="commute-mode-label">🚲 Rad</span>
-          <span class="commute-mode-value">${bikeText}</span>
-          ${bikeKm ? `<span class="commute-mode-sub">${bikeKm}</span>` : ''}
-        </div>
-      </div>
+      <div class="commute-chips">${transitChip}${bikeChip}</div>
+      ${legsHtml}
     </div>`;
+  }
+
+  function formatETA(now, minutes) {
+    const eta = new Date(now.getTime() + minutes * 60000);
+    return `${eta.getHours().toString().padStart(2, '0')}:${eta.getMinutes().toString().padStart(2, '0')}`;
   }
 
   return { init, switchTo };
