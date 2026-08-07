@@ -23,6 +23,9 @@ const GitHub = (() => {
   function init() {
     const config = HOMEBOARD_CONFIG.github;
     if (!config || !config.username) return;
+    // Set profile link in header
+    const profileLink = document.getElementById('github-profile-link');
+    if (profileLink) profileLink.href = `https://github.com/${config.username}`;
     fetchActivity();
     refreshInterval = setInterval(fetchActivity, (config.refreshMinutes || 30) * 60 * 1000);
   }
