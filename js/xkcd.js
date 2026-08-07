@@ -10,7 +10,8 @@ const XKCD = (() => {
 
   async function fetchComic() {
     try {
-      const res = await fetch('https://xkcd.com/info.0.json');
+      const url = `/proxy?url=${encodeURIComponent('https://xkcd.com/info.0.json')}`;
+      const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       render(data);
