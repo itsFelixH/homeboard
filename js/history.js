@@ -33,12 +33,27 @@ const History = (() => {
     }
 
     // Pick a random interesting event (prefer events from last 500 years)
+    // Use date as seed for consistent daily pick
+    const now = new Date();
+    const seed = now.getFullYear() * 366 + now.getMonth() * 31 + now.getDate();
     const recent = events.filter(e => e.year && e.year > 1500);
     const pool = recent.length > 0 ? recent : events;
-    const event = pool[Math.floor(Math.random() * pool.length)];
+    const event = pool[seed % pool.length];
+
+    // Get Wikipedia link from the first related page
+    const pages = event.pages || [];
+    const wikiUrl = pages.length > 0
+      ? (pages[0].content_urls?.desktop?.page || '')
+      : '';
 
     document.getElementById('history-year').textContent = event.year || '';
-    document.getElementById('history-text').textContent = event.text || '';
+
+    const textEl = document.getElementById('history-text');
+    if (wikiUrl) {
+      textEl.innerHTML = `<a href="${wikiUrl}" target="_blank" class="history-link">${event.text || ''}</a>`;
+    } else {
+      textEl.textContent = event.text || '';
+    }
   }
 
   return { init };
