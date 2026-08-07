@@ -42,7 +42,10 @@ const I18N_STRINGS = {
     spell: 'The Daily Prophet',
     birthdays: 'Geburtstage',
     birthdays_none: 'Keine Geburtstage heute',
-    birthdays_error: 'Fehler beim Laden'
+    birthdays_error: 'Fehler beim Laden',
+    plants: 'Pflanzen',
+    email: 'E-Mail',
+    github: 'GitHub'
   },
   en: {
     weather: 'Weather',
@@ -82,7 +85,10 @@ const I18N_STRINGS = {
     spell: 'The Daily Prophet',
     birthdays: 'Birthdays',
     birthdays_none: 'No birthdays today',
-    birthdays_error: 'Error loading'
+    birthdays_error: 'Error loading',
+    plants: 'Plants',
+    email: 'Email',
+    github: 'GitHub'
   },
   es: {
     weather: 'Clima',
@@ -122,7 +128,10 @@ const I18N_STRINGS = {
     spell: 'The Daily Prophet',
     birthdays: 'Cumpleaños',
     birthdays_none: 'Sin cumpleaños hoy',
-    birthdays_error: 'Error'
+    birthdays_error: 'Error',
+    plants: 'Plantas',
+    email: 'Correo',
+    github: 'GitHub'
   }
 };
 
