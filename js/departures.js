@@ -57,7 +57,11 @@ const Departures = (() => {
     if (!planned || !realtime || planned === realtime) return 0;
     const [ph, pm] = planned.split(':').map(Number);
     const [rh, rm] = realtime.split(':').map(Number);
-    return (rh * 60 + rm) - (ph * 60 + pm);
+    let diff = (rh * 60 + rm) - (ph * 60 + pm);
+    // Handle midnight wraparound (e.g., planned 23:55, realtime 00:02)
+    if (diff < -720) diff += 1440;
+    if (diff > 720) diff -= 1440;
+    return diff;
   }
 
   async function fetchTransportRest(config) {
