@@ -5,6 +5,6 @@ services:
     ports:
       - "7070:7070"
     volumes:
-      - ./data:/usr/share/nginx/html/data:ro
-      - ./js/config.local.js:/usr/share/nginx/html/js/config.local.js:ro
+      - ./data:/app/data:ro
+      - ./js/config.local.js:/app/js/config.local.js:ro
     restart: unless-stopped

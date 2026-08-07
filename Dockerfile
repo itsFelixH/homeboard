@@ -1,14 +1,12 @@
-FROM nginx:alpine
+FROM python:3.12-alpine
 
-# Remove default config
-RUN rm /etc/nginx/conf.d/default.conf
+WORKDIR /app
 
-# Copy our config and static files
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-COPY index.html /usr/share/nginx/html/
-COPY favicon.svg /usr/share/nginx/html/
-COPY manifest.json /usr/share/nginx/html/
-COPY css/ /usr/share/nginx/html/css/
-COPY js/ /usr/share/nginx/html/js/
+# Copy all files
+COPY index.html favicon.svg manifest.json server.py ./
+COPY css/ ./css/
+COPY js/ ./js/
 
 EXPOSE 7070
+
+CMD ["python3", "server.py"]
