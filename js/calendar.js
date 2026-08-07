@@ -162,6 +162,10 @@ const Calendar = (() => {
     }
 
     if (freq === 'WEEKLY') {
+      const interval = parseInt(rule.INTERVAL || '1');
+      // Check if this week matches the interval
+      const weeksDiff = Math.round((today - event.start) / (7 * 86400000));
+      if (weeksDiff % interval !== 0) return false;
       const byDay = rule.BYDAY ? rule.BYDAY.split(',') : [];
       if (byDay.length > 0) return byDay.some(d => dowMap[d] === todayDow);
       return event.start.getDay() === todayDow;
@@ -196,8 +200,8 @@ const Calendar = (() => {
       if (!ev.location || !isBerlinLocation(ev.location)) continue;
 
       try {
-        // Geocode the location using Nominatim
-        const geoUrl = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(ev.location)}`;
+        // Geocode the location using Nominatim (via proxy for proper User-Agent)
+        const geoUrl = `/proxy?url=${encodeURIComponent(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(ev.location)}`)}`;
         const geoRes = await fetch(geoUrl);
         if (!geoRes.ok) continue;
         const geoData = await geoRes.json();
