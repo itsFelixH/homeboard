@@ -15,7 +15,7 @@ const Hogwarts = (() => {
   let books = [];
   let fedChars = [];
   let currentView = -1; // -1 means "daily default"
-  const TOTAL_VIEWS = 6;
+  const TOTAL_VIEWS = 7;
 
   const HOUSE_INFO = {
     Gryffindor: { emoji: '🦁', trait: 'Bravery & Courage', colors: 'Scarlet & Gold', founder: 'Godric Gryffindor' },
@@ -44,6 +44,25 @@ const Hogwarts = (() => {
     { fact: 'Platform 9¾ actually exists at King\'s Cross station in London as a tourist attraction.', category: 'Real World' },
     { fact: 'In the films, Daniel Radcliffe went through about 160 pairs of glasses.', category: 'Films' },
     { fact: 'Moaning Myrtle is the only ghost whose cause of death is directly shown in the series.', category: 'Characters' }
+  ];
+
+  // Quiz questions with multiple choice
+  const QUIZ = [
+    { q: 'What is the core of Harry\'s wand?', a: 'Phoenix tail feather', opts: ['Dragon heartstring', 'Phoenix tail feather', 'Unicorn hair', 'Thestral hair'] },
+    { q: 'Who is the Half-Blood Prince?', a: 'Severus Snape', opts: ['Tom Riddle', 'Severus Snape', 'Albus Dumbledore', 'Draco Malfoy'] },
+    { q: 'What animal can Sirius Black transform into?', a: 'Dog', opts: ['Wolf', 'Cat', 'Dog', 'Stag'] },
+    { q: 'How many Horcruxes did Voldemort create?', a: '7', opts: ['5', '6', '7', '8'] },
+    { q: 'What position does Harry play in Quidditch?', a: 'Seeker', opts: ['Chaser', 'Beater', 'Keeper', 'Seeker'] },
+    { q: 'What is Hermione\'s patronus?', a: 'Otter', opts: ['Cat', 'Otter', 'Horse', 'Hare'] },
+    { q: 'Which house does the Sorting Hat almost put Harry in?', a: 'Slytherin', opts: ['Ravenclaw', 'Hufflepuff', 'Slytherin', 'None'] },
+    { q: 'What does "Expecto Patronum" produce?', a: 'A patronus', opts: ['A shield', 'A patronus', 'Light', 'Fire'] },
+    { q: 'Who gave Harry his Invisibility Cloak?', a: 'Dumbledore', opts: ['Hagrid', 'Sirius', 'Dumbledore', 'McGonagall'] },
+    { q: 'What is the name of Hagrid\'s dragon?', a: 'Norbert', opts: ['Norberta', 'Norbert', 'Fang', 'Buckbeak'] },
+    { q: 'What does Felix Felicis do?', a: 'Makes you lucky', opts: ['Makes you invisible', 'Makes you lucky', 'Heals wounds', 'Grants flight'] },
+    { q: 'Who destroys the final Horcrux?', a: 'Neville Longbottom', opts: ['Harry Potter', 'Ron Weasley', 'Neville Longbottom', 'Hermione Granger'] },
+    { q: 'What is Dumbledore\'s full first name?', a: 'Albus', opts: ['Albert', 'Albus', 'Alfred', 'Aldric'] },
+    { q: 'Which Deathly Hallow did Harry possess first?', a: 'Invisibility Cloak', opts: ['Elder Wand', 'Resurrection Stone', 'Invisibility Cloak', 'None'] },
+    { q: 'What creature guards the Philosopher\'s Stone first?', a: 'Fluffy (three-headed dog)', opts: ['A troll', 'Fluffy (three-headed dog)', 'A sphinx', 'Devil\'s Snare'] }
   ];
 
   function init() {
@@ -117,6 +136,7 @@ const Hogwarts = (() => {
       case 3: html = renderBookSpotlight(); break;
       case 4: html = renderTrivia(); break;
       case 5: html = renderActor(); break;
+      case 6: html = renderQuiz(); break;
     }
 
     container.innerHTML = html || '<span class="spell-error">No magical data</span>';
@@ -248,10 +268,46 @@ const Hogwarts = (() => {
     </div>`;
   }
 
+  function renderQuiz() {
+    const quiz = QUIZ[getDaySeed() % QUIZ.length];
+    if (!quiz) return '';
+
+    // Shuffle options deterministically
+    const seed = getDaySeed();
+    const opts = [...quiz.opts].sort((a, b) => {
+      const ha = (seed + a.charCodeAt(0)) % 100;
+      const hb = (seed + b.charCodeAt(0)) % 100;
+      return ha - hb;
+    });
+
+    const buttons = opts.map(opt => {
+      return `<button class="quiz-option" onclick="Hogwarts.answer(this, '${opt.replace(/'/g, "\\'")}', '${quiz.a.replace(/'/g, "\\'")}')">${opt}</button>`;
+    }).join('');
+
+    return `<div class="spell-quiz">
+      <span class="spell-tag">🧙 Daily Quiz</span>
+      <span class="quiz-question">${quiz.q}</span>
+      <div class="quiz-options">${buttons}</div>
+    </div>`;
+  }
+
+  function answer(el, selected, correct) {
+    const container = el.parentNode;
+    const buttons = container.querySelectorAll('.quiz-option');
+    buttons.forEach(btn => {
+      btn.disabled = true;
+      if (btn.textContent === correct) {
+        btn.classList.add('quiz-correct');
+      } else if (btn === el && selected !== correct) {
+        btn.classList.add('quiz-wrong');
+      }
+    });
+  }
+
   function switchTo(index) {
     currentView = index;
     render();
   }
 
-  return { init, switchTo };
+  return { init, switchTo, answer };
 })();
