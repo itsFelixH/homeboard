@@ -35,12 +35,11 @@ document.addEventListener('DOMContentLoaded', () => {
   Commute.init();
   Departures.init();
   // Disruptions.init(); // Disabled
-  Countdown.init();
+  Holiday.init();
   Trash.init();
   Packages.init();
   History.init();
   Facts.init();
   Moon.init();
-  Events.init();
   Slideshow.init();
 });
