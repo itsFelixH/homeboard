@@ -27,6 +27,8 @@ const Calendar = (() => {
       let events = parseICS(icsText);
       events = filterEvents(events);
       render(events.slice(0, config.maxEvents));
+      // Tomorrow's first event preview
+      renderTomorrowPreview(icsText);
       // Fetch commute for events with locations
       if (config.showCommute) {
         fetchCommuteForEvents(events.slice(0, config.maxEvents));
@@ -187,8 +189,8 @@ const Calendar = (() => {
 
   function isBerlinLocation(loc) {
     if (!loc) return false;
-    const lower = loc.toLowerCase();
-    return lower.includes('berlin') || /\b10\d{3}\b/.test(loc) || /\b12\d{3}\b/.test(loc) || /\b13\d{3}\b/.test(loc) || /\b14\d{3}\b/.test(loc);
+    // Show commute for any event with a location (assume local if no city specified)
+    return true;
   }
 
   async function fetchCommuteForEvents(events) {
@@ -267,8 +269,8 @@ const Calendar = (() => {
           const commuteEl = eventEl.querySelector('.event-commute');
           if (commuteEl) {
             const parts = [];
-            if (transitMin) parts.push(`🚋 ${transitMin}′`);
-            if (bikeMin) parts.push(`🚲 ${bikeMin}′ · ${bikeKm} km`);
+            if (transitMin) parts.push(`🚋 ${transitMin} min`);
+            if (bikeMin) parts.push(`🚲 ${bikeMin} min · ${bikeKm} km`);
             commuteEl.textContent = parts.join('  ');
           }
         }
@@ -276,6 +278,72 @@ const Calendar = (() => {
         // Silently skip failed geocoding
       }
     }
+  }
+
+  function renderTomorrowPreview(icsText) {
+    const config = HOMEBOARD_CONFIG.calendar;
+    const lines = icsText.replace(/\r\n /g, '').split(/\r?\n/);
+    const today = new Date();
+    const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+    const tomorrowStr = dateToStr(tomorrow);
+    const tomorrowDow = tomorrow.getDay();
+    const dowMap = { SU: 0, MO: 1, TU: 2, WE: 3, TH: 4, FR: 5, SA: 6 };
+
+    let event = null;
+    const tomorrowEvents = [];
+
+    for (const line of lines) {
+      if (line === 'BEGIN:VEVENT') {
+        event = { exdates: [] };
+      } else if (line === 'END:VEVENT' && event) {
+        if (event.summary && event.start) {
+          if (occursToday(event, tomorrowStr, tomorrowDow, tomorrow, dowMap)) {
+            tomorrowEvents.push(event);
+          }
+        }
+        event = null;
+      } else if (event) {
+        if (line.startsWith('DTSTART')) {
+          const p = parseDT(line);
+          event.start = p.date;
+          event.allDay = p.allDay;
+        } else if (line.startsWith('DTEND')) {
+          event.end = parseDT(line).date;
+        } else if (line.startsWith('SUMMARY')) {
+          event.summary = line.split(':').slice(1).join(':');
+        } else if (line.startsWith('RRULE')) {
+          event.rrule = parseRRULE(line);
+        } else if (line.startsWith('EXDATE')) {
+          event.exdates.push(line.split(':').pop().slice(0, 8));
+        }
+      }
+    }
+
+    // Filter and sort
+    const patterns = (config.hidePatterns || []).map(p => new RegExp(p, 'i'));
+    const filtered = tomorrowEvents.filter(ev => !patterns.some(re => re.test(ev.summary || '')));
+    filtered.sort((a, b) => {
+      if (a.allDay && !b.allDay) return -1;
+      if (!a.allDay && b.allDay) return 1;
+      return (a.start || 0) - (b.start || 0);
+    });
+
+    const previewEl = document.getElementById('calendar-tomorrow');
+    if (!previewEl) return;
+
+    if (filtered.length === 0) {
+      previewEl.innerHTML = '';
+      return;
+    }
+
+    const first = filtered[0];
+    const lang = Lang.get();
+    const label = lang === 'de' ? 'Morgen' : lang === 'es' ? 'Mañana' : 'Tomorrow';
+    const time = (!first.allDay && first.start)
+      ? `${first.start.getHours().toString().padStart(2,'0')}:${first.start.getMinutes().toString().padStart(2,'0')} `
+      : '';
+
+    previewEl.innerHTML = `<span class="calendar-tomorrow-label">${label}:</span> ${time}${first.summary}`;
   }
 
   function render(events) {
