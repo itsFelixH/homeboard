@@ -63,14 +63,14 @@ const Rain = (() => {
     const barsEl = document.getElementById('rain-bars');
 
     if (totalMm === 0 && maxProb < 20) {
-      summaryEl.textContent = i18n('rain_none') || 'No rain expected next 12h';
+      summaryEl.innerHTML = `☀️ ${i18n('rain_none') || 'No rain expected next 12h'}`;
       barsEl.innerHTML = '';
       barsEl.style.display = 'none';
       return;
     } else if (totalMm < 1) {
-      summaryEl.textContent = `${i18n('rain_light') || 'Light rain possible'} (${maxProb}%)`;
+      summaryEl.innerHTML = `☁️ ${i18n('rain_light') || 'Light rain possible'} (${maxProb}%)`;
     } else {
-      summaryEl.textContent = `${totalMm.toFixed(1)} mm, ${maxProb}%`;
+      summaryEl.innerHTML = `☂️ ${totalMm.toFixed(1)} mm <span class="rain-badge">${maxProb}%</span>`;
     }
 
     barsEl.style.display = 'flex';
@@ -82,9 +82,9 @@ const Rain = (() => {
       const h = new Date(timeStr).getHours();
       const height = Math.max((precip[i] / maxPrecip) * 100, prob[i] > 0 ? 4 : 0);
       const opacity = precip[i] > 0 ? 1 : 0.4;
-      const label = `${h}:00`;
+      const isCurrent = i === 0;
 
-      return `<div class="rain-bar-col">
+      return `<div class="rain-bar-col ${isCurrent ? 'rain-bar-current' : ''}">
         <div class="rain-bar" style="height:${height}%;opacity:${opacity}" title="${precip[i]}mm (${prob[i]}%)"></div>
         <span class="rain-hour">${h}</span>
       </div>`;
