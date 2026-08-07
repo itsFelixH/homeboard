@@ -9,10 +9,6 @@ const I18N_STRINGS = {
     rain: 'Regen',
     rain_none: 'Kein Regen in den nächsten 12h',
     rain_light: 'Leichter Regen möglich',
-    rain_expected: 'erwartet, bis zu',
-    rain_chance: 'Wahrscheinlichkeit',
-    sunrise: 'Aufgang',
-    sunset: 'Untergang',
     air_quality: 'Luftqualität',
     uv_index: 'UV-Index',
     pollen: 'Pollen',
@@ -20,23 +16,14 @@ const I18N_STRINGS = {
     calendar_no_events: 'Keine Termine heute',
     commute: 'Pendeln',
     departures: 'S Savignyplatz',
-    departures_east: 'Stadtmitte →',
-    departures_west: '← Westkreuz',
-    disruptions_none: 'Keine Störungen',
     countdown: 'Urlaub',
-    countdown_days: 'Tage noch',
-    countdown_day: 'Tag noch',
     countdown_today: 'Heute!',
     countdown_started: 'Läuft!',
     countdown_none: 'Kein Urlaub gefunden',
     trash: 'Müllabfuhr',
     packages: 'Pakete',
     packages_empty: 'Keine Pakete',
-    packages_add: '+',
-    packages_label_placeholder: 'Bezeichnung',
-    packages_number_placeholder: 'Sendungsnummer',
     history: 'An diesem Tag',
-    fact: 'Unnützes Wissen',
     news: 'Nachrichten',
     word: 'Wort des Tages',
     spell: 'The Daily Prophet',
@@ -52,10 +39,6 @@ const I18N_STRINGS = {
     rain: 'Rain',
     rain_none: 'No rain expected next 12h',
     rain_light: 'Light rain possible',
-    rain_expected: 'expected, up to',
-    rain_chance: 'chance',
-    sunrise: 'Sunrise',
-    sunset: 'Sunset',
     air_quality: 'Air Quality',
     uv_index: 'UV Index',
     pollen: 'Pollen',
@@ -63,23 +46,14 @@ const I18N_STRINGS = {
     calendar_no_events: 'No events today',
     commute: 'Commute',
     departures: 'S Savignyplatz',
-    departures_east: 'City Center →',
-    departures_west: '← Westkreuz',
-    disruptions_none: 'No disruptions',
     countdown: 'Vacation',
-    countdown_days: 'days to go',
-    countdown_day: 'day to go',
     countdown_today: 'Today!',
     countdown_started: 'Started!',
     countdown_none: 'No vacation found',
     trash: 'Trash Pickup',
     packages: 'Packages',
     packages_empty: 'No packages',
-    packages_add: '+',
-    packages_label_placeholder: 'Label',
-    packages_number_placeholder: 'Tracking number',
     history: 'On This Day',
-    fact: 'Useless Fact',
     news: 'News',
     word: 'Word of the Day',
     spell: 'The Daily Prophet',
@@ -95,10 +69,6 @@ const I18N_STRINGS = {
     rain: 'Lluvia',
     rain_none: 'Sin lluvia en las próximas 12h',
     rain_light: 'Posible lluvia ligera',
-    rain_expected: 'esperado, hasta',
-    rain_chance: 'probabilidad',
-    sunrise: 'Amanecer',
-    sunset: 'Atardecer',
     air_quality: 'Calidad del Aire',
     uv_index: 'Índice UV',
     pollen: 'Polen',
@@ -106,23 +76,14 @@ const I18N_STRINGS = {
     calendar_no_events: 'Sin eventos hoy',
     commute: 'Trayecto',
     departures: 'S Savignyplatz',
-    departures_east: 'Centro →',
-    departures_west: '← Westkreuz',
-    disruptions_none: 'Sin interrupciones',
     countdown: 'Vacaciones',
-    countdown_days: 'días',
-    countdown_day: 'día',
     countdown_today: '¡Hoy!',
     countdown_started: '¡Empezó!',
     countdown_none: 'Sin vacaciones',
     trash: 'Basura',
     packages: 'Paquetes',
     packages_empty: 'Sin paquetes',
-    packages_add: '+',
-    packages_label_placeholder: 'Etiqueta',
-    packages_number_placeholder: 'Número',
     history: 'Un día como hoy',
-    fact: 'Dato inútil',
     news: 'Noticias',
     word: 'Palabra del día',
     spell: 'The Daily Prophet',
@@ -158,6 +119,9 @@ const Lang = (() => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
         menu.classList.toggle('open');
+        // Close theme menu if open
+        const themeMenu = document.getElementById('theme-menu');
+        if (themeMenu) themeMenu.classList.remove('open');
       });
 
       // Select language
@@ -186,19 +150,52 @@ const Lang = (() => {
 
 const Theme = (() => {
   const STORAGE_KEY = 'homeboard_theme';
+  const THEME_ICONS = { dark: '🌙', light: '☀️', pixel: '👾' };
   let current = 'dark';
 
   function init() {
     current = localStorage.getItem(STORAGE_KEY) || 'dark';
     apply(current);
-    const select = document.getElementById('theme-select');
-    if (select) {
-      select.value = current;
-      select.addEventListener('change', (e) => {
-        current = e.target.value;
-        localStorage.setItem(STORAGE_KEY, current);
-        apply(current);
+
+    const btn = document.getElementById('theme-btn');
+    const menu = document.getElementById('theme-menu');
+    const preview = document.getElementById('theme-preview');
+
+    if (btn && menu) {
+      // Set preview to current theme icon
+      if (preview) preview.textContent = THEME_ICONS[current] || '🌙';
+
+      // Mark active
+      menu.querySelectorAll('button').forEach(item => {
+        if (item.getAttribute('data-theme') === current) {
+          item.classList.add('active');
+        }
       });
+
+      // Toggle menu
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        menu.classList.toggle('open');
+        // Close language menu if open
+        const langMenu = document.getElementById('lang-menu');
+        if (langMenu) langMenu.classList.remove('open');
+      });
+
+      // Select theme
+      menu.querySelectorAll('button').forEach(item => {
+        item.addEventListener('click', () => {
+          current = item.getAttribute('data-theme');
+          localStorage.setItem(STORAGE_KEY, current);
+          apply(current);
+          if (preview) preview.textContent = THEME_ICONS[current] || '🌙';
+          menu.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+          item.classList.add('active');
+          menu.classList.remove('open');
+        });
+      });
+
+      // Close on outside click
+      document.addEventListener('click', () => menu.classList.remove('open'));
     }
   }
 
