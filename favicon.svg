@@ -1,6 +1,22 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <rect width="32" height="32" rx="6" fill="#1a1a2e"/>
-  <path d="M16 6 L4 15 L7 15 L7 26 L13 26 L13 20 L19 20 L19 26 L25 26 L25 15 L28 15 Z" fill="#e94560"/>
-  <rect x="10" y="10" width="4" height="4" rx="1" fill="#4fc3f7" opacity="0.8"/>
-  <rect x="18" y="10" width="4" height="4" rx="1" fill="#4fc3f7" opacity="0.8"/>
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e1b4b"/>
+      <stop offset="100%" stop-color="#0f172a"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#818cf8"/>
+      <stop offset="100%" stop-color="#6366f1"/>
+    </linearGradient>
+  </defs>
+  <rect width="32" height="32" rx="7" fill="url(#bg)"/>
+  <!-- Grid dots representing dashboard widgets -->
+  <rect x="5" y="5" width="9" height="9" rx="2" fill="url(#accent)" opacity="0.9"/>
+  <rect x="18" y="5" width="9" height="5" rx="2" fill="#06b6d4" opacity="0.7"/>
+  <rect x="18" y="13" width="9" height="5" rx="2" fill="#10b981" opacity="0.6"/>
+  <rect x="5" y="18" width="9" height="9" rx="2" fill="#f59e0b" opacity="0.6"/>
+  <rect x="18" y="21" width="9" height="6" rx="2" fill="url(#accent)" opacity="0.4"/>
+  <!-- Small clock hands in top-left widget -->
+  <line x1="9.5" y1="9.5" x2="9.5" y2="7" stroke="#fff" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="9.5" y1="9.5" x2="12" y2="9.5" stroke="#fff" stroke-width="1" stroke-linecap="round"/>
 </svg>
