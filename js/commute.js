@@ -160,40 +160,52 @@ const Commute = (() => {
     const transitETA = r.transit ? formatETA(now, r.transit) : null;
     const bikeETA = r.bike ? formatETA(now, r.bike) : null;
 
-    // Build chips
-    const transitChip = r.transit
-      ? `<div class="commute-chip commute-chip-transit">
-          <span class="commute-chip-icon">🚋</span>
-          <div class="commute-chip-info">
-            <span class="commute-chip-eta">${transitETA}</span>
-            <span class="commute-chip-duration">${r.transit} min</span>
-          </div>
-        </div>`
-      : `<div class="commute-chip commute-chip-empty"><span class="commute-chip-icon">🚋</span><span class="commute-chip-duration">--</span></div>`;
-
-    const bikeChip = r.bike
-      ? `<div class="commute-chip commute-chip-bike">
-          <span class="commute-chip-icon">🚲</span>
-          <div class="commute-chip-info">
-            <span class="commute-chip-eta">${bikeETA}</span>
-            <span class="commute-chip-duration">${r.bike} min · ${r.bikeKm || '--'} km</span>
-          </div>
-        </div>`
-      : `<div class="commute-chip commute-chip-empty"><span class="commute-chip-icon">🚲</span><span class="commute-chip-duration">--</span></div>`;
-
-    // Build route legs as pills
+    // Build route legs inline
     let legsHtml = '';
     if (r.transitLegs && r.transitLegs.length > 0) {
-      const pills = r.transitLegs.map(leg => {
-        if (leg.mode === 'WALK') return `<span class="commute-pill commute-pill-walk">🚶 ${leg.duration}′</span>`;
-        return `<span class="commute-pill commute-pill-line">${leg.icon} ${leg.line} <small>→ ${leg.to}</small></span>`;
+      const parts = r.transitLegs.map(leg => {
+        if (leg.mode === 'WALK') return `<span class="commute-leg-walk">🚶${leg.duration}′</span>`;
+        return `<span class="commute-leg-line">${leg.icon} ${leg.line}</span><span class="commute-leg-to">→ ${leg.to}</span>`;
       });
-      legsHtml = `<div class="commute-legs">${pills.join('')}</div>`;
+      legsHtml = `<div class="commute-route">${parts.join('<span class="commute-leg-sep">·</span>')}</div>`;
     }
 
+    // Transit section
+    const transitSection = r.transit
+      ? `<div class="commute-section">
+          <div class="commute-row">
+            <span class="commute-mode">🚋 ÖPNV</span>
+            <span class="commute-eta">→ ${transitETA}</span>
+          </div>
+          <span class="commute-duration">${r.transit} min</span>
+          ${legsHtml}
+        </div>`
+      : `<div class="commute-section commute-section-empty">
+          <div class="commute-row">
+            <span class="commute-mode">🚋 ÖPNV</span>
+            <span class="commute-eta">--</span>
+          </div>
+        </div>`;
+
+    // Bike section
+    const bikeSection = r.bike
+      ? `<div class="commute-section">
+          <div class="commute-row">
+            <span class="commute-mode">🚲 Rad</span>
+            <span class="commute-eta">→ ${bikeETA}</span>
+          </div>
+          <span class="commute-duration">${r.bike} min · ${r.bikeKm || '--'} km</span>
+        </div>`
+      : `<div class="commute-section commute-section-empty">
+          <div class="commute-row">
+            <span class="commute-mode">🚲 Rad</span>
+            <span class="commute-eta">--</span>
+          </div>
+        </div>`;
+
     container.innerHTML = `<div class="commute-dest">
-      <div class="commute-chips">${transitChip}${bikeChip}</div>
-      ${legsHtml}
+      ${transitSection}
+      ${bikeSection}
     </div>`;
   }
 
