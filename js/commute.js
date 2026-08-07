@@ -164,7 +164,7 @@ const Commute = (() => {
     let legsHtml = '';
     if (r.transitLegs && r.transitLegs.length > 0) {
       const parts = r.transitLegs.map(leg => {
-        if (leg.mode === 'WALK') return `<span class="commute-leg-walk">🚶${leg.duration}′</span>`;
+        if (leg.mode === 'WALK') return `<span class="commute-leg-walk">🚶${leg.duration} min</span>`;
         return `<span class="commute-leg-line">${leg.icon} ${leg.line}</span><span class="commute-leg-to">→ ${leg.to}</span>`;
       });
       legsHtml = `<div class="commute-route">${parts.join('<span class="commute-leg-sep">·</span>')}</div>`;
