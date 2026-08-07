@@ -36,6 +36,7 @@ document.addEventListener('DOMContentLoaded', () => {
   Departures.init();
   // Disruptions.init(); // Disabled
   Holiday.init();
+  News.init();
   Trash.init();
   Packages.init();
   History.init();
