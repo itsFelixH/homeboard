@@ -405,13 +405,13 @@ body {
 
 /* === BIRTHDAYS === */
 .birthdays-list { display: flex; flex-direction: column; gap: 6px; }
-.birthday-item { display: flex; align-items: center; gap: 6px; font-size: 0.82rem; padding: 4px 6px; border-radius: 6px; transition: background 0.2s; }
+.birthday-item { display: flex; align-items: center; gap: 6px; font-size: 0.82rem; padding: 6px 8px; border-radius: 6px; transition: background 0.2s; }
 .birthday-item:hover { background: var(--accent-dim); }
 .birthday-main { display: flex; align-items: center; gap: 8px; text-decoration: none; color: var(--text); flex: 1; min-width: 0; }
 .birthday-main:hover .birthday-name { color: var(--accent); }
-.birthday-info { display: flex; flex-direction: column; gap: 3px; }
-.birthday-links { display: inline-flex; gap: 6px; align-items: center; }
-.birthday-social { display: inline-flex; width: 16px; height: 16px; color: var(--text-3); transition: color 0.2s, transform 0.2s; }
+.birthday-info { display: flex; align-items: center; gap: 5px; }
+.birthday-links { display: inline-flex; gap: 4px; align-items: center; }
+.birthday-social { display: inline-flex; width: 14px; height: 14px; color: var(--text-3); transition: color 0.2s, transform 0.2s; text-decoration: none; }
 .birthday-social svg { width: 100%; height: 100%; }
 .birthday-social:hover { transform: scale(1.2); }
 .birthday-social-wa:hover { color: #25D366; }
@@ -477,6 +477,7 @@ body {
 .spell-detail { font-size: 0.72rem; color: var(--text-2); }
 .spell-members { font-size: 0.7rem; color: var(--text-3); margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border); }
 .spell-trivia { padding-top: 8px; border-top: 1px solid var(--border); margin-top: 4px; }
+.spell-nav { margin-left: auto; }
 .spell-error { font-size: 0.78rem; color: var(--text-3); font-style: italic; }
 
 /* === EVENTS === */
@@ -515,6 +516,47 @@ body {
 .pkg-input::placeholder { color: var(--text-3); }
 .pkg-btn { background: var(--accent); color: white; border: none; border-radius: 6px; padding: 6px 12px; font-size: 0.85rem; font-weight: 700; cursor: pointer; transition: opacity 0.2s; }
 .pkg-btn:hover { opacity: 0.85; }
+
+/* === PLANTS === */
+.plants-display { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.plants-info { display: flex; flex-direction: column; gap: 3px; }
+.plants-status { font-size: 0.82rem; font-weight: 500; }
+.plants-status-overdue { color: var(--red); }
+.plants-status-soon { color: var(--amber); }
+.plants-status-ok { color: var(--green); }
+.plants-last { font-size: 0.68rem; color: var(--text-3); }
+.plants-water-btn-main { background: var(--accent-dim); border: 1px solid var(--border); border-radius: 10px; font-size: 1.3rem; padding: 8px 14px; cursor: pointer; transition: background 0.2s, border-color 0.2s; }
+.plants-water-btn-main:hover { background: var(--accent); border-color: var(--accent); }
+.plants-prompt { display: flex; align-items: center; gap: 12px; }
+.plants-hint { font-size: 0.72rem; color: var(--text-3); }
+
+/* === EMAIL === */
+.email-content { display: flex; align-items: center; }
+.email-link { display: flex; align-items: center; gap: 12px; text-decoration: none; color: var(--text); padding: 8px; border-radius: 8px; transition: background 0.2s; width: 100%; }
+.email-link:hover { background: var(--accent-dim); }
+.email-count { font-size: 1.8rem; font-weight: 200; min-width: 40px; font-family: 'JetBrains Mono', monospace; }
+.email-count-active { color: var(--accent); }
+.email-count-zero { color: var(--text-3); }
+.email-icon { font-size: 1.5rem; }
+.email-label { font-size: 0.78rem; color: var(--text-2); }
+
+/* === GITHUB === */
+.github-list { display: flex; flex-direction: column; gap: 2px; }
+.github-item { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-radius: 6px; text-decoration: none; color: var(--text); transition: background 0.2s; }
+.github-item:hover { background: var(--accent-dim); }
+.github-icon { font-size: 0.85rem; flex-shrink: 0; }
+.github-info { display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 0; }
+.github-repo { font-size: 0.75rem; font-weight: 600; color: var(--accent); }
+.github-desc { font-size: 0.68rem; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.github-time { font-size: 0.6rem; color: var(--text-3); font-family: 'JetBrains Mono', monospace; flex-shrink: 0; }
+.github-empty { color: var(--text-3); font-style: italic; font-size: 0.78rem; }
+
+/* === XKCD === */
+.xkcd-content { display: flex; flex-direction: column; align-items: center; }
+.xkcd-link { display: flex; flex-direction: column; align-items: center; gap: 8px; text-decoration: none; color: var(--text); width: 100%; }
+.xkcd-title { font-size: 0.75rem; font-weight: 600; color: var(--text-2); text-align: center; }
+.xkcd-img { max-width: 100%; max-height: 200px; object-fit: contain; border-radius: 6px; }
+.xkcd-error { color: var(--text-3); font-style: italic; font-size: 0.78rem; }
 
 /* === SLIDESHOW === */
 .card-slideshow { padding: 0; overflow: hidden; min-height: 160px; }
