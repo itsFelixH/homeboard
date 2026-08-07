@@ -13,10 +13,12 @@ PORT = 7070
 # Domains allowed through the proxy
 ALLOWED_DOMAINS = [
     'calendar.google.com',
+    'mail.google.com',
     'v6.vbb.transport.rest',
     'api.transitous.org',
     'vbb.demo.hafas.cloud',
     'nominatim.openstreetmap.org',
+    'xkcd.com',
 ]
 
 # Simple in-memory cache (url -> (data, content_type, timestamp))
@@ -95,6 +97,10 @@ class HomeboardHandler(http.server.SimpleHTTPRequestHandler):
                 'User-Agent': 'Homeboard/1.0',
                 'Accept': '*/*'
             })
+            # Support Basic Auth via query parameter
+            auth = params.get('auth', [None])[0]
+            if auth:
+                req.add_header('Authorization', f'Basic {auth}')
             with urllib.request.urlopen(req, timeout=20, context=ctx) as resp:
                 data = resp.read()
                 ctype = resp.headers.get('Content-Type', 'text/plain')
