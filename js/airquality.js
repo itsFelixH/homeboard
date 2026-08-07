@@ -47,6 +47,7 @@ const AirQuality = (() => {
     const current = data.current;
     const aqi = current.european_aqi;
     const level = AQI_LEVELS.find(l => aqi <= l.max) || AQI_LEVELS[AQI_LEVELS.length - 1];
+    const lang = Lang.get();
 
     document.getElementById('aqi-value').textContent = aqi;
     document.getElementById('aqi-label').textContent = level.label;
@@ -54,6 +55,25 @@ const AirQuality = (() => {
 
     document.getElementById('aqi-pm25').textContent = `PM2.5: ${current.pm2_5} \u00B5g/m\u00B3`;
     document.getElementById('aqi-pm10').textContent = `PM10: ${current.pm10} \u00B5g/m\u00B3`;
+
+    // Health recommendation
+    const recEl = document.getElementById('aqi-rec');
+    if (recEl) recEl.textContent = getAqiRec(aqi, lang);
+  }
+
+  function getAqiRec(aqi, lang) {
+    if (lang === 'de') {
+      if (aqi <= 20) return '✓ Lüften empfohlen';
+      if (aqi <= 40) return '✓ Normale Aktivität';
+      if (aqi <= 60) return '⚠ Empfindliche sollten Belastung reduzieren';
+      if (aqi <= 80) return '⚠ Aktivität im Freien einschränken';
+      return '⛔ Im Innenbereich bleiben';
+    }
+    if (aqi <= 20) return '✓ Great for ventilation';
+    if (aqi <= 40) return '✓ Normal activity fine';
+    if (aqi <= 60) return '⚠ Sensitive groups reduce exposure';
+    if (aqi <= 80) return '⚠ Limit outdoor activity';
+    return '⛔ Stay indoors';
   }
 
   return { init };
