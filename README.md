@@ -1,107 +1,183 @@
 # Homeboard
 
-Apartment dashboard showing weather, forecasts, rain, air quality, UV index, transit departures, commute times, calendar, sunrise/sunset, vacation countdown, daily facts, and a photo slideshow.
+A clean, self-hosted apartment dashboard for a wall-mounted tablet or always-on screen. Built with vanilla HTML/CSS/JS — no frameworks, no build tools, no dependencies.
 
-All data comes from free, open APIs — no API keys required.
+![Dark theme](https://img.shields.io/badge/theme-dark-0f0f17) ![Light theme](https://img.shields.io/badge/theme-light-f8fafc) ![Pixel theme](https://img.shields.io/badge/theme-pixel-ff4488)
+
+## What It Shows
+
+- **Weather** — current conditions + 4-day forecast (Open-Meteo)
+- **Rain** — 12-hour precipitation bar chart with probability
+- **Air Quality** — European AQI with PM2.5/PM10
+- **UV Index** — color-coded current level
+- **Pollen** — grass, birch, alder, mugwort, ragweed, olive
+- **S-Bahn Departures** — real-time timetable split by direction
+- **Commute** — transit + bike time to multiple destinations
+- **Calendar** — today's events from any ICS feed
+- **Birthdays** — upcoming birthdays from a dedicated ICS calendar
+- **Vacation Countdown** — auto-detects "Urlaub" events from calendar
+- **Trash Pickup** — next collection dates from BSR ICS
+- **Package Tracking** — DHL/Hermes/DPD with localStorage persistence
+- **Berlin Events** — quick links to what's on today
+- **Useless Fact** — daily conversation starter
+- **On This Day** — historical event from Wikipedia
+- **Moon Phase** — calculated, no API needed
+- **Slideshow** — rotating photo display
 
 ## Quick Start
 
-### Localhost (no Docker)
+### 1. Clone and configure
 
 ```bash
-# Copy the config template and fill in your details
+git clone https://github.com/YOUR_USER/homeboard.git
+cd homeboard
 cp js/config.template.js js/config.local.js
-
-# Serve with Python
-python3 -m http.server 7070
 ```
 
-Then open http://localhost:7070
+Edit `js/config.local.js` with your coordinates, calendar URL, stop ID, etc. The file is gitignored so your personal data stays private.
 
-### Docker
+### 2. Run locally
+
+```bash
+python3 server.py
+```
+
+Open http://localhost:7070
+
+The Python server handles static files plus a `/proxy` endpoint for CORS-restricted feeds (Google Calendar, VBB HAFAS).
+
+### 3. Run with Docker (recommended for always-on)
 
 ```bash
 docker compose up -d
 ```
 
-Dashboard available at http://localhost:7070
+This builds an nginx image and serves the dashboard on port 7070. Your `config.local.js` and `data/` folder are mounted as volumes.
 
 ## Configuration
 
-1. Copy `js/config.template.js` to `js/config.local.js`
-2. Fill in your coordinates, calendar URL, and preferences
-3. `config.local.js` is gitignored — your personal data stays private
+All settings live in `js/config.local.js`. See `js/config.template.js` for all available options with comments.
 
-The page loads `config.local.js` automatically and falls back to the template if it's missing.
+| Section | What to fill in |
+|---------|----------------|
+| `location` | Your latitude/longitude (used for weather, UV, pollen, air quality) |
+| `calendar.icsUrl` | Your Google Calendar "Secret address in iCal format" |
+| `birthdays.icsUrl` | Separate calendar for birthdays |
+| `departures.stopId` | Your nearest transit stop ([find it here](https://v6.vbb.transport.rest/locations?query=YOUR+STOP)) |
+| `departures.hafasAccessId` | VBB HAFAS API key (optional, free at vbb.de) |
+| `commute.destinations` | Work/school locations with lat/lng |
+| `trash.icsUrl` | BSR calendar ICS ([download here](https://www.bsr.de/abfuhrkalender-20520.php)) or any trash schedule ICS |
+| `countdown.names` | Custom labels for vacation dates |
+| `slideshow.images` | Array of image URLs or paths |
+
+### Getting your Google Calendar ICS URL
+
+1. Go to [Google Calendar Settings](https://calendar.google.com/calendar/r/settings)
+2. Click on your calendar
+3. Scroll to "Secret address in iCal format"
+4. Copy the URL
+
+## Adapting for Your City
+
+Homeboard is designed for Berlin but works anywhere:
+
+- **Weather, rain, UV, AQI, pollen** — just change `location.latitude/longitude`
+- **Transit departures** — works with any VBB stop (Berlin/Brandenburg). For other cities, swap `departures.js` with your local transit API
+- **Commute** — uses OSRM (global) for bike and Transitous/HAFAS for transit
+- **Trash** — any ICS calendar works, not just BSR
+- **Calendar/Birthdays** — any standard ICS feed (Google, Apple, Outlook, Nextcloud)
 
 ## APIs Used
 
-All APIs are free and require no API key unless noted.
+All APIs are free and require no registration unless noted.
 
-| Feature | API | Auth | What it provides |
-|---------|-----|------|------------------|
-| Weather (current + forecast) | [Open-Meteo](https://open-meteo.com/) | None | Temperature, conditions, humidity, wind, 5-day forecast |
-| Rain forecast | [Open-Meteo](https://open-meteo.com/en/docs) | None | Hourly precipitation + probability for next 12h |
-| Sunrise / Sunset | [Open-Meteo](https://open-meteo.com/) | None | Daily sunrise and sunset times |
-| Air Quality (AQI) | [Open-Meteo Air Quality](https://open-meteo.com/en/docs/air-quality-api) | None | European AQI, PM2.5, PM10 |
-| UV Index | [CurrentUVIndex.com](https://currentuvindex.com/api) | None | Real-time UV index + forecast |
-| Transit departures | [VBB transport.rest](https://v6.vbb.transport.rest/) | None | Real-time S-Bahn/U-Bahn departures (Berlin/Brandenburg) |
-| Commute (transit) | [Transitous](https://transitous.org/) (MOTIS) | None | Public transit journey planning |
-| Commute (bike) | [OSRM](https://project-osrm.org/) | None | Cycling route duration + distance |
-| Calendar | Any ICS feed (Google Calendar, iCloud, etc.) | None | Today's events parsed from .ics |
-| Useless Fact | [uselessfacts.jsph.pl](https://uselessfacts.jsph.pl/) | None | Daily random fact |
-| Slideshow images | [Lorem Picsum](https://picsum.photos/) (default) | None | Random placeholder photos |
+| Feature | API | Key needed? |
+|---------|-----|-------------|
+| Weather + Rain + Sunrise | [Open-Meteo](https://open-meteo.com/) | No |
+| Air Quality + Pollen | [Open-Meteo Air Quality](https://open-meteo.com/en/docs/air-quality-api) | No |
+| UV Index | [currentuvindex.com](https://currentuvindex.com/api) | No |
+| Transit departures | [VBB HAFAS](https://vbb.demo.hafas.cloud/) | Optional |
+| Transit routing | [Transitous](https://transitous.org/) | No |
+| Bike routing | [OSRM](https://project-osrm.org/) | No |
+| Geocoding | [Nominatim](https://nominatim.openstreetmap.org/) | No |
+| On This Day | [Wikipedia](https://api.wikimedia.org/) | No |
+| Useless Fact | [uselessfacts.jsph.pl](https://uselessfacts.jsph.pl/) | No |
 
-## Features
+## Themes
 
-- **Clock** — current time and date
-- **Weather** — current conditions + 4-day forecast with icons
-- **Rain** — 12-hour precipitation bar chart with probability
-- **Sunrise/Sunset** — daily sun times
-- **Air Quality** — European AQI with PM2.5/PM10 breakdown
-- **UV Index** — color-coded current UV level
-- **S-Bahn Departures** — real-time timetable for your nearest stop
-- **Commute** — transit + bike time to multiple destinations
-- **Calendar** — today's events from ICS feed
-- **Countdown** — auto-detects next vacation from calendar events
-- **Useless Fact** — daily conversation starter
-- **Slideshow** — rotating photo display
+Switch between themes using the dropdown in the top-right corner. Preference is saved in localStorage.
 
-## Mobile / PWA
+- **Dark** — default, low-light optimized for always-on displays
+- **Light** — bright mode for well-lit rooms
+- **Pixel** — retro 8-bit aesthetic with Press Start 2P font
 
-The app includes a `manifest.json` for PWA support. On your phone:
-- iOS: Open in Safari → Share → Add to Home Screen
-- Android: Chrome will prompt "Add to Home Screen"
+## Languages
+
+German (default), English, and Spanish. Switch via the flag dropdown. Add more in `js/i18n.js`.
+
+## PWA Support
+
+The dashboard includes a `manifest.json` for "Add to Home Screen":
+
+- **iOS**: Safari → Share → Add to Home Screen
+- **Android**: Chrome will prompt automatically
 
 ## Project Structure
 
 ```
 homeboard/
-├── index.html
-├── css/style.css
+├── index.html              # Single page with all widget sections
+├── css/style.css           # Themes, grid layout, responsive breakpoints
 ├── js/
 │   ├── config.template.js  # Configuration template (committed)
 │   ├── config.local.js     # Your config (gitignored)
-│   ├── app.js              # Initializer
+│   ├── app.js              # Module initializer
+│   ├── i18n.js             # Translations, theme switcher, lang switcher
 │   ├── clock.js            # Time & date
-│   ├── weather.js          # Open-Meteo current + forecast
-│   ├── rain.js             # Hourly precipitation chart
+│   ├── weather.js          # Current + 5-day forecast
+│   ├── rain.js             # 12h precipitation chart
 │   ├── sun.js              # Sunrise & sunset
-│   ├── airquality.js       # Air quality index
+│   ├── airquality.js       # European AQI
 │   ├── uv.js               # UV index
-│   ├── departures.js       # VBB S-Bahn departures
+│   ├── pollen.js           # Pollen levels
+│   ├── departures.js       # Transit departures (VBB HAFAS)
 │   ├── commute.js          # Transit + bike routing
-│   ├── calendar.js         # ICS feed parser
+│   ├── calendar.js         # ICS parser with RRULE support
+│   ├── birthdays.js        # Birthday countdown
 │   ├── countdown.js        # Vacation countdown
+│   ├── trash.js            # Trash pickup schedule
+│   ├── packages.js         # Package tracking (localStorage)
+│   ├── events.js           # Berlin event links
+│   ├── history.js          # On This Day (Wikipedia)
 │   ├── facts.js            # Daily useless fact
-│   └── slideshow.js        # Image slideshow
+│   ├── moon.js             # Moon phase calculation
+│   ├── slideshow.js        # Image carousel
+│   └── disruptions.js      # Service alerts (disabled)
+├── server.py               # Dev server with CORS proxy
+├── data/                   # Local ICS files (gitignored)
+├── Dockerfile              # nginx production image
+├── docker-compose.yml      # One-command deployment
+├── nginx.conf              # nginx config for Docker
 ├── manifest.json           # PWA manifest
-├── favicon.svg             # Dashboard favicon
-├── Dockerfile
-├── docker-compose.yml
-└── nginx.conf
+└── favicon.svg             # Dashboard icon
 ```
 
-## Tech Stack
+## Hardware Suggestions
 
-Pure static site — no build tools, no frameworks, no dependencies. Just HTML, CSS, and vanilla JavaScript served from nginx (Docker) or any static file server.
+This runs well on:
+- Raspberry Pi 4 + any screen (Chromium in kiosk mode)
+- Old tablet mounted on the wall (Android + Fully Kiosk Browser)
+- Any always-on laptop/mini-PC with a monitor
+
+For Raspberry Pi kiosk mode:
+```bash
+chromium-browser --kiosk --noerrdialogs --disable-infobars http://localhost:7070
+```
+
+## Contributing
+
+PRs welcome. Keep it simple — no build tools, no frameworks. Each widget should be a self-contained IIFE module.
+
+## License
+
+MIT
