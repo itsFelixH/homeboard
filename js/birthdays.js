@@ -174,10 +174,10 @@ const Birthdays = (() => {
       return `<div class="birthday-item">
         <a href="${href}" target="_blank" class="birthday-main">
           ${startsWithEmoji ? '' : '<span class="birthday-icon">🎂</span>'}
-          <div class="birthday-info">
+          <span class="birthday-info">
             <span class="birthday-name">${name}</span>
             ${links ? `<span class="birthday-links">${links}</span>` : ''}
-          </div>
+          </span>
         </a>
         <span class="birthday-when">${when}</span>
       </div>`;
