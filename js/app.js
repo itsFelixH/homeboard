@@ -40,7 +40,8 @@ document.addEventListener('DOMContentLoaded', () => {
   Trash.init();
   Packages.init();
   History.init();
-  Facts.init();
+  Word.init();
+  Hogwarts.init();
   Moon.init();
   Slideshow.init();
 });
