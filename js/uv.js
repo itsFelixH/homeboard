@@ -44,10 +44,29 @@ const UV = (() => {
   function render(data) {
     const uvi = Math.round(data.now.uvi * 10) / 10;
     const level = UV_LEVELS.find(l => uvi <= l.max) || UV_LEVELS[UV_LEVELS.length - 1];
+    const lang = Lang.get();
 
     document.getElementById('uv-value').textContent = uvi;
     document.getElementById('uv-label').textContent = level.label;
     document.getElementById('uv-value').style.color = level.color;
+
+    const recEl = document.getElementById('uv-rec');
+    if (recEl) recEl.textContent = getUvRec(uvi, lang);
+  }
+
+  function getUvRec(uvi, lang) {
+    if (lang === 'de') {
+      if (uvi <= 2) return '';
+      if (uvi <= 5) return '🧴 Sonnencreme empfohlen';
+      if (uvi <= 7) return '🕶️ Sonnenbrille & Creme';
+      if (uvi <= 10) return '⚠️ Mittagssonne meiden';
+      return '⛔ Draußen nicht empfohlen';
+    }
+    if (uvi <= 2) return '';
+    if (uvi <= 5) return '🧴 Sunscreen recommended';
+    if (uvi <= 7) return '🕶️ Sunglasses & sunscreen';
+    if (uvi <= 10) return '⚠️ Avoid midday sun';
+    return '⛔ Stay out of the sun';
   }
 
   return { init };
