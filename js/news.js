@@ -44,8 +44,11 @@ const News = (() => {
       const url = article.detailsweb || article.shareURL || '#';
       const time = formatTime(article.date);
       const breaking = article.breakingNews ? '<span class="news-breaking">EILMELDUNG</span> ' : '';
+      const imgUrl = article.teaserImage?.imageVariants?.['1x1-144'] || '';
+      const thumb = imgUrl ? `<img class="news-thumb" src="${imgUrl}" alt="" loading="lazy">` : '';
 
       return `<a href="${url}" target="_blank" class="news-item">
+        ${thumb}
         <div class="news-content">
           <span class="news-topline">${breaking}${topline}</span>
           <span class="news-title">${title}</span>
