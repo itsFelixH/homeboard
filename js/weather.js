@@ -1,5 +1,5 @@
 /**
- * Weather module - fetches current weather from Open-Meteo (no API key needed)
+ * Weather module - current weather + daily forecast from Open-Meteo
  * https://open-meteo.com/
  */
 const Weather = (() => {
@@ -42,12 +42,14 @@ const Weather = (() => {
     95: 'Thunderstorm', 96: 'Thunderstorm + hail', 99: 'Severe thunderstorm'
   };
 
+  const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
   let refreshInterval;
 
   function init() {
     const { latitude, longitude } = HOMEBOARD_CONFIG.location;
     if (!latitude || !longitude) {
-      document.getElementById('weather-desc').textContent = 'Set location in config.js';
+      document.getElementById('weather-desc').textContent = 'Set location in config';
       return;
     }
     fetchWeather();
@@ -58,20 +60,25 @@ const Weather = (() => {
     const { latitude, longitude } = HOMEBOARD_CONFIG.location;
     const tempUnit = HOMEBOARD_CONFIG.weather.units === 'fahrenheit' ? 'fahrenheit' : 'celsius';
 
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&temperature_unit=${tempUnit}`;
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}` +
+      `&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m` +
+      `&daily=weather_code,temperature_2m_max,temperature_2m_min` +
+      `&temperature_unit=${tempUnit}` +
+      `&timezone=auto&forecast_days=5`;
 
     try {
       const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      render(data);
+      renderCurrent(data);
+      renderForecast(data);
     } catch (err) {
       console.error('Weather fetch failed:', err);
       document.getElementById('weather-desc').textContent = 'Failed to load weather';
     }
   }
 
-  function render(data) {
+  function renderCurrent(data) {
     const current = data.current;
     const code = current.weather_code;
     const unitSymbol = HOMEBOARD_CONFIG.weather.units === 'fahrenheit' ? 'F' : 'C';
@@ -79,8 +86,35 @@ const Weather = (() => {
     document.getElementById('weather-icon').textContent = WMO_ICONS[code] || '\u2600\uFE0F';
     document.getElementById('weather-temp').textContent = `${Math.round(current.temperature_2m)}\u00B0${unitSymbol}`;
     document.getElementById('weather-desc').textContent = WMO_DESCRIPTIONS[code] || 'Unknown';
-    document.getElementById('weather-humidity').textContent = `Humidity: ${current.relative_humidity_2m}%`;
-    document.getElementById('weather-wind').textContent = `Wind: ${Math.round(current.wind_speed_10m)} km/h`;
+    document.getElementById('weather-humidity').textContent = `${current.relative_humidity_2m}%`;
+    document.getElementById('weather-wind').textContent = `${Math.round(current.wind_speed_10m)} km/h`;
+  }
+
+  function renderForecast(data) {
+    const daily = data.daily;
+    if (!daily || !daily.time) return;
+
+    const container = document.getElementById('weather-forecast');
+    if (!container) return;
+
+    const unitSymbol = HOMEBOARD_CONFIG.weather.units === 'fahrenheit' ? 'F' : 'C';
+
+    // Skip today (index 0), show next 4 days
+    container.innerHTML = daily.time.slice(1, 5).map((dateStr, i) => {
+      const idx = i + 1;
+      const date = new Date(dateStr + 'T12:00:00');
+      const day = DAY_NAMES[date.getDay()];
+      const code = daily.weather_code[idx];
+      const high = Math.round(daily.temperature_2m_max[idx]);
+      const low = Math.round(daily.temperature_2m_min[idx]);
+      const icon = WMO_ICONS[code] || '\u2600\uFE0F';
+
+      return `<div class="forecast-day">
+        <span class="forecast-name">${day}</span>
+        <span class="forecast-icon">${icon}</span>
+        <span class="forecast-temps">${high}\u00B0 <small>${low}\u00B0</small></span>
+      </div>`;
+    }).join('');
   }
 
   return { init };
