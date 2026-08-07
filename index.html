@@ -189,6 +189,18 @@
       <div class="trash-list" id="trash-list"></div>
     </section>
 
+    <section class="card card-github">
+      <div class="card-header"><i data-lucide="github"></i> <span data-i18n="github">GitHub</span><a href="" id="github-profile-link" target="_blank" class="card-header-link" title="Profile"><i data-lucide="external-link" class="icon-sm"></i></a></div>
+      <div class="github-list" id="github-list">
+        <div class="github-empty">Loading...</div>
+      </div>
+    </section>
+
+    <section class="card card-wide card-xkcd">
+      <div class="card-header"><i data-lucide="image"></i> <span>XKCD</span><a href="https://xkcd.com" target="_blank" class="card-header-link" title="xkcd.com"><i data-lucide="external-link" class="icon-sm"></i></a></div>
+      <div class="xkcd-content" id="xkcd-content">Loading...</div>
+    </section>
+
     <section class="card card-packages">
       <div class="card-header"><i data-lucide="package"></i> <span data-i18n="packages">Pakete</span></div>
       <div class="packages-list" id="packages-list">
@@ -203,6 +215,21 @@
         <input type="text" id="package-label-input" class="pkg-input" placeholder="Name">
         <input type="text" id="package-number-input" class="pkg-input pkg-wide" placeholder="Sendungsnummer">
         <button id="package-add-btn" class="pkg-btn">+</button>
+      </div>
+    </section>
+
+    <section class="card card-plants">
+      <div class="card-header"><i data-lucide="flower"></i> <span data-i18n="plants">Pflanzen</span></div>
+      <div class="plants-content" id="plants-content">Loading...</div>
+    </section>
+
+    <section class="card card-email">
+      <div class="card-header"><i data-lucide="mail"></i> <span data-i18n="email">E-Mail</span><a href="https://mail.google.com" target="_blank" class="card-header-link" title="Gmail"><i data-lucide="external-link" class="icon-sm"></i></a></div>
+      <div class="email-content" id="email-content">
+        <a href="https://mail.google.com" target="_blank" class="email-link">
+          <span class="email-icon">📧</span>
+          <span class="email-label">Open Gmail</span>
+        </a>
       </div>
     </section>
 
@@ -241,10 +268,14 @@
   <script src="js/news.js"></script>
   <script src="js/trash.js"></script>
   <script src="js/packages.js"></script>
+  <script src="js/plants.js"></script>
+  <script src="js/email.js"></script>
   <script src="js/history.js"></script>
   <script src="js/word.js"></script>
   <script src="js/harrypotter.js"></script>
   <script src="js/moon.js"></script>
+  <script src="js/github.js"></script>
+  <script src="js/xkcd.js"></script>
   <script src="js/slideshow.js"></script>
   <script src="js/app.js"></script>
   <script>lucide.createIcons();</script>
