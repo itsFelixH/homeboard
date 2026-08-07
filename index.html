@@ -64,10 +64,12 @@
       <div class="weather-meta">
         <span><i data-lucide="droplets" class="icon-sm"></i> <span id="weather-humidity">--%</span></span>
         <span><i data-lucide="wind" class="icon-sm"></i> <span id="weather-wind">-- km/h</span></span>
+        <span><i data-lucide="thermometer" class="icon-sm"></i> <span id="weather-feels">--°</span></span>
         <span><i data-lucide="sunrise" class="icon-sm"></i> <span id="sunrise-time">--:--</span></span>
         <span><i data-lucide="sunset" class="icon-sm"></i> <span id="sunset-time">--:--</span></span>
         <span id="moon-phase"></span>
       </div>
+      <div class="weather-clothing" id="weather-clothing"></div>
       <div class="weather-forecast" id="weather-forecast"></div>
     </section>
 
@@ -119,6 +121,7 @@
         <span class="metric-label" id="aqi-label">--</span>
       </div>
       <div class="metric-sub"><span id="aqi-pm25">PM2.5: --</span> · <span id="aqi-pm10">PM10: --</span></div>
+      <div class="metric-rec" id="aqi-rec"></div>
     </section>
 
     <section class="card card-uv">
@@ -127,11 +130,17 @@
         <span class="metric-value" id="uv-value">--</span>
         <span class="metric-label" id="uv-label">--</span>
       </div>
+      <div class="metric-rec" id="uv-rec"></div>
     </section>
 
     <section class="card card-pollen">
       <div class="card-header"><i data-lucide="flower-2"></i> <span data-i18n="pollen">Pollen</span><a href="https://www.pollenflug-vorhersage.de/vorhersage/berlin/" target="_blank" class="card-header-link" title="Pollenflug"><i data-lucide="external-link" class="icon-sm"></i></a></div>
       <div class="pollen-list" id="pollen-list">Loading...</div>
+    </section>
+
+    <section class="card card-plants">
+      <div class="card-header"><i data-lucide="flower"></i> <span data-i18n="plants">Pflanzen</span></div>
+      <div class="plants-content" id="plants-content">Loading...</div>
     </section>
 
     <!-- ============================================ -->
@@ -145,6 +154,7 @@
       <ul class="event-list" id="event-list">
         <li class="event-placeholder">Loading...</li>
       </ul>
+      <div class="calendar-tomorrow" id="calendar-tomorrow"></div>
     </section>
 
     <section class="card card-birthdays">
@@ -166,6 +176,7 @@
     <!-- ============================================ -->
     <section class="card card-wide card-news">
       <div class="card-header"><i data-lucide="newspaper"></i> <span data-i18n="news">Nachrichten</span><a href="https://www.tagesschau.de/" target="_blank" class="card-header-link" title="Tagesschau"><i data-lucide="external-link" class="icon-sm"></i></a></div>
+      <div class="news-filters" id="news-filters"></div>
       <div class="news-list" id="news-list">
         <div class="news-empty">Loading...</div>
       </div>
@@ -220,11 +231,6 @@
         <input type="text" id="package-number-input" class="pkg-input pkg-wide" placeholder="Sendungsnummer">
         <button id="package-add-btn" class="pkg-btn">+</button>
       </div>
-    </section>
-
-    <section class="card card-plants">
-      <div class="card-header"><i data-lucide="flower"></i> <span data-i18n="plants">Pflanzen</span></div>
-      <div class="plants-content" id="plants-content">Loading...</div>
     </section>
 
     <section class="card card-email">
