@@ -68,7 +68,7 @@
     </section>
 
     <!-- ============================================ -->
-    <!-- ENVIRONMENT: Rain, AQI, UV, Pollen          -->
+    <!-- RAIN                                         -->
     <!-- ============================================ -->
     <section class="card card-wide card-rain">
       <div class="card-header"><i data-lucide="cloud-rain"></i> <span data-i18n="rain">Regen</span><a href="https://www.windy.com/52.508/13.322?rain,52.508,13.322,12" target="_blank" class="card-header-link" title="Windy Radar"><i data-lucide="external-link" class="icon-sm"></i></a></div>
@@ -76,33 +76,11 @@
       <div class="rain-bars" id="rain-bars"></div>
     </section>
 
-    <section class="card card-aqi">
-      <div class="card-header"><i data-lucide="wind"></i> <span data-i18n="air_quality">Luftqualität</span><a href="https://www.iqair.com/germany/berlin" target="_blank" class="card-header-link" title="IQAir Berlin"><i data-lucide="external-link" class="icon-sm"></i></a></div>
-      <div class="metric-row">
-        <span class="metric-value" id="aqi-value">--</span>
-        <span class="metric-label" id="aqi-label">--</span>
-      </div>
-      <div class="metric-sub"><span id="aqi-pm25">PM2.5: --</span> · <span id="aqi-pm10">PM10: --</span></div>
-    </section>
-
-    <section class="card card-uv">
-      <div class="card-header"><i data-lucide="sun"></i> <span data-i18n="uv_index">UV-Index</span><a href="https://currentuvindex.com/index.html?lat=52.5075&lng=13.322" target="_blank" class="card-header-link" title="UV Details"><i data-lucide="external-link" class="icon-sm"></i></a></div>
-      <div class="metric-row">
-        <span class="metric-value" id="uv-value">--</span>
-        <span class="metric-label" id="uv-label">--</span>
-      </div>
-    </section>
-
-    <section class="card card-pollen">
-      <div class="card-header"><i data-lucide="flower-2"></i> <span data-i18n="pollen">Pollen</span><a href="https://www.pollenflug-vorhersage.de/vorhersage/berlin/" target="_blank" class="card-header-link" title="Pollenflug"><i data-lucide="external-link" class="icon-sm"></i></a></div>
-      <div class="pollen-list" id="pollen-list">Loading...</div>
-    </section>
-
     <!-- ============================================ -->
     <!-- TRANSPORT: Departures + Commute             -->
     <!-- ============================================ -->
     <section class="card card-wide card-departures">
-      <div class="card-header"><i data-lucide="train-front"></i> <span data-i18n="departures">S Savignyplatz</span><a href="https://www.bvg.de/de/verbindungen/fahrinfo" target="_blank" class="card-header-link" title="BVG Fahrinfo"><i data-lucide="external-link" class="icon-sm"></i></a><div class="departures-dots"></div></div>
+      <div class="card-header"><i data-lucide="train-front"></i> <span data-i18n="departures">S Savignyplatz</span><div class="departures-dots"></div><a href="https://www.bvg.de/de/verbindungen/fahrinfo" target="_blank" class="card-header-link" title="BVG Fahrinfo"><i data-lucide="external-link" class="icon-sm"></i></a></div>
       <div class="departures-split">
         <div class="departures-direction">
           <h3 class="dep-dir-label">Stadtmitte →</h3>
@@ -125,6 +103,31 @@
       <div class="commute-list" id="commute-list">
         <div class="commute-empty">Loading...</div>
       </div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- ENVIRONMENT: AQI, UV, Pollen                -->
+    <!-- ============================================ -->
+    <section class="card card-aqi">
+      <div class="card-header"><i data-lucide="wind"></i> <span data-i18n="air_quality">Luftqualität</span><a href="https://www.iqair.com/germany/berlin" target="_blank" class="card-header-link" title="IQAir Berlin"><i data-lucide="external-link" class="icon-sm"></i></a></div>
+      <div class="metric-row">
+        <span class="metric-value" id="aqi-value">--</span>
+        <span class="metric-label" id="aqi-label">--</span>
+      </div>
+      <div class="metric-sub"><span id="aqi-pm25">PM2.5: --</span> · <span id="aqi-pm10">PM10: --</span></div>
+    </section>
+
+    <section class="card card-uv">
+      <div class="card-header"><i data-lucide="sun"></i> <span data-i18n="uv_index">UV-Index</span><a href="https://currentuvindex.com/index.html?lat=52.5075&lng=13.322" target="_blank" class="card-header-link" title="UV Details"><i data-lucide="external-link" class="icon-sm"></i></a></div>
+      <div class="metric-row">
+        <span class="metric-value" id="uv-value">--</span>
+        <span class="metric-label" id="uv-label">--</span>
+      </div>
+    </section>
+
+    <section class="card card-pollen">
+      <div class="card-header"><i data-lucide="flower-2"></i> <span data-i18n="pollen">Pollen</span><a href="https://www.pollenflug-vorhersage.de/vorhersage/berlin/" target="_blank" class="card-header-link" title="Pollenflug"><i data-lucide="external-link" class="icon-sm"></i></a></div>
+      <div class="pollen-list" id="pollen-list">Loading...</div>
     </section>
 
     <!-- ============================================ -->
