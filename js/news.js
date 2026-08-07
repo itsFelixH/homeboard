@@ -2,27 +2,54 @@
  * News module - headlines from Tagesschau
  * API: https://tagesschau.api.bund.dev/
  * No API key needed
- * Paginated list (5 per page), auto-cycles every 30s
+ * Paginated list (5 per page), auto-cycles, category filter
  */
 const News = (() => {
   let refreshInterval;
   let cycleInterval;
   let cachedArticles = [];
   let currentPage = 0;
+  let currentCategory = 'homepage';
   const PER_PAGE = 5;
   const CYCLE_SECONDS = 30;
 
+  const CATEGORIES = [
+    { id: 'homepage', label: 'Top', url: 'https://www.tagesschau.de/api2u/homepage' },
+    { id: 'inland', label: 'Inland', url: 'https://www.tagesschau.de/api2u/news?ressort=inland' },
+    { id: 'ausland', label: 'Ausland', url: 'https://www.tagesschau.de/api2u/news?ressort=ausland' },
+    { id: 'wirtschaft', label: 'Wirtschaft', url: 'https://www.tagesschau.de/api2u/news?ressort=wirtschaft' },
+    { id: 'sport', label: 'Sport', url: 'https://www.tagesschau.de/api2u/news?ressort=sport' }
+  ];
+
   function init() {
+    renderFilters();
     fetchNews();
     refreshInterval = setInterval(fetchNews, 10 * 60 * 1000);
     cycleInterval = setInterval(nextPage, CYCLE_SECONDS * 1000);
   }
 
+  function renderFilters() {
+    const container = document.getElementById('news-filters');
+    if (!container) return;
+    container.innerHTML = CATEGORIES.map(cat => {
+      const active = cat.id === currentCategory ? 'active' : '';
+      return `<button class="news-filter ${active}" onclick="News.setCategory('${cat.id}')">${cat.label}</button>`;
+    }).join('');
+  }
+
+  function setCategory(catId) {
+    currentCategory = catId;
+    currentPage = 0;
+    renderFilters();
+    fetchNews();
+    resetCycle();
+  }
+
   async function fetchNews() {
-    const url = 'https://www.tagesschau.de/api2u/homepage';
+    const cat = CATEGORIES.find(c => c.id === currentCategory) || CATEGORIES[0];
 
     try {
-      const res = await fetch(url);
+      const res = await fetch(cat.url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       cachedArticles = (data.news || [])
@@ -131,5 +158,5 @@ const News = (() => {
     return d.toLocaleDateString('de-DE', { day: 'numeric', month: 'short' });
   }
 
-  return { init, reload, prevPage, goNext };
+  return { init, reload, prevPage, goNext, setCategory };
 })();
