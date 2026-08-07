@@ -1,89 +1,76 @@
 /**
- * Plant watering tracker - localStorage-based
- * Track when you last watered each plant, shows days since
+ * Plant watering tracker - simple version
+ * One button to mark all plants as watered, shows days since last watering
+ * Stored in localStorage
  */
 const Plants = (() => {
-  const STORAGE_KEY = 'homeboard_plants';
+  const STORAGE_KEY = 'homeboard_plants_last';
+  const INTERVAL_KEY = 'homeboard_plants_interval';
+  const DEFAULT_INTERVAL = 7; // days
 
   function init() {
     render();
   }
 
-  function getPlants() {
-    try {
-      return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-    } catch {
-      return [];
-    }
+  function getLastWatered() {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    return stored ? new Date(stored) : null;
   }
 
-  function savePlants(plants) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(plants));
+  function getInterval() {
+    return parseInt(localStorage.getItem(INTERVAL_KEY)) || DEFAULT_INTERVAL;
   }
 
-  function water(id) {
-    const plants = getPlants();
-    const plant = plants.find(p => p.id === id);
-    if (plant) {
-      plant.lastWatered = new Date().toISOString();
-      savePlants(plants);
-      render();
-    }
-  }
-
-  function addPlant(name, intervalDays) {
-    const plants = getPlants();
-    plants.push({
-      id: Date.now().toString(),
-      name: name.trim(),
-      intervalDays: intervalDays || 7,
-      lastWatered: new Date().toISOString()
-    });
-    savePlants(plants);
-    render();
-  }
-
-  function removePlant(id) {
-    const plants = getPlants().filter(p => p.id !== id);
-    savePlants(plants);
+  function waterNow() {
+    localStorage.setItem(STORAGE_KEY, new Date().toISOString());
     render();
   }
 
   function render() {
-    const plants = getPlants();
-    const container = document.getElementById('plants-list');
+    const container = document.getElementById('plants-content');
     const lang = Lang.get();
+    const last = getLastWatered();
+    const interval = getInterval();
 
-    if (plants.length === 0) {
-      const emptyText = lang === 'de' ? 'Keine Pflanzen' : lang === 'es' ? 'Sin plantas' : 'No plants';
-      container.innerHTML = `<div class="plants-empty">${emptyText}</div>`;
+    if (!last) {
+      container.innerHTML = `<div class="plants-prompt">
+        <button class="plants-water-btn-main" onclick="Plants.waterNow()">💧 ${lang === 'de' ? 'Gegossen!' : 'Watered!'}</button>
+        <span class="plants-hint">${lang === 'de' ? 'Noch nie gegossen' : 'Never watered yet'}</span>
+      </div>`;
       return;
     }
 
     const now = new Date();
-    container.innerHTML = plants.map(p => {
-      const last = new Date(p.lastWatered);
-      const daysSince = Math.floor((now - last) / (1000 * 60 * 60 * 24));
-      const overdue = daysSince >= p.intervalDays;
-      const statusClass = overdue ? 'plants-overdue' : daysSince >= p.intervalDays - 1 ? 'plants-soon' : 'plants-ok';
+    const daysSince = Math.floor((now - last) / (1000 * 60 * 60 * 24));
+    const daysLeft = interval - daysSince;
+    const overdue = daysLeft <= 0;
+    const soon = daysLeft === 1;
 
-      let daysText;
-      if (daysSince === 0) daysText = lang === 'de' ? 'heute' : 'today';
-      else if (daysSince === 1) daysText = lang === 'de' ? 'gestern' : 'yesterday';
-      else daysText = lang === 'de' ? `vor ${daysSince} T.` : `${daysSince}d ago`;
+    let statusText, statusClass;
+    if (overdue) {
+      statusText = lang === 'de' ? 'Gießen fällig!' : 'Watering due!';
+      statusClass = 'plants-status-overdue';
+    } else if (soon) {
+      statusText = lang === 'de' ? 'Morgen gießen' : 'Water tomorrow';
+      statusClass = 'plants-status-soon';
+    } else {
+      statusText = lang === 'de' ? `Nächstes Gießen in ${daysLeft} T.` : `Next in ${daysLeft} days`;
+      statusClass = 'plants-status-ok';
+    }
 
-      return `<div class="plants-item ${statusClass}">
-        <button class="plants-water-btn" onclick="Plants.water('${p.id}')" title="Mark as watered">💧</button>
-        <span class="plants-name">${p.name}</span>
-        <span class="plants-days">${daysText}</span>
-        <button class="plants-remove" onclick="Plants.remove('${p.id}')" aria-label="Remove">&times;</button>
-      </div>`;
-    }).join('');
+    let lastText;
+    if (daysSince === 0) lastText = lang === 'de' ? 'Heute gegossen' : 'Watered today';
+    else if (daysSince === 1) lastText = lang === 'de' ? 'Gestern gegossen' : 'Watered yesterday';
+    else lastText = lang === 'de' ? `Vor ${daysSince} Tagen gegossen` : `Watered ${daysSince} days ago`;
+
+    container.innerHTML = `<div class="plants-display">
+      <div class="plants-info">
+        <span class="plants-status ${statusClass}">${overdue ? '⚠️' : '🌱'} ${statusText}</span>
+        <span class="plants-last">${lastText}</span>
+      </div>
+      <button class="plants-water-btn-main" onclick="Plants.waterNow()">💧</button>
+    </div>`;
   }
 
-  function remove(id) {
-    removePlant(id);
-  }
-
-  return { init, water, addPlant, remove };
+  return { init, waterNow };
 })();
