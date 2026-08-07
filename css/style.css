@@ -81,7 +81,7 @@ body {
 /* === Grid === */
 .dashboard {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--gap);
   max-width: 1500px;
   margin: 0 auto;
@@ -266,6 +266,7 @@ body {
   gap: 6px;
   margin-bottom: 12px;
   color: var(--text-2);
+  flex-wrap: nowrap;
 }
 
 .card-header i { width: 15px; height: 15px; stroke-width: 2; }
@@ -344,6 +345,8 @@ body {
 .pollen-level { font-size: 0.68rem; font-weight: 600; }
 
 /* === DEPARTURES === */
+.card-departures .departures-split,
+.card-departures #departures-list-view { min-height: 180px; }
 .departures-split { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .departures-direction { min-width: 0; }
 .dep-dir-label { font-size: 0.62rem; font-weight: 600; color: var(--accent); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 8px; }
@@ -356,12 +359,15 @@ body {
 .dep-time { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: var(--cyan); font-weight: 500; }
 .dep-delay { color: var(--red); font-size: 0.65rem; font-weight: 600; }
 .departures-empty { color: var(--text-3); font-style: italic; text-align: center; padding: 8px; }
+.departures-dots { margin-left: auto; }
+#departures-list-view .departures-table { font-size: 0.75rem; }
+#departures-list-view .dep-direction { max-width: 180px; }
 
 /* === COMMUTE === */
-.commute-list { display: flex; flex-direction: column; gap: 14px; }
+.commute-list { display: flex; flex-direction: column; gap: 14px; min-height: 120px; }
 .commute-dest { padding-bottom: 12px; border-bottom: 1px solid var(--border); }
 .commute-dest:last-child { border-bottom: none; padding-bottom: 0; }
-.commute-dest-label { font-size: 0.82rem; font-weight: 600; margin-bottom: 8px; display: block; }
+.commute-dest-label { font-size: 0.82rem; font-weight: 600; display: block; }
 .commute-split { display: flex; gap: 0; }
 .commute-transit { flex: 1; padding-right: 12px; border-right: 1px solid var(--border); }
 .commute-bike { padding-left: 12px; text-align: right; min-width: 70px; }
@@ -374,6 +380,13 @@ body {
 .leg-walk { color: var(--text-3); }
 .leg-sep { color: var(--text-3); margin: 0 2px; }
 .commute-empty { color: var(--text-3); font-style: italic; }
+.commute-nav { margin-left: auto; }
+
+/* === Card Navigation Arrows (reusable) === */
+.card-nav { display: flex; gap: 4px; align-items: center; }
+.card-nav-btn { background: var(--surface-hover); border: 1px solid var(--border); border-radius: 6px; color: var(--text-2); cursor: pointer; padding: 2px 7px; font-size: 0.7rem; line-height: 1; transition: background 0.2s, color 0.2s, border-color 0.2s; }
+.card-nav-btn:hover { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); }
+.card-nav-label { font-size: 0.62rem; color: var(--text-3); min-width: 20px; text-align: center; }
 
 /* === CALENDAR === */
 .card-calendar { grid-column: span 2; }
@@ -400,7 +413,9 @@ body {
 .countdown-days { font-size: 1.6rem; font-weight: 200; color: var(--accent); line-height: 1; min-width: 48px; }
 [data-theme="pixel"] .countdown-days { font-family: 'Press Start 2P'; font-size: 0.9rem; text-shadow: 0 0 8px var(--accent); }
 .countdown-meta { display: flex; flex-direction: column; gap: 1px; }
-.countdown-label { font-size: 0.78rem; font-weight: 500; }
+.countdown-label { font-size: 0.78rem; font-weight: 500; cursor: pointer; border-bottom: 1px dashed var(--border); }
+.countdown-label:hover { color: var(--accent); border-color: var(--accent); }
+.countdown-label-input { font-size: 0.78rem; font-weight: 500; font-family: inherit; background: var(--bg); color: var(--text); border: 1px solid var(--accent); border-radius: 4px; padding: 1px 6px; outline: none; width: 100%; max-width: 160px; }
 .countdown-sublabel { font-size: 0.68rem; color: var(--text-3); }
 .countdown-empty { color: var(--text-3); font-style: italic; font-size: 0.78rem; }
 
