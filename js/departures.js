@@ -257,13 +257,13 @@ const Departures = (() => {
     }
 
     tbody.innerHTML = departures.map(dep => {
-      const delay = dep.delay > 0 ? `+${dep.delay}` : '';
-      const timeDisplay = dep.time.slice(0, 5);
+      const delay = dep.delay > 0 ? `<span class="dep-delay">+${dep.delay}</span>` : '';
+      const relTime = formatRelativeTime(dep.time);
       return `<tr>
         <td><span class="dep-line" style="background:${dep.lineColor}">${dep.line}</span></td>
         <td class="dep-direction">${dep.direction}</td>
-        <td class="dep-time">${timeDisplay}</td>
-        <td class="dep-delay">${delay}</td>
+        <td class="dep-time">${relTime}</td>
+        <td>${delay}</td>
       </tr>`;
     }).join('');
   }
@@ -275,15 +275,30 @@ const Departures = (() => {
     }
 
     container.innerHTML = `<table class="departures-table"><tbody>${departures.map(dep => {
-      const delay = dep.delay > 0 ? `+${dep.delay}` : '';
-      const timeDisplay = dep.time.slice(0, 5);
+      const delay = dep.delay > 0 ? `<span class="dep-delay">+${dep.delay}</span>` : '';
+      const relTime = formatRelativeTime(dep.time);
       return `<tr>
         <td><span class="dep-line" style="background:${dep.lineColor}">${dep.line}</span></td>
         <td class="dep-direction">${dep.direction}</td>
-        <td class="dep-time">${timeDisplay}</td>
-        <td class="dep-delay">${delay}</td>
+        <td class="dep-time">${relTime}</td>
+        <td>${delay}</td>
       </tr>`;
     }).join('')}</tbody></table>`;
+  }
+
+  function formatRelativeTime(timeStr) {
+    if (!timeStr || timeStr === '--:--') return '--';
+    const now = new Date();
+    const [h, m] = timeStr.split(':').map(Number);
+    let depMinutes = h * 60 + m;
+    let nowMinutes = now.getHours() * 60 + now.getMinutes();
+    let diff = depMinutes - nowMinutes;
+    // Handle midnight wraparound
+    if (diff < -720) diff += 1440;
+    if (diff < 0) return 'jetzt';
+    if (diff === 0) return 'jetzt';
+    if (diff <= 60) return `${diff} min`;
+    return timeStr.slice(0, 5);
   }
 
   function formatTimeISO(isoString) {
