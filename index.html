@@ -1,153 +1,237 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="theme-color" content="#1a1a2e">
+  <meta name="theme-color" content="#0f0f17">
+  <meta http-equiv="refresh" content="14400">
   <title>Homeboard</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="stylesheet" href="css/style.css">
   <link rel="manifest" href="manifest.json">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 </head>
 <body>
   <div class="dashboard">
-    <!-- Time & Date -->
-    <section class="card card-clock" id="clock-card">
-      <div class="time" id="time">--:--</div>
-      <div class="date" id="date">---</div>
-    </section>
 
-    <!-- Weather -->
-    <section class="card card-weather" id="weather-card">
-      <h2>Weather</h2>
-      <div class="weather-current">
+    <!-- === Top Bar === -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <span class="topbar-time" id="time">--:--</span>
+        <span class="topbar-date" id="date">---</span>
+      </div>
+      <div class="topbar-right">
+        <div class="custom-select" id="lang-dropdown">
+          <button class="custom-select-btn" id="lang-btn" aria-label="Language">
+            <span class="flag-preview" id="lang-flag-preview"></span>
+            <span class="select-arrow">▾</span>
+          </button>
+          <div class="custom-select-menu" id="lang-menu">
+            <button data-lang="de"><svg viewBox="0 0 5 3"><rect width="5" height="1" fill="#000"/><rect y="1" width="5" height="1" fill="#D00"/><rect y="2" width="5" height="1" fill="#FFCE00"/></svg> Deutsch</button>
+            <button data-lang="en"><svg viewBox="0 0 60 30"><clipPath id="fc"><rect width="60" height="30"/></clipPath><g clip-path="url(#fc)"><rect width="60" height="30" fill="#012169"/><path d="M0,0 L60,30 M60,0 L0,30" stroke="#fff" stroke-width="6"/><path d="M0,0 L60,30 M60,0 L0,30" stroke="#C8102E" stroke-width="4"/><path d="M30,0 V30 M0,15 H60" stroke="#fff" stroke-width="10"/><path d="M30,0 V30 M0,15 H60" stroke="#C8102E" stroke-width="6"/></g></svg> English</button>
+            <button data-lang="es"><svg viewBox="0 0 6 4"><rect width="6" height="1" fill="#AA151B"/><rect y="1" width="6" height="2" fill="#F1BF00"/><rect y="3" width="6" height="1" fill="#AA151B"/></svg> Español</button>
+          </div>
+        </div>
+        <select id="theme-select" aria-label="Theme">
+          <option value="dark">🌙 Dark Mode</option>
+          <option value="light">☀️ Light Mode</option>
+          <option value="pixel">👾 Pixel Mode</option>
+        </select>
+      </div>
+    </header>
+
+    <!-- Disruptions (disabled) -->
+
+    <!-- ============================================ -->
+    <!-- HERO SECTION: Weather                       -->
+    <!-- ============================================ -->
+
+    <section class="card card-hero card-weather">
+      <div class="card-header"><i data-lucide="cloud-sun"></i> <span data-i18n="weather">Wetter</span></div>
+      <div class="weather-main">
         <span class="weather-icon" id="weather-icon">--</span>
-        <span class="weather-temp" id="weather-temp">--&deg;</span>
+        <div class="weather-primary">
+          <span class="weather-temp" id="weather-temp">--°</span>
+          <span class="weather-desc" id="weather-desc">--</span>
+        </div>
       </div>
-      <div class="weather-desc" id="weather-desc">--</div>
-      <div class="weather-details">
-        <span id="weather-humidity">Humidity: --%</span>
-        <span id="weather-wind">Wind: -- km/h</span>
+      <div class="weather-meta">
+        <span><i data-lucide="droplets" class="icon-sm"></i> <span id="weather-humidity">--%</span></span>
+        <span><i data-lucide="wind" class="icon-sm"></i> <span id="weather-wind">-- km/h</span></span>
+        <span><i data-lucide="sunrise" class="icon-sm"></i> <span id="sunrise-time">--:--</span></span>
+        <span><i data-lucide="sunset" class="icon-sm"></i> <span id="sunset-time">--:--</span></span>
+        <span id="moon-phase"></span>
+      </div>
+      <div class="weather-forecast" id="weather-forecast"></div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- ENVIRONMENT: Rain, AQI, UV, Pollen          -->
+    <!-- ============================================ -->
+    <section class="card card-wide card-rain">
+      <div class="card-header"><i data-lucide="cloud-rain"></i> <span data-i18n="rain">Regen</span></div>
+      <div class="rain-summary" id="rain-summary">Loading...</div>
+      <div class="rain-bars" id="rain-bars"></div>
+    </section>
+
+    <section class="card card-aqi">
+      <div class="card-header"><i data-lucide="wind"></i> <span data-i18n="air_quality">Luftqualität</span></div>
+      <div class="metric-row">
+        <span class="metric-value" id="aqi-value">--</span>
+        <span class="metric-label" id="aqi-label">--</span>
+      </div>
+      <div class="metric-sub"><span id="aqi-pm25">PM2.5: --</span> · <span id="aqi-pm10">PM10: --</span></div>
+    </section>
+
+    <section class="card card-uv">
+      <div class="card-header"><i data-lucide="sun"></i> <span data-i18n="uv_index">UV-Index</span></div>
+      <div class="metric-row">
+        <span class="metric-value" id="uv-value">--</span>
+        <span class="metric-label" id="uv-label">--</span>
       </div>
     </section>
 
-    <!-- Calendar -->
-    <section class="card card-calendar" id="calendar-card">
-      <h2>Today</h2>
+    <section class="card card-pollen">
+      <div class="card-header"><i data-lucide="flower-2"></i> <span data-i18n="pollen">Pollen</span></div>
+      <div class="pollen-list" id="pollen-list">Loading...</div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- TRANSPORT: Departures + Commute             -->
+    <!-- ============================================ -->
+    <section class="card card-wide card-departures">
+      <div class="card-header"><i data-lucide="train-front"></i> <span data-i18n="departures">S Savignyplatz</span></div>
+      <div class="departures-split">
+        <div class="departures-direction">
+          <h3 class="dep-dir-label">Stadtmitte →</h3>
+          <table class="departures-table"><tbody id="departures-east">
+            <tr><td class="departures-empty" colspan="4">Loading...</td></tr>
+          </tbody></table>
+        </div>
+        <div class="departures-direction">
+          <h3 class="dep-dir-label">Westkreuz →</h3>
+          <table class="departures-table"><tbody id="departures-west">
+            <tr><td class="departures-empty" colspan="4">Loading...</td></tr>
+          </tbody></table>
+        </div>
+      </div>
+    </section>
+
+    <section class="card card-wide card-commute">
+      <div class="card-header"><i data-lucide="route"></i> <span data-i18n="commute">Pendeln</span></div>
+      <div class="commute-list" id="commute-list">
+        <div class="commute-empty">Loading...</div>
+      </div>
+    </section>
+
+    <!-- ============================================ -->
+    <!-- PERSONAL: Calendar, Birthdays, Countdown    -->
+    <!-- ============================================ -->
+    <section class="card card-calendar">
+      <div class="card-header"><i data-lucide="calendar-days"></i> <span data-i18n="calendar_title">Heute</span></div>
       <ul class="event-list" id="event-list">
-        <li class="event-placeholder">No events configured</li>
+        <li class="event-placeholder">Loading...</li>
       </ul>
     </section>
 
-    <!-- Sunrise/Sunset -->
-    <section class="card card-sun" id="sun-card">
-      <h2>Sun</h2>
-      <div class="sun-info">
-        <div class="sun-item">
-          <span class="sun-icon">&#9728;&#65039;</span>
-          <span class="sun-label">Sunrise</span>
-          <span class="sun-time" id="sunrise-time">--:--</span>
-        </div>
-        <div class="sun-item">
-          <span class="sun-icon">&#127769;</span>
-          <span class="sun-label">Sunset</span>
-          <span class="sun-time" id="sunset-time">--:--</span>
-        </div>
+    <section class="card card-birthdays">
+      <div class="card-header"><i data-lucide="cake"></i> <span data-i18n="birthdays">Geburtstage</span></div>
+      <div class="birthdays-list" id="birthdays-list">
+        <span class="birthday-none">Loading...</span>
       </div>
     </section>
 
-    <!-- Air Quality -->
-    <section class="card card-aqi" id="aqi-card">
-      <h2>Air Quality</h2>
-      <div class="aqi-info">
-        <span class="aqi-value" id="aqi-value">--</span>
-        <span class="aqi-label" id="aqi-label">--</span>
-      </div>
-      <div class="aqi-details">
-        <span id="aqi-pm25">PM2.5: --</span>
-        <span id="aqi-pm10">PM10: --</span>
+    <section class="card card-countdown">
+      <div class="card-header"><i data-lucide="plane"></i> <span data-i18n="countdown">Urlaub</span></div>
+      <div class="countdown-list" id="countdown-list">
+        <div class="countdown-empty">Loading...</div>
       </div>
     </section>
 
-    <!-- UV Index -->
-    <section class="card card-uv" id="uv-card">
-      <h2>UV Index</h2>
-      <div class="uv-info">
-        <span class="uv-value" id="uv-value">--</span>
-        <span class="uv-label" id="uv-label">--</span>
+    <!-- ============================================ -->
+    <!-- INFO: Events, Fact, History, Trash, Packages  -->
+    <!-- ============================================ -->
+    <section class="card card-events">
+      <div class="card-header"><i data-lucide="ticket"></i> <span>Berlin</span></div>
+      <div class="events-list" id="events-list"></div>
+    </section>
+
+    <section class="card card-fact">
+      <div class="card-header"><i data-lucide="lightbulb"></i> <span data-i18n="fact">Unnützes Wissen</span></div>
+      <p class="fact-text" id="fact-text">Loading...</p>
+    </section>
+
+    <section class="card card-history">
+      <div class="card-header"><i data-lucide="book-open"></i> <span data-i18n="history">An diesem Tag</span></div>
+      <span class="history-year" id="history-year"></span>
+      <p class="history-text" id="history-text">Loading...</p>
+    </section>
+
+    <section class="card card-trash">
+      <div class="card-header"><i data-lucide="trash-2"></i> <span data-i18n="trash">Müll</span></div>
+      <div class="trash-next" id="trash-next">Loading...</div>
+      <div class="trash-list" id="trash-list"></div>
+    </section>
+
+    <section class="card card-packages">
+      <div class="card-header"><i data-lucide="package"></i> <span data-i18n="packages">Pakete</span></div>
+      <div class="packages-list" id="packages-list">
+        <div class="package-empty">Keine Pakete</div>
+      </div>
+      <div class="package-add-form">
+        <select id="package-carrier-select" class="pkg-input">
+          <option value="dhl">DHL</option>
+          <option value="hermes">Hermes</option>
+          <option value="dpd">DPD</option>
+        </select>
+        <input type="text" id="package-label-input" class="pkg-input" placeholder="Name">
+        <input type="text" id="package-number-input" class="pkg-input pkg-wide" placeholder="Sendungsnummer">
+        <button id="package-add-btn" class="pkg-btn">+</button>
       </div>
     </section>
 
-    <!-- Commute -->
-    <section class="card card-commute" id="commute-card">
-      <h2>Commute</h2>
-      <div class="commute-info" id="commute-info">
-        <span class="commute-time" id="commute-time">-- min</span>
-        <span class="commute-route" id="commute-route">--</span>
-      </div>
-    </section>
-
-    <!-- S-Bahn Departures -->
-    <section class="card card-departures" id="departures-card">
-      <h2>S Savignyplatz</h2>
-      <table class="departures-table">
-        <thead>
-          <tr>
-            <th>Line</th>
-            <th>Direction</th>
-            <th>Time</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody id="departures-list">
-          <tr><td colspan="4" class="departures-empty">Loading...</td></tr>
-        </tbody>
-      </table>
-    </section>
-
-    <!-- Countdown -->
-    <section class="card card-countdown" id="countdown-card">
-      <h2>Countdown</h2>
-      <div class="countdown-info">
-        <span class="countdown-days" id="countdown-days">--</span>
-        <div class="countdown-meta">
-          <span class="countdown-label" id="countdown-label">Vacation</span>
-          <span class="countdown-sublabel" id="countdown-sublabel">days to go</span>
-        </div>
-      </div>
-    </section>
-
-    <!-- Image Slideshow -->
-    <section class="card card-slideshow" id="slideshow-card">
+    <!-- Slideshow -->
+    <section class="card card-slideshow">
       <div class="slideshow">
         <img class="slideshow-img" id="slideshow-img" src="" alt="Slideshow">
         <div class="slideshow-controls">
-          <button id="slide-prev" aria-label="Previous image">&lsaquo;</button>
-          <button id="slide-next" aria-label="Next image">&rsaquo;</button>
+          <button id="slide-prev" aria-label="Previous">&lsaquo;</button>
+          <button id="slide-next" aria-label="Next">&rsaquo;</button>
         </div>
       </div>
     </section>
 
-    <!-- Daily Fact -->
-    <section class="card card-fact" id="fact-card">
-      <h2>Useless Fact of the Day</h2>
-      <p class="fact-text" id="fact-text">Loading...</p>
-    </section>
   </div>
 
-  <script src="js/config.js"></script>
+  <script src="js/config.local.js" onerror="
+    var s=document.createElement('script');
+    s.src='js/config.template.js';
+    document.head.appendChild(s);
+  "></script>
+  <script src="js/i18n.js"></script>
   <script src="js/clock.js"></script>
   <script src="js/weather.js"></script>
+  <script src="js/rain.js"></script>
   <script src="js/sun.js"></script>
   <script src="js/airquality.js"></script>
   <script src="js/uv.js"></script>
+  <script src="js/pollen.js"></script>
   <script src="js/calendar.js"></script>
+  <script src="js/birthdays.js"></script>
   <script src="js/commute.js"></script>
   <script src="js/departures.js"></script>
+  <script src="js/disruptions.js"></script>
   <script src="js/countdown.js"></script>
+  <script src="js/trash.js"></script>
+  <script src="js/packages.js"></script>
+  <script src="js/history.js"></script>
   <script src="js/facts.js"></script>
+  <script src="js/moon.js"></script>
+  <script src="js/events.js"></script>
   <script src="js/slideshow.js"></script>
   <script src="js/app.js"></script>
+  <script>lucide.createIcons();</script>
 </body>
 </html>
