@@ -53,6 +53,8 @@ const Birthdays = (() => {
           event.start = parseICSDate(line.split(':').pop());
         } else if (line.startsWith('SUMMARY')) {
           event.summary = line.split(':').slice(1).join(':');
+        } else if (line.startsWith('DESCRIPTION')) {
+          event.description = line.split(':').slice(1).join(':');
         } else if (line.includes('RRULE') && line.includes('YEARLY')) {
           event.recurring = true;
         }
@@ -80,6 +82,35 @@ const Birthdays = (() => {
     const month = parseInt(clean.slice(4, 6)) - 1;
     const day = parseInt(clean.slice(6, 8));
     return new Date(year, month, day);
+  }
+
+  function extractSocialLinks(desc) {
+    if (!desc) return '';
+    // Unescape ICS line breaks
+    const text = desc.replace(/\\n/g, '\n').replace(/\\,/g, ',');
+    const links = [];
+
+    // WhatsApp
+    const waMatch = text.match(/https?:\/\/wa\.me\/[0-9]+/);
+    if (waMatch) links.push(`<a href="${waMatch[0]}" target="_blank" class="birthday-social" title="WhatsApp" onclick="event.stopPropagation()">💬</a>`);
+
+    // Instagram
+    const igMatch = text.match(/https?:\/\/(www\.)?instagram\.com\/[^\s\\]+/);
+    if (igMatch) links.push(`<a href="${igMatch[0]}" target="_blank" class="birthday-social" title="Instagram" onclick="event.stopPropagation()">📷</a>`);
+
+    // Telegram
+    const tgMatch = text.match(/https?:\/\/(t\.me|telegram\.me)\/[^\s\\]+/);
+    if (tgMatch) links.push(`<a href="${tgMatch[0]}" target="_blank" class="birthday-social" title="Telegram" onclick="event.stopPropagation()">✈️</a>`);
+
+    // Signal
+    const sigMatch = text.match(/https?:\/\/signal\.(me|org)\/[^\s\\]+/);
+    if (sigMatch) links.push(`<a href="${sigMatch[0]}" target="_blank" class="birthday-social" title="Signal" onclick="event.stopPropagation()">🔵</a>`);
+
+    // LinkedIn
+    const liMatch = text.match(/https?:\/\/(www\.)?linkedin\.com\/[^\s\\]+/);
+    if (liMatch) links.push(`<a href="${liMatch[0]}" target="_blank" class="birthday-social" title="LinkedIn" onclick="event.stopPropagation()">💼</a>`);
+
+    return links.join('');
   }
 
   function render(birthdays) {
@@ -117,11 +148,24 @@ const Birthdays = (() => {
       // Don't add icon if name already starts with an emoji
       const startsWithEmoji = /^[\p{Emoji}]/u.test(name);
 
-      return `<div class="birthday-item">
+      // Build Google Calendar link for the birthday date
+      const now = new Date();
+      let bdayDate = new Date(now.getFullYear(), b.start.getMonth(), b.start.getDate());
+      if (bdayDate < new Date(now.getFullYear(), now.getMonth(), now.getDate())) {
+        bdayDate = new Date(now.getFullYear() + 1, b.start.getMonth(), b.start.getDate());
+      }
+      const dateStr = `${bdayDate.getFullYear()}${String(bdayDate.getMonth()+1).padStart(2,'0')}${String(bdayDate.getDate()).padStart(2,'0')}`;
+      const calUrl = `https://calendar.google.com/calendar/r/day/${bdayDate.getFullYear()}/${bdayDate.getMonth()+1}/${bdayDate.getDate()}`;
+
+      // Extract social links from description
+      const links = extractSocialLinks(b.description || '');
+
+      return `<a href="${calUrl}" target="_blank" class="birthday-item">
         ${startsWithEmoji ? '' : '<span class="birthday-icon">🎂</span>'}
         <span class="birthday-name">${name}</span>
+        <span class="birthday-links">${links}</span>
         <span class="birthday-when">${when}</span>
-      </div>`;
+      </a>`;
     }).join('');
   }
 
