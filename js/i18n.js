@@ -37,6 +37,7 @@ const I18N_STRINGS = {
     packages_number_placeholder: 'Sendungsnummer',
     history: 'An diesem Tag',
     fact: 'Unnützes Wissen',
+    news: 'Nachrichten',
     birthdays: 'Geburtstage',
     birthdays_none: 'Keine Geburtstage heute',
     birthdays_error: 'Fehler beim Laden'
@@ -74,6 +75,7 @@ const I18N_STRINGS = {
     packages_number_placeholder: 'Tracking number',
     history: 'On This Day',
     fact: 'Useless Fact',
+    news: 'News',
     birthdays: 'Birthdays',
     birthdays_none: 'No birthdays today',
     birthdays_error: 'Error loading'
@@ -111,6 +113,7 @@ const I18N_STRINGS = {
     packages_number_placeholder: 'Número',
     history: 'Un día como hoy',
     fact: 'Dato inútil',
+    news: 'Noticias',
     birthdays: 'Cumpleaños',
     birthdays_none: 'Sin cumpleaños hoy',
     birthdays_error: 'Error'
