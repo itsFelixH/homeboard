@@ -57,7 +57,12 @@ const HOMEBOARD_CONFIG = {
   // S-Bahn/transit departures
   // Find your stop: https://v6.vbb.transport.rest/locations?query=YOUR+STOP
   departures: {
-    stopId: '',           // e.g. '900024203' for S Savignyplatz
+    stopId: '',           // Legacy: single stop ID (used if stops[] is empty)
+    stops: [
+      // Multiple stops with interactive switching:
+      // { id: '900024203', label: 'S Savignyplatz', splitView: true, products: { filter: '1' } },
+      // { id: '900023101', label: 'U Ernst-Reuter-Platz', splitView: false, products: { subway: true, bus: true } },
+    ],
     durationMinutes: 30,
     maxResults: 5,
     refreshSeconds: 30,
