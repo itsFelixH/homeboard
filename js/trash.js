@@ -91,19 +91,20 @@ const Trash = (() => {
   }
 
   function render(events) {
-    const upcoming = events.slice(0, 4);
     const container = document.getElementById('trash-list');
+    const lang = Lang.get();
+    const now = new Date();
+    const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-    if (upcoming.length === 0) {
-      document.getElementById('trash-next').textContent = 'No upcoming pickups';
+    if (events.length === 0) {
+      document.getElementById('trash-next').textContent = lang === 'de' ? 'Keine Abholungen' : 'No upcoming pickups';
       container.innerHTML = '';
       return;
     }
 
     // Next pickup summary
-    const next = upcoming[0];
-    const daysUntil = Math.ceil((next.start - new Date()) / (1000 * 60 * 60 * 24));
-    const lang = Lang.get();
+    const next = events[0];
+    const daysUntil = Math.ceil((next.start - now) / (1000 * 60 * 60 * 24));
     let dayLabel;
     if (daysUntil === 0) dayLabel = lang === 'de' ? 'Heute' : lang === 'es' ? 'Hoy' : 'Today';
     else if (daysUntil === 1) dayLabel = lang === 'de' ? 'Morgen' : lang === 'es' ? 'Mañana' : 'Tomorrow';
@@ -111,22 +112,34 @@ const Trash = (() => {
     const nextLabel = lang === 'de' ? 'Nächste' : lang === 'es' ? 'Próxima' : 'Next';
     document.getElementById('trash-next').textContent = `${nextLabel}: ${dayLabel}`;
 
-    // List upcoming
-    container.innerHTML = upcoming.map(ev => {
-      const icon = getIcon(ev.summary);
-      // Clean up summary - remove common prefixes
-      let label = ev.summary || '';
-      label = label
-        .replace(/^Abholung\s*/i, '')
-        .replace(/^Leerung\s*/i, '')
-        .trim();
-      const date = ev.start.toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'short' });
-      return `<div class="trash-item">
-        <span class="trash-icon">${icon}</span>
-        <span class="trash-type">${label}</span>
-        <span class="trash-date">${date}</span>
-      </div>`;
-    }).join('');
+    // Calendar week view: next 7 days
+    const dayNames = lang === 'de'
+      ? ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa']
+      : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+    const days = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(todayMidnight.getTime() + i * 86400000);
+      const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      const dayEvents = events.filter(ev => {
+        const evDate = `${ev.start.getFullYear()}-${String(ev.start.getMonth()+1).padStart(2,'0')}-${String(ev.start.getDate()).padStart(2,'0')}`;
+        return evDate === dateStr;
+      });
+      days.push({
+        name: dayNames[d.getDay()],
+        date: d.getDate(),
+        isToday: i === 0,
+        bins: dayEvents.map(ev => getIcon(ev.summary))
+      });
+    }
+
+    container.innerHTML = `<div class="trash-calendar">
+      ${days.map(d => `<div class="trash-cal-day ${d.isToday ? 'trash-cal-today' : ''}">
+        <span class="trash-cal-name">${d.name}</span>
+        <span class="trash-cal-date">${d.date}</span>
+        <div class="trash-cal-bins">${d.bins.length > 0 ? d.bins.join('') : '<span class="trash-cal-empty">·</span>'}</div>
+      </div>`).join('')}
+    </div>`;
   }
 
   function renderManual(schedule) {
