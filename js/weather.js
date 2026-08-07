@@ -87,7 +87,7 @@ const Weather = (() => {
     const tempUnit = HOMEBOARD_CONFIG.weather.units === 'fahrenheit' ? 'fahrenheit' : 'celsius';
 
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}` +
-      `&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m` +
+      `&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m` +
       `&daily=weather_code,temperature_2m_max,temperature_2m_min` +
       `&temperature_unit=${tempUnit}` +
       `&timezone=auto&forecast_days=5`;
@@ -115,7 +115,52 @@ const Weather = (() => {
     document.getElementById('weather-temp').textContent = `${Math.round(current.temperature_2m)}\u00B0${unitSymbol}`;
     document.getElementById('weather-desc').textContent = descriptions[code] || 'Unknown';
     document.getElementById('weather-humidity').textContent = `${current.relative_humidity_2m}%`;
-    document.getElementById('weather-wind').textContent = `${Math.round(current.wind_speed_10m)} km/h`;
+
+    // Wind with direction arrow
+    const windDir = current.wind_direction_10m || 0;
+    const windArrow = getWindArrow(windDir);
+    document.getElementById('weather-wind').textContent = `${Math.round(current.wind_speed_10m)} km/h ${windArrow}`;
+
+    // Feels like
+    const feelsLike = Math.round(current.apparent_temperature);
+    const feelsEl = document.getElementById('weather-feels');
+    if (feelsEl) feelsEl.textContent = `${feelsLike}\u00B0`;
+
+    // Clothing suggestion
+    const clothingEl = document.getElementById('weather-clothing');
+    if (clothingEl) {
+      clothingEl.textContent = getClothingSuggestion(current.apparent_temperature, code, lang);
+    }
+  }
+
+  function getWindArrow(degrees) {
+    // Arrow points in the direction wind is blowing TO (opposite of FROM)
+    const arrows = ['↓', '↙', '←', '↖', '↑', '↗', '→', '↘'];
+    const index = Math.round(degrees / 45) % 8;
+    return arrows[index];
+  }
+
+  function getClothingSuggestion(feelsLike, code, lang) {
+    const isRain = [51,53,55,61,63,65,80,81,82].includes(code);
+    const isSnow = [71,73,75,77,85,86].includes(code);
+
+    if (lang === 'de') {
+      if (isSnow || feelsLike < 0) return '🧥 Winterjacke & Schal';
+      if (feelsLike < 8) return '🧥 Jacke mitnehmen';
+      if (isRain) return '☂️ Regenschirm nicht vergessen';
+      if (feelsLike < 15) return '🧶 Pullover empfohlen';
+      if (feelsLike > 28) return '🩳 Leichte Kleidung & Wasser';
+      if (feelsLike > 22) return '👕 T-Shirt Wetter';
+      return '';
+    }
+    // English fallback
+    if (isSnow || feelsLike < 0) return '🧥 Winter coat & scarf';
+    if (feelsLike < 8) return '🧥 Bring a jacket';
+    if (isRain) return '☂️ Don\'t forget an umbrella';
+    if (feelsLike < 15) return '🧶 Sweater recommended';
+    if (feelsLike > 28) return '🩳 Light clothing & water';
+    if (feelsLike > 22) return '👕 T-shirt weather';
+    return '';
   }
 
   function renderForecast(data) {
