@@ -91,9 +91,6 @@ class HomeboardHandler(http.server.SimpleHTTPRequestHandler):
             self.wfile.write(f'Proxy error: {msg}'.encode())
 
     def end_headers(self):
-        # Skip adding duplicate CORS for proxy (already set)
-        if not hasattr(self, '_cors_sent'):
-            self.send_header('Access-Control-Allow-Origin', '*')
         super().end_headers()
 
     def log_message(self, format, *args):
