@@ -178,6 +178,8 @@ class HomeboardHandler(http.server.SimpleHTTPRequestHandler):
             self.handle_gmail_unread()
         elif self.path == '/api/gmail/status':
             self.handle_gmail_status()
+        elif self.path == '/api/photos':
+            self.handle_photos_list()
         else:
             super().do_GET()
 
@@ -365,6 +367,23 @@ class HomeboardHandler(http.server.SimpleHTTPRequestHandler):
         self.send_response(200)
         self.send_header('Content-Type', 'text/html; charset=utf-8')
         self.send_header('Content-Length', str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
+
+    def handle_photos_list(self):
+        """List image files in data/photos/ for slideshow auto-discovery."""
+        photos_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'photos')
+        IMAGE_EXTS = {'.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'}
+        images = []
+        if os.path.isdir(photos_dir):
+            for f in sorted(os.listdir(photos_dir)):
+                if os.path.splitext(f)[1].lower() in IMAGE_EXTS:
+                    images.append(f'/data/photos/{f}')
+        data = json.dumps(images).encode()
+        self.send_response(200)
+        self.send_header('Content-Type', 'application/json')
+        self.send_header('Content-Length', str(len(data)))
+        self.send_header('Cache-Control', 'public, max-age=300')
         self.end_headers()
         self.wfile.write(data)
 

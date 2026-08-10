@@ -325,6 +325,7 @@ body {
 .dep-time { font-size: 0.7rem; color: var(--cyan); font-weight: 500; }
 .dep-delay { color: var(--red); font-size: 0.65rem; font-weight: 600; }
 .dep-dim { opacity: 0.45; }
+.dep-walk { font-size: 0.6rem; font-weight: 400; color: var(--text-3); text-transform: none; letter-spacing: 0; }
 .departures-empty { color: var(--text-3); font-style: italic; text-align: center; padding: 8px; }
 .departures-dots { margin-left: auto; }
 .departures-dots + .card-header-link { margin-left: 8px; }
@@ -359,25 +360,31 @@ body {
 /* === CALENDAR === */
 .card-calendar { grid-column: span 2; }
 .event-list { list-style: none; }
-.event-list li { padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 0.78rem; }
+.event-list li { padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 0.78rem; display: flex; align-items: center; }
 .event-list li:last-child { border-bottom: none; }
 .event-placeholder { color: var(--text-3); font-style: italic; }
 .event-time { color: var(--accent); font-weight: 600; margin-right: 6px; font-size: 0.7rem; }
-.event-commute { float: right; font-size: 0.65rem; color: var(--text-3); }
+.event-commute { margin-left: auto; font-size: 0.62rem; color: var(--accent); white-space: nowrap; padding-left: 8px; }
 .event-location-link { text-decoration: none; font-size: 0.7rem; opacity: 0.5; transition: opacity 0.2s; }
 .event-location-link:hover { opacity: 1; }
 .calendar-tomorrow { font-size: 0.7rem; color: var(--text-3); padding-top: 8px; margin-top: 8px; border-top: 1px solid var(--border); min-height: 0; }
 .calendar-tomorrow:empty { display: none; }
+.calendar-tomorrow-header { cursor: pointer; display: flex; align-items: center; gap: 4px; }
+.calendar-tomorrow-header:hover { color: var(--text-2); }
 .calendar-tomorrow-label { font-weight: 600; color: var(--text-2); }
+.tomorrow-count { background: var(--accent-dim); color: var(--accent); font-size: 0.58rem; font-weight: 700; padding: 1px 5px; border-radius: 100px; }
+.tomorrow-toggle { color: var(--text-3); font-size: 0.6rem; margin-left: auto; }
+.tomorrow-list { list-style: none; max-height: 0; overflow: hidden; transition: max-height 0.3s; padding: 0; margin: 0; }
+.tomorrow-list.open { max-height: 300px; margin-top: 6px; }
+.tomorrow-list li { padding: 2px 0; color: var(--text-2); }
 
 /* === BIRTHDAYS === */
 .birthdays-list { display: flex; flex-direction: column; gap: 6px; }
 .birthday-item { display: flex; align-items: center; gap: 6px; font-size: 0.82rem; padding: 6px 8px; border-radius: 6px; transition: background 0.2s; }
 .birthday-item:hover { background: var(--accent-dim); }
-.birthday-main { display: flex; align-items: center; gap: 8px; text-decoration: none; color: var(--text); flex: 1; min-width: 0; }
+.birthday-main { display: flex; align-items: center; gap: 8px; text-decoration: none; color: var(--text); min-width: 0; }
 .birthday-main:hover .birthday-name { color: var(--accent); }
-.birthday-info { display: flex; align-items: center; gap: 5px; }
-.birthday-links { display: inline-flex; gap: 4px; align-items: center; }
+.birthday-links { display: inline-flex; gap: 4px; align-items: center; margin-left: auto; margin-right: 8px; }
 .birthday-social { display: inline-flex; width: 14px; height: 14px; color: var(--text-3); transition: color 0.2s, transform 0.2s; text-decoration: none; }
 .birthday-social svg { width: 100%; height: 100%; }
 .birthday-social:hover { transform: scale(1.2); }
