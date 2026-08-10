@@ -159,69 +159,70 @@ const Lang = (() => {
 
 const Theme = (() => {
   const STATE_KEY = 'theme';
-  const THEME_ICONS = { dark: '🌙', light: '☀️', pixel: '👾' };
-  let current = 'dark';
 
   function init() {
-    // Use localStorage for instant first render, sync from server state in background
-    current = localStorage.getItem('homeboard_theme') || 'dark';
-    apply(current);
-    State.get(STATE_KEY).then(val => {
-      if (val && val !== current) {
-        current = val;
-        localStorage.setItem('homeboard_theme', val);
-        apply(val);
-        // Update UI
-        const preview = document.getElementById('theme-preview');
-        if (preview) preview.textContent = THEME_ICONS[val] || '🌙';
-      }
-    });
+    // Get saved theme preference
+    const saved = localStorage.getItem('homeboard_theme') || 'dark';
 
+    // Apply immediately from loaded themes
+    Themes.onReady(() => {
+      Themes.apply(saved);
+      buildMenu();
+
+      // Sync from server state in background
+      State.get(STATE_KEY).then(val => {
+        if (val && val !== saved) {
+          localStorage.setItem('homeboard_theme', val);
+          Themes.apply(val);
+          buildMenu();
+        }
+      });
+    });
+  }
+
+  function buildMenu() {
     const btn = document.getElementById('theme-btn');
     const menu = document.getElementById('theme-menu');
     const preview = document.getElementById('theme-preview');
+    if (!btn || !menu) return;
 
-    if (btn && menu) {
-      // Set preview to current theme icon
-      if (preview) preview.textContent = THEME_ICONS[current] || '🌙';
+    const themes = Themes.all();
+    const current = Themes.current();
 
-      // Mark active
-      menu.querySelectorAll('button').forEach(item => {
-        if (item.getAttribute('data-value') === current) {
-          item.classList.add('active');
-        }
-      });
+    // Build menu items dynamically
+    menu.innerHTML = Object.entries(themes).map(([id, theme]) => {
+      const active = id === current ? ' class="active"' : '';
+      return `<button data-value="${id}"${active}><span class="menu-icon">${theme.icon}</span> ${theme.name}</button>`;
+    }).join('');
 
-      // Toggle menu
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        menu.classList.toggle('open');
-        // Close language menu if open
-        const langMenu = document.getElementById('lang-menu');
-        if (langMenu) langMenu.classList.remove('open');
-      });
-
-      // Select theme
-      menu.querySelectorAll('button').forEach(item => {
-        item.addEventListener('click', () => {
-          current = item.getAttribute('data-value');
-          localStorage.setItem('homeboard_theme', current);
-          State.set(STATE_KEY, current);
-          apply(current);
-          if (preview) preview.textContent = THEME_ICONS[current] || '🌙';
-          menu.querySelectorAll('button').forEach(b => b.classList.remove('active'));
-          item.classList.add('active');
-          menu.classList.remove('open');
-        });
-      });
-
-      // Close on outside click
-      document.addEventListener('click', () => menu.classList.remove('open'));
+    // Set preview icon
+    if (preview) {
+      const currentTheme = themes[current];
+      preview.textContent = currentTheme ? currentTheme.icon : '🎨';
     }
-  }
 
-  function apply(theme) {
-    document.documentElement.setAttribute('data-theme', theme);
+    // Toggle menu
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      menu.classList.toggle('open');
+      const langMenu = document.getElementById('lang-menu');
+      if (langMenu) langMenu.classList.remove('open');
+    };
+
+    // Select theme
+    menu.querySelectorAll('button').forEach(item => {
+      item.addEventListener('click', () => {
+        const id = item.getAttribute('data-value');
+        localStorage.setItem('homeboard_theme', id);
+        State.set(STATE_KEY, id);
+        Themes.apply(id);
+        buildMenu();
+        menu.classList.remove('open');
+      });
+    });
+
+    // Close on outside click
+    document.addEventListener('click', () => menu.classList.remove('open'));
   }
 
   return { init };
