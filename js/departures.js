@@ -145,8 +145,21 @@ const Departures = (() => {
     // Update header label with walk time
     const headerLabel = document.querySelector('.card-departures .card-header span[data-i18n="departures"]');
     if (headerLabel) {
-      const walkBadge = stop.walkMinutes ? ` <small class="dep-walk">🚶${stop.walkMinutes}′</small>` : '';
-      headerLabel.innerHTML = `${stop.label}${walkBadge}`;
+      headerLabel.textContent = stop.label;
+    }
+    // Walk time badge (separate element, not inside the uppercase header span)
+    let walkEl = document.querySelector('.card-departures .dep-walk');
+    if (stop.walkMinutes) {
+      if (!walkEl) {
+        walkEl = document.createElement('span');
+        walkEl.className = 'dep-walk';
+        const header = document.querySelector('.card-departures .card-header');
+        const headerSpan = header.querySelector('span[data-i18n="departures"]');
+        if (headerSpan) headerSpan.after(walkEl);
+      }
+      walkEl.textContent = ` 🚶${stop.walkMinutes}′`;
+    } else if (walkEl) {
+      walkEl.textContent = '';
     }
 
     // Arrow navigation
