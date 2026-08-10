@@ -8,12 +8,37 @@ import urllib.request
 import urllib.parse
 import ssl
 import mimetypes
+import json
+import os
+import threading
 
 # Register YAML MIME type (not in Python's default mimetypes)
 mimetypes.add_type('text/yaml', '.yaml')
 mimetypes.add_type('text/yaml', '.yml')
 
 PORT = 7070
+
+# Shared state file (persistent across restarts, synced across devices)
+STATE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'state.json')
+_state_lock = threading.Lock()
+
+
+def _read_state():
+    """Read shared state from disk."""
+    try:
+        with open(STATE_FILE, 'r') as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+
+def _write_state(state):
+    """Write shared state to disk atomically."""
+    os.makedirs(os.path.dirname(STATE_FILE), exist_ok=True)
+    tmp = STATE_FILE + '.tmp'
+    with open(tmp, 'w') as f:
+        json.dump(state, f, indent=2)
+    os.replace(tmp, STATE_FILE)
 
 # Domains allowed through the proxy
 ALLOWED_DOMAINS = [
@@ -62,8 +87,54 @@ class HomeboardHandler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         if self.path.startswith('/proxy?'):
             self.handle_proxy()
+        elif self.path == '/state':
+            self.handle_state_get()
         else:
             super().do_GET()
+
+    def do_POST(self):
+        if self.path == '/state':
+            self.handle_state_post()
+        else:
+            self.send_error(404)
+
+    def handle_state_get(self):
+        """Return the full shared state as JSON."""
+        with _state_lock:
+            state = _read_state()
+        data = json.dumps(state).encode()
+        self.send_response(200)
+        self.send_header('Content-Type', 'application/json')
+        self.send_header('Content-Length', str(len(data)))
+        self.send_header('Cache-Control', 'no-cache')
+        self.end_headers()
+        self.wfile.write(data)
+
+    def handle_state_post(self):
+        """Merge posted JSON into shared state and persist."""
+        try:
+            length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(length)
+            updates = json.loads(body)
+            if not isinstance(updates, dict):
+                self.send_error(400, 'Body must be a JSON object')
+                return
+        except (json.JSONDecodeError, ValueError) as e:
+            self.send_error(400, f'Invalid JSON: {e}')
+            return
+
+        with _state_lock:
+            state = _read_state()
+            # Shallow merge: top-level keys are replaced
+            state.update(updates)
+            _write_state(state)
+
+        data = json.dumps(state).encode()
+        self.send_response(200)
+        self.send_header('Content-Type', 'application/json')
+        self.send_header('Content-Length', str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
 
     def handle_proxy(self):
         query = urllib.parse.urlparse(self.path).query
