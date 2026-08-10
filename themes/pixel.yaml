@@ -8,22 +8,21 @@ colors:
   surface-hover: "#1a1a3a"
   border: "#2a2a4a"
   text: "#e0e8ff"
-  text-2: "#8888b0"
-  text-3: "#5555a0"
+  text-muted: "#8888b0"
+  text-faint: "#5555a0"
   accent: "#ff4488"
   accent-dim: "#ff448820"
-  cyan: "#00ffc8"
-  green: "#00ffc8"
-  amber: "#ffcc00"
-  red: "#ff4466"
+  highlight: "#00ffc8"
+  ok: "#00ffc8"
+  warning: "#ffcc00"
+  danger: "#ff4466"
 
 style:
   font: "'Press Start 2P', monospace"
-  monoFont: "'Press Start 2P', monospace"
   radius: "0px"
-  gap: "8px"
-  cardShadow: "4px 4px 0 var(--border)"
-  cardBorder: true
-  headerWeight: "400"
-  animation: false
-  textShadow: "0 0 8px var(--cyan)"
+  spacing: "8px"
+  shadow: "4px 4px 0 var(--border)"
+  borders: true
+  header-weight: "400"
+  transitions: false
+  glow: "0 0 8px var(--highlight)"

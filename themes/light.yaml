@@ -8,20 +8,21 @@ colors:
   surface-hover: "#f1f5f9"
   border: "#e2e8f0"
   text: "#0f172a"
-  text-2: "#64748b"
-  text-3: "#94a3b8"
+  text-muted: "#64748b"
+  text-faint: "#94a3b8"
   accent: "#4f46e5"
   accent-dim: "#4f46e510"
-  cyan: "#0891b2"
-  green: "#059669"
-  amber: "#d97706"
-  red: "#dc2626"
+  highlight: "#4f46e5"
+  ok: "#4f46e5"
+  warning: "#4f46e5aa"
+  danger: "#dc2626"
 
 style:
+  font: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
   radius: "14px"
-  gap: "12px"
-  cardShadow: "0 1px 3px rgba(0,0,0,0.08)"
-  cardBorder: true
-  headerWeight: "600"
-  animation: true
-  textShadow: "none"
+  spacing: "12px"
+  shadow: "0 1px 3px rgba(0,0,0,0.08)"
+  borders: true
+  header-weight: "600"
+  transitions: true
+  glow: "none"
