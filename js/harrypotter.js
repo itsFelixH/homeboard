@@ -67,12 +67,13 @@ const Hogwarts = (() => {
 
   function init() {
     fetchData();
-    // Auto-cycle through views every 60 seconds
+    // Auto-cycle through views
+    const cycleSec = (HOMEBOARD_CONFIG.spell && HOMEBOARD_CONFIG.spell.cycleSeconds) || 60;
     setInterval(() => {
       const next = ((currentView >= 0 ? currentView : getDaySeed() % TOTAL_VIEWS) + 1) % TOTAL_VIEWS;
       currentView = next;
       render();
-    }, 60 * 1000);
+    }, cycleSec * 1000);
   }
 
   async function fetchData() {

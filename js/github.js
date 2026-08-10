@@ -5,7 +5,7 @@
  */
 const GitHub = (() => {
   let refreshInterval;
-  const MAX_EVENTS = 4;
+  const MAX_EVENTS = () => (HOMEBOARD_CONFIG.github && HOMEBOARD_CONFIG.github.maxEvents) || 4;
 
   const EVENT_ICONS = {
     PushEvent: '📝',
@@ -62,7 +62,7 @@ const GitHub = (() => {
       if (seen.has(key)) continue;
       seen.add(key);
       shown.push(e);
-      if (shown.length >= MAX_EVENTS) break;
+      if (shown.length >= MAX_EVENTS()) break;
     }
 
     container.innerHTML = shown.map(e => {

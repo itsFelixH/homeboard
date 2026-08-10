@@ -32,7 +32,7 @@ const Birthdays = (() => {
   function parseBirthdays(text) {
     const lines = text.replace(/\r\n /g, '').split(/\r?\n/);
     const now = new Date();
-    const LOOKAHEAD_DAYS = 7;
+    const LOOKAHEAD_DAYS = (HOMEBOARD_CONFIG.birthdays && HOMEBOARD_CONFIG.birthdays.lookaheadDays) || 7;
     const birthdays = [];
     let event = null;
 

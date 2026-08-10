@@ -86,18 +86,21 @@ const Weather = (() => {
     const { latitude, longitude } = HOMEBOARD_CONFIG.location;
     const tempUnit = HOMEBOARD_CONFIG.weather.units === 'fahrenheit' ? 'fahrenheit' : 'celsius';
 
+    const forecastDays = (HOMEBOARD_CONFIG.weather.forecastDays || 4) + 1; // +1 because we skip today
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}` +
       `&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m` +
       `&daily=weather_code,temperature_2m_max,temperature_2m_min` +
       `&temperature_unit=${tempUnit}` +
-      `&timezone=auto&forecast_days=5`;
+      `&timezone=auto&forecast_days=${forecastDays}`;
 
     try {
       const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       renderCurrent(data);
-      renderForecast(data);
+      if (HOMEBOARD_CONFIG.weather.showForecast !== false) {
+        renderForecast(data);
+      }
     } catch (err) {
       console.error('Weather fetch failed:', err);
       document.getElementById('weather-desc').textContent = 'Failed to load weather';
@@ -129,7 +132,11 @@ const Weather = (() => {
     // Clothing suggestion
     const clothingEl = document.getElementById('weather-clothing');
     if (clothingEl) {
-      clothingEl.textContent = getClothingSuggestion(current.apparent_temperature, code, lang);
+      if (HOMEBOARD_CONFIG.weather.showClothing !== false) {
+        clothingEl.textContent = getClothingSuggestion(current.apparent_temperature, code, lang);
+      } else {
+        clothingEl.textContent = '';
+      }
     }
   }
 
@@ -174,8 +181,9 @@ const Weather = (() => {
     const lang = Lang.get();
     const dayNames = DAY_NAMES[lang] || DAY_NAMES.en;
 
-    // Skip today (index 0), show next 4 days
-    container.innerHTML = daily.time.slice(1, 5).map((dateStr, i) => {
+    // Skip today (index 0), show configured forecast days
+    const numDays = HOMEBOARD_CONFIG.weather.forecastDays || 4;
+    container.innerHTML = daily.time.slice(1, numDays + 1).map((dateStr, i) => {
       const idx = i + 1;
       const date = new Date(dateStr + 'T12:00:00');
       const day = dayNames[date.getDay()];

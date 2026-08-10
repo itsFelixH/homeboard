@@ -5,7 +5,7 @@
  */
 const Holiday = (() => {
   let refreshInterval;
-  const MAX_VACATIONS = 3;
+  const MAX_VACATIONS = () => (HOMEBOARD_CONFIG.countdown && HOMEBOARD_CONFIG.countdown.maxVacations) || 3;
   const STORAGE_KEY = 'homeboard_countdown_names';
 
   function init() {
@@ -84,14 +84,17 @@ const Holiday = (() => {
       if (line === 'BEGIN:VEVENT') {
         event = {};
       } else if (line === 'END:VEVENT' && event) {
-        if (event.summary && event.summary.includes('Urlaub') && event.start) {
-          const eventMidnight = new Date(
-            event.start.getFullYear(),
-            event.start.getMonth(),
-            event.start.getDate()
-          );
-          if (eventMidnight >= todayMidnight) {
-            candidates.push(event);
+        if (event.summary && event.start) {
+          const keyword = (HOMEBOARD_CONFIG.countdown && HOMEBOARD_CONFIG.countdown.keyword) || 'Urlaub';
+          if (event.summary.includes(keyword)) {
+            const eventMidnight = new Date(
+              event.start.getFullYear(),
+              event.start.getMonth(),
+              event.start.getDate()
+            );
+            if (eventMidnight >= todayMidnight) {
+              candidates.push(event);
+            }
           }
         }
         event = null;
@@ -105,7 +108,7 @@ const Holiday = (() => {
     }
 
     candidates.sort((a, b) => a.start - b.start);
-    return candidates.slice(0, MAX_VACATIONS);
+    return candidates.slice(0, MAX_VACATIONS());
   }
 
   function parseICSDate(str) {

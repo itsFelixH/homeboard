@@ -31,7 +31,8 @@ const Trash = (() => {
 
     if (config.icsUrl) {
       fetchICS();
-      refreshInterval = setInterval(fetchICS, 6 * 60 * 60 * 1000); // every 6h
+      const refreshHrs = (HOMEBOARD_CONFIG.trash && HOMEBOARD_CONFIG.trash.refreshHours) || 6;
+      refreshInterval = setInterval(fetchICS, refreshHrs * 60 * 60 * 1000);
     } else if (config.schedule && config.schedule.length > 0) {
       renderManual(config.schedule);
     } else {
@@ -112,13 +113,14 @@ const Trash = (() => {
     const nextLabel = lang === 'de' ? 'Nächste' : lang === 'es' ? 'Próxima' : 'Next';
     document.getElementById('trash-next').textContent = `${nextLabel}: ${dayLabel}`;
 
-    // Calendar week view: next 7 days
+    // Calendar week view: next N days from config
+    const previewDays = (HOMEBOARD_CONFIG.trash && HOMEBOARD_CONFIG.trash.previewDays) || 7;
     const dayNames = lang === 'de'
       ? ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa']
       : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
     const days = [];
-    for (let i = 0; i < 7; i++) {
+    for (let i = 0; i < previewDays; i++) {
       const d = new Date(todayMidnight.getTime() + i * 86400000);
       const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
       const dayEvents = events.filter(ev => {

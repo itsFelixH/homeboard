@@ -11,16 +11,18 @@ const Rain = (() => {
       document.getElementById('rain-summary').textContent = 'Set location in config';
       return;
     }
+    const refreshMin = (HOMEBOARD_CONFIG.rain && HOMEBOARD_CONFIG.rain.refreshMinutes) || 15;
     fetchRain();
-    refreshInterval = setInterval(fetchRain, 15 * 60 * 1000); // every 15 min
+    refreshInterval = setInterval(fetchRain, refreshMin * 60 * 1000);
   }
 
   async function fetchRain() {
     const { latitude, longitude } = HOMEBOARD_CONFIG.location;
 
+    const forecastHours = (HOMEBOARD_CONFIG.rain && HOMEBOARD_CONFIG.rain.forecastHours) || 12;
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}` +
       `&hourly=precipitation,precipitation_probability` +
-      `&timezone=auto&forecast_hours=12`;
+      `&timezone=auto&forecast_hours=${forecastHours}`;
 
     try {
       const res = await fetch(url);
@@ -51,10 +53,11 @@ const Rain = (() => {
       }
     }
 
-    // Take next 12 hours from current
-    const hours = hourly.time.slice(startIdx, startIdx + 12);
-    const precip = hourly.precipitation.slice(startIdx, startIdx + 12);
-    const prob = hourly.precipitation_probability.slice(startIdx, startIdx + 12);
+    // Take next hours from current (based on config)
+    const forecastHours = (HOMEBOARD_CONFIG.rain && HOMEBOARD_CONFIG.rain.forecastHours) || 12;
+    const hours = hourly.time.slice(startIdx, startIdx + forecastHours);
+    const precip = hourly.precipitation.slice(startIdx, startIdx + forecastHours);
+    const prob = hourly.precipitation_probability.slice(startIdx, startIdx + forecastHours);
 
     // Summary text
     const totalMm = precip.reduce((sum, v) => sum + v, 0);
@@ -63,7 +66,8 @@ const Rain = (() => {
     const barsEl = document.getElementById('rain-bars');
 
     if (totalMm === 0 && maxProb < 20) {
-      summaryEl.innerHTML = `☀️ ${i18n('rain_none') || 'No rain expected next 12h'}`;
+      const hrs = (HOMEBOARD_CONFIG.rain && HOMEBOARD_CONFIG.rain.forecastHours) || 12;
+      summaryEl.innerHTML = `☀️ ${i18n('rain_none') || `No rain expected next ${hrs}h`}`;
       barsEl.innerHTML = '';
       barsEl.style.display = 'none';
       return;

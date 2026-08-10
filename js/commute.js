@@ -94,7 +94,8 @@ const Commute = (() => {
       }
     }
 
-    // Bike via OSRM (× 1.5 correction)
+    // Bike via OSRM (× correction factor from config)
+    const bikeFactor = (HOMEBOARD_CONFIG.commute && HOMEBOARD_CONFIG.commute.bikeSpeedFactor) || 1.5;
     try {
       const url = `https://router.project-osrm.org/route/v1/cycling/` +
         `${origin.longitude},${origin.latitude};${dest.longitude},${dest.latitude}?overview=false`;
@@ -102,7 +103,7 @@ const Commute = (() => {
       if (res.ok) {
         const data = await res.json();
         if (data.code === 'Ok' && data.routes.length > 0) {
-          result.bike = Math.round((data.routes[0].duration / 60) * 1.5);
+          result.bike = Math.round((data.routes[0].duration / 60) * bikeFactor);
           result.bikeKm = (data.routes[0].distance / 1000).toFixed(1);
         }
       }
@@ -171,7 +172,8 @@ const Commute = (() => {
     }
 
     // Transit section
-    const transitSection = r.transit
+    const showTransit = HOMEBOARD_CONFIG.commute.showTransit !== false;
+    const transitSection = (showTransit && r.transit)
       ? `<div class="commute-section">
           <div class="commute-row">
             <span class="commute-mode">🚋 ÖPNV</span>
@@ -180,15 +182,18 @@ const Commute = (() => {
           <span class="commute-duration">${r.transit} min</span>
           ${legsHtml}
         </div>`
-      : `<div class="commute-section commute-section-empty">
+      : showTransit
+        ? `<div class="commute-section commute-section-empty">
           <div class="commute-row">
             <span class="commute-mode">🚋 ÖPNV</span>
             <span class="commute-eta">--</span>
           </div>
-        </div>`;
+        </div>`
+        : '';
 
     // Bike section
-    const bikeSection = r.bike
+    const showBike = HOMEBOARD_CONFIG.commute.showBike !== false;
+    const bikeSection = (showBike && r.bike)
       ? `<div class="commute-section">
           <div class="commute-row">
             <span class="commute-mode">🚲 Rad</span>
@@ -196,12 +201,14 @@ const Commute = (() => {
           </div>
           <span class="commute-duration">${r.bike} min · ${r.bikeKm || '--'} km</span>
         </div>`
-      : `<div class="commute-section commute-section-empty">
+      : showBike
+        ? `<div class="commute-section commute-section-empty">
           <div class="commute-row">
             <span class="commute-mode">🚲 Rad</span>
             <span class="commute-eta">--</span>
           </div>
-        </div>`;
+        </div>`
+        : '';
 
     container.innerHTML = `<div class="commute-dest">
       ${transitSection}

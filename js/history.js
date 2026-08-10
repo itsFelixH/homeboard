@@ -32,11 +32,12 @@ const History = (() => {
       return;
     }
 
-    // Pick a random interesting event (prefer events from last 500 years)
+    // Pick a random interesting event (prefer events from configured year onwards)
     // Use date as seed for consistent daily pick
     const now = new Date();
     const seed = now.getFullYear() * 366 + now.getMonth() * 31 + now.getDate();
-    const recent = events.filter(e => e.year && e.year > 1500);
+    const minYear = (HOMEBOARD_CONFIG.history && HOMEBOARD_CONFIG.history.minYear) || 1500;
+    const recent = events.filter(e => e.year && e.year > minYear);
     const pool = recent.length > 0 ? recent : events;
     const event = pool[seed % pool.length];
 

@@ -45,12 +45,14 @@ const Plants = (() => {
       statusClass = 'plants-status-ok';
     } else {
       statusText = lang === 'de' ? `Vor ${daysSince} Tagen gegossen` : `${daysSince} days ago`;
-      statusClass = daysSince >= 7 ? 'plants-status-overdue' : daysSince >= 5 ? 'plants-status-soon' : 'plants-status-ok';
+      const warningDays = (HOMEBOARD_CONFIG.plants && HOMEBOARD_CONFIG.plants.warningDays) || 7;
+      const soonDays = Math.max(warningDays - 2, 3);
+      statusClass = daysSince >= warningDays ? 'plants-status-overdue' : daysSince >= soonDays ? 'plants-status-soon' : 'plants-status-ok';
     }
 
     container.innerHTML = `<div class="plants-display">
       <div class="plants-info">
-        <span class="plants-status ${statusClass}">${daysSince >= 7 ? '⚠️' : '🌱'} ${statusText}</span>
+        <span class="plants-status ${statusClass}">${daysSince >= ((HOMEBOARD_CONFIG.plants && HOMEBOARD_CONFIG.plants.warningDays) || 7) ? '⚠️' : '🌱'} ${statusText}</span>
       </div>
       <button class="plants-water-btn-main" onclick="Plants.waterNow()">💧</button>
     </div>`;

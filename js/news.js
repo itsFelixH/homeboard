@@ -9,9 +9,9 @@ const News = (() => {
   let cycleInterval;
   let cachedArticles = [];
   let currentPage = 0;
-  let currentCategory = 'homepage';
-  const PER_PAGE = 5;
-  const CYCLE_SECONDS = 30;
+  let currentCategory = (HOMEBOARD_CONFIG.news && HOMEBOARD_CONFIG.news.defaultCategory) || 'homepage';
+  const PER_PAGE = () => (HOMEBOARD_CONFIG.news && HOMEBOARD_CONFIG.news.perPage) || 5;
+  const CYCLE_SECONDS = () => (HOMEBOARD_CONFIG.news && HOMEBOARD_CONFIG.news.cycleSeconds) || 30;
 
   const CATEGORIES = [
     { id: 'homepage', label: 'Top', url: 'https://www.tagesschau.de/api2u/homepage' },
@@ -24,8 +24,9 @@ const News = (() => {
   function init() {
     renderFilters();
     fetchNews();
-    refreshInterval = setInterval(fetchNews, 10 * 60 * 1000);
-    cycleInterval = setInterval(nextPage, CYCLE_SECONDS * 1000);
+    const refreshMin = (HOMEBOARD_CONFIG.news && HOMEBOARD_CONFIG.news.refreshMinutes) || 10;
+    refreshInterval = setInterval(fetchNews, refreshMin * 60 * 1000);
+    cycleInterval = setInterval(nextPage, CYCLE_SECONDS() * 1000);
   }
 
   function renderFilters() {
@@ -68,7 +69,7 @@ const News = (() => {
   }
 
   function totalPages() {
-    return Math.max(1, Math.ceil(cachedArticles.length / PER_PAGE));
+    return Math.max(1, Math.ceil(cachedArticles.length / PER_PAGE()));
   }
 
   function nextPage() {
@@ -91,7 +92,7 @@ const News = (() => {
 
   function resetCycle() {
     clearInterval(cycleInterval);
-    cycleInterval = setInterval(nextPage, CYCLE_SECONDS * 1000);
+    cycleInterval = setInterval(nextPage, CYCLE_SECONDS() * 1000);
   }
 
   function render() {
@@ -125,8 +126,8 @@ const News = (() => {
       return;
     }
 
-    const start = currentPage * PER_PAGE;
-    const pageArticles = cachedArticles.slice(start, start + PER_PAGE);
+    const start = currentPage * PER_PAGE();
+    const pageArticles = cachedArticles.slice(start, start + PER_PAGE());
 
     container.innerHTML = pageArticles.map(article => {
       const topline = article.topline || '';
