@@ -263,15 +263,38 @@ const Calendar = (() => {
           } catch (e) { /* skip */ }
         }
 
-        // Update the rendered event with commute info
+        // Update the rendered event with full commute info
         const eventEl = document.querySelector(`[data-event-idx="${i}"]`);
         if (eventEl && (bikeMin || transitMin)) {
           const commuteEl = eventEl.querySelector('.event-commute');
           if (commuteEl) {
+            const now = new Date();
             const parts = [];
-            if (transitMin) parts.push(`🚋 ${transitMin} min`);
-            if (bikeMin) parts.push(`🚲 ${bikeMin} min · ${bikeKm} km`);
-            commuteEl.textContent = parts.join('  ');
+
+            // "Leave at" note based on event start time
+            const evStart = events[i].start;
+            if (evStart && !events[i].allDay) {
+              const bestTime = transitMin || bikeMin;
+              const leaveAt = new Date(evStart.getTime() - bestTime * 60000);
+              const lang = Lang.get();
+              if (leaveAt > now) {
+                const leaveStr = `${leaveAt.getHours().toString().padStart(2,'0')}:${leaveAt.getMinutes().toString().padStart(2,'0')}`;
+                const leaveLabel = lang === 'de' ? `🚪 Los um ${leaveStr}` : lang === 'es' ? `🚪 Salir a las ${leaveStr}` : `🚪 Leave at ${leaveStr}`;
+                parts.push(`<span class="event-leave">${leaveLabel}</span>`);
+              }
+            }
+
+            if (transitMin) {
+              const eta = new Date(now.getTime() + transitMin * 60000);
+              const etaStr = `${eta.getHours().toString().padStart(2,'0')}:${eta.getMinutes().toString().padStart(2,'0')}`;
+              parts.push(`🚋 ${transitMin} min → ${etaStr}`);
+            }
+            if (bikeMin) {
+              const eta = new Date(now.getTime() + bikeMin * 60000);
+              const etaStr = `${eta.getHours().toString().padStart(2,'0')}:${eta.getMinutes().toString().padStart(2,'0')}`;
+              parts.push(`🚲 ${bikeMin} min · ${bikeKm} km → ${etaStr}`);
+            }
+            commuteEl.innerHTML = parts.join('<span class="event-commute-sep"> · </span>');
           }
         }
       } catch (err) {
@@ -368,22 +391,52 @@ const Calendar = (() => {
       return;
     }
 
-    list.innerHTML = events.map((ev, idx) => {
-      const time = (!ev.allDay && ev.start)
-        ? `<span class="event-time">${ev.start.getHours().toString().padStart(2,'0')}:${ev.start.getMinutes().toString().padStart(2,'0')}</span>`
-        : '';
+    const now = new Date();
+    const allDay = events.filter(ev => ev.allDay);
+    const timed = events.filter(ev => !ev.allDay);
+
+    // All-day events as pills at the top
+    const allDayHtml = allDay.length > 0
+      ? `<li class="event-allday-row">${allDay.map(ev => {
+          const mapsUrl = ev.location ? `https://maps.google.com/?q=${encodeURIComponent(ev.location)}` : '';
+          return mapsUrl
+            ? `<a href="${mapsUrl}" target="_blank" class="event-allday-pill" title="${ev.location}">${ev.summary || 'Untitled'}</a>`
+            : `<span class="event-allday-pill">${ev.summary || 'Untitled'}</span>`;
+        }).join('')}</li>`
+      : '';
+
+    // Timed events with "in X min" badge
+    const timedHtml = timed.map((ev, i) => {
+      const idx = allDay.length + i; // preserve data-event-idx across full list
+      const actualIdx = events.indexOf(ev);
+
+      const timeStr = `${ev.start.getHours().toString().padStart(2,'0')}:${ev.start.getMinutes().toString().padStart(2,'0')}`;
+      const timeHtml = `<span class="event-time">${timeStr}</span>`;
+
+      // Time-until badge
+      const diffMin = Math.round((ev.start - now) / 60000);
+      let untilHtml = '';
+      if (diffMin > 0 && diffMin <= 90) {
+        untilHtml = `<span class="event-until">in ${diffMin} min</span>`;
+      } else if (diffMin > 0 && diffMin <= 180) {
+        const hrs = Math.floor(diffMin / 60);
+        const mins = diffMin % 60;
+        untilHtml = `<span class="event-until">in ${hrs}h${mins > 0 ? ` ${mins}m` : ''}</span>`;
+      }
 
       const locationHtml = ev.location && isBerlinLocation(ev.location)
-        ? `<span class="event-commute" title="${ev.location}"></span>`
+        ? `<div class="event-commute" title="${ev.location}"></div>`
         : '';
 
-      // Make location clickable (Google Maps)
-      const locationLink = ev.location
-        ? `<a href="https://maps.google.com/?q=${encodeURIComponent(ev.location)}" target="_blank" class="event-location-link" title="${ev.location}">📍</a>`
-        : '';
+      const mapsUrl = ev.location ? `https://maps.google.com/?q=${encodeURIComponent(ev.location)}` : '';
+      const summaryHtml = mapsUrl
+        ? `<a href="${mapsUrl}" target="_blank" class="event-summary event-summary-link" title="${ev.location}">${ev.summary || 'Untitled'}</a>`
+        : `<span class="event-summary">${ev.summary || 'Untitled'}</span>`;
 
-      return `<li data-event-idx="${idx}">${time}${ev.summary || 'Untitled'} ${locationLink}${locationHtml}</li>`;
+      return `<li data-event-idx="${actualIdx}"><div class="event-row">${timeHtml}${summaryHtml}${untilHtml}</div>${locationHtml}</li>`;
     }).join('');
+
+    list.innerHTML = allDayHtml + timedHtml;
   }
 
   function parsePTDuration(str) {
