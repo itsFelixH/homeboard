@@ -97,11 +97,19 @@ const I18N_STRINGS = {
 };
 
 const Lang = (() => {
-  const STORAGE_KEY = 'homeboard_lang';
+  const STATE_KEY = 'lang';
   let current = 'de';
 
   function init() {
-    current = localStorage.getItem(STORAGE_KEY) || 'de';
+    // Use localStorage for instant first render, sync from server state in background
+    current = localStorage.getItem('homeboard_lang') || 'de';
+    State.get(STATE_KEY).then(val => {
+      if (val && val !== current) {
+        current = val;
+        localStorage.setItem('homeboard_lang', val);
+        location.reload();
+      }
+    });
 
     // Custom dropdown
     const btn = document.getElementById('lang-btn');
@@ -131,7 +139,8 @@ const Lang = (() => {
         }
         item.addEventListener('click', () => {
           current = item.getAttribute('data-lang');
-          localStorage.setItem(STORAGE_KEY, current);
+          localStorage.setItem('homeboard_lang', current);
+          State.set(STATE_KEY, current);
           location.reload();
         });
       });
@@ -149,13 +158,24 @@ const Lang = (() => {
 })();
 
 const Theme = (() => {
-  const STORAGE_KEY = 'homeboard_theme';
+  const STATE_KEY = 'theme';
   const THEME_ICONS = { dark: '🌙', light: '☀️', pixel: '👾' };
   let current = 'dark';
 
   function init() {
-    current = localStorage.getItem(STORAGE_KEY) || 'dark';
+    // Use localStorage for instant first render, sync from server state in background
+    current = localStorage.getItem('homeboard_theme') || 'dark';
     apply(current);
+    State.get(STATE_KEY).then(val => {
+      if (val && val !== current) {
+        current = val;
+        localStorage.setItem('homeboard_theme', val);
+        apply(val);
+        // Update UI
+        const preview = document.getElementById('theme-preview');
+        if (preview) preview.textContent = THEME_ICONS[val] || '🌙';
+      }
+    });
 
     const btn = document.getElementById('theme-btn');
     const menu = document.getElementById('theme-menu');
@@ -185,7 +205,8 @@ const Theme = (() => {
       menu.querySelectorAll('button').forEach(item => {
         item.addEventListener('click', () => {
           current = item.getAttribute('data-value');
-          localStorage.setItem(STORAGE_KEY, current);
+          localStorage.setItem('homeboard_theme', current);
+          State.set(STATE_KEY, current);
           apply(current);
           if (preview) preview.textContent = THEME_ICONS[current] || '🌙';
           menu.querySelectorAll('button').forEach(b => b.classList.remove('active'));

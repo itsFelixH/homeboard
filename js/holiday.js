@@ -6,7 +6,7 @@
 const Holiday = (() => {
   let refreshInterval;
   const MAX_VACATIONS = () => (HOMEBOARD_CONFIG.countdown && HOMEBOARD_CONFIG.countdown.maxVacations) || 3;
-  const STORAGE_KEY = 'homeboard_countdown_names';
+  const STATE_KEY = 'countdown_names';
 
   function init() {
     const calConfig = HOMEBOARD_CONFIG.calendar;
@@ -19,22 +19,19 @@ const Holiday = (() => {
     refreshInterval = setInterval(fetchAndFind, 60 * 60 * 1000);
   }
 
-  function getCustomNames() {
-    try {
-      return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
-    } catch {
-      return {};
-    }
+  async function getCustomNames() {
+    const names = await State.get(STATE_KEY);
+    return (names && typeof names === 'object') ? names : {};
   }
 
-  function saveCustomName(dateKey, name) {
-    const names = getCustomNames();
+  async function saveCustomName(dateKey, name) {
+    const names = await getCustomNames();
     if (name && name.trim()) {
       names[dateKey] = name.trim();
     } else {
       delete names[dateKey];
     }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(names));
+    await State.set(STATE_KEY, names);
   }
 
   function showFallback() {
@@ -160,11 +157,11 @@ const Holiday = (() => {
     input.select();
   }
 
-  function renderAll(vacations) {
+  async function renderAll(vacations) {
     const container = document.getElementById('countdown-list');
     const now = new Date();
     const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const customNames = getCustomNames();
+    const customNames = await getCustomNames();
     const configNames = HOMEBOARD_CONFIG.countdown?.names || {};
 
     container.innerHTML = vacations.map((vac, idx) => {

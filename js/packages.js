@@ -1,10 +1,10 @@
 /**
- * Package tracking module - localStorage-based
+ * Package tracking module - server-state based
  * Supports DHL, Hermes, DPD with tracking links
- * Parcels are stored in localStorage so they persist without config changes
+ * Parcels are synced across devices via shared server state
  */
 const Packages = (() => {
-  const STORAGE_KEY = 'homeboard_packages';
+  const STATE_KEY = 'packages';
 
   const CARRIERS = {
     dhl: {
@@ -24,8 +24,8 @@ const Packages = (() => {
     }
   };
 
-  function init() {
-    render();
+  async function init() {
+    await render();
     // Bind add form
     document.getElementById('package-add-btn').addEventListener('click', handleAdd);
     document.getElementById('package-number-input').addEventListener('keydown', (e) => {
@@ -33,19 +33,16 @@ const Packages = (() => {
     });
   }
 
-  function getPackages() {
-    try {
-      return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-    } catch {
-      return [];
-    }
+  async function getPackages() {
+    const data = await State.get(STATE_KEY);
+    return Array.isArray(data) ? data : [];
   }
 
-  function savePackages(packages) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(packages));
+  async function savePackages(packages) {
+    await State.set(STATE_KEY, packages);
   }
 
-  function handleAdd() {
+  async function handleAdd() {
     const numberInput = document.getElementById('package-number-input');
     const carrierSelect = document.getElementById('package-carrier-select');
     const labelInput = document.getElementById('package-label-input');
@@ -53,7 +50,7 @@ const Packages = (() => {
     const trackingNumber = numberInput.value.trim();
     if (!trackingNumber) return;
 
-    const packages = getPackages();
+    const packages = await getPackages();
     packages.push({
       id: Date.now().toString(),
       trackingNumber,
@@ -62,20 +59,20 @@ const Packages = (() => {
       addedAt: new Date().toISOString()
     });
 
-    savePackages(packages);
+    await savePackages(packages);
     numberInput.value = '';
     labelInput.value = '';
-    render();
+    await render();
   }
 
-  function handleRemove(id) {
-    const packages = getPackages().filter(p => p.id !== id);
-    savePackages(packages);
-    render();
+  async function handleRemove(id) {
+    const packages = (await getPackages()).filter(p => p.id !== id);
+    await savePackages(packages);
+    await render();
   }
 
-  function render() {
-    const packages = getPackages();
+  async function render() {
+    const packages = await getPackages();
     const container = document.getElementById('packages-list');
 
     if (packages.length === 0) {
@@ -98,8 +95,8 @@ const Packages = (() => {
     }).join('');
   }
 
-  function remove(id) {
-    handleRemove(id);
+  async function remove(id) {
+    await handleRemove(id);
   }
 
   return { init, remove };

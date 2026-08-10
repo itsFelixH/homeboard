@@ -1,29 +1,29 @@
 /**
  * Plant watering tracker - simple version
  * One button to mark all plants as watered, shows days since last watering
- * Stored in localStorage
+ * Synced across devices via shared server state
  */
 const Plants = (() => {
-  const STORAGE_KEY = 'homeboard_plants_last';
+  const STATE_KEY = 'plants_last';
 
-  function init() {
-    render();
+  async function init() {
+    await render();
   }
 
-  function getLastWatered() {
-    const stored = localStorage.getItem(STORAGE_KEY);
+  async function getLastWatered() {
+    const stored = await State.get(STATE_KEY);
     return stored ? new Date(stored) : null;
   }
 
-  function waterNow() {
-    localStorage.setItem(STORAGE_KEY, new Date().toISOString());
-    render();
+  async function waterNow() {
+    await State.set(STATE_KEY, new Date().toISOString());
+    await render();
   }
 
-  function render() {
+  async function render() {
     const container = document.getElementById('plants-content');
     const lang = Lang.get();
-    const last = getLastWatered();
+    const last = await getLastWatered();
 
     if (!last) {
       container.innerHTML = `<div class="plants-display">
