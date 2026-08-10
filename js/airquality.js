@@ -56,9 +56,25 @@ const AirQuality = (() => {
     document.getElementById('aqi-pm25').textContent = `PM2.5: ${current.pm2_5} \u00B5g/m\u00B3`;
     document.getElementById('aqi-pm10').textContent = `PM10: ${current.pm10} \u00B5g/m\u00B3`;
 
+    // Trend arrow vs previous reading
+    showTrend(aqi);
+
     // Health recommendation
     const recEl = document.getElementById('aqi-rec');
     if (recEl) recEl.textContent = getAqiRec(aqi, lang);
+  }
+
+  async function showTrend(currentAqi) {
+    const prevAqi = await State.get('aqi_previous');
+    const labelEl = document.getElementById('aqi-label');
+    if (prevAqi !== null && labelEl) {
+      const diff = currentAqi - prevAqi;
+      if (diff >= 5) labelEl.textContent += ' ↑';
+      else if (diff <= -5) labelEl.textContent += ' ↓';
+      else labelEl.textContent += ' →';
+    }
+    // Store current as previous for next read
+    await State.set('aqi_previous', currentAqi);
   }
 
   function getAqiRec(aqi, lang) {
