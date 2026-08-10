@@ -27,8 +27,8 @@ const Calendar = (() => {
       let events = parseICS(icsText);
       events = filterEvents(events);
       render(events.slice(0, config.maxEvents));
-      // Tomorrow's first event preview
-      renderTomorrowPreview(icsText);
+      // Multi-day view: tabs + week overview
+      renderMultiDay(icsText);
       // Fetch commute for events with locations
       if (config.showCommute) {
         fetchCommuteForEvents(events.slice(0, config.maxEvents));
@@ -227,6 +227,7 @@ const Calendar = (() => {
 
     // Fetch transit via HAFAS
         let transitMin = null;
+        let transitLegs = [];
         const hafasKey = HOMEBOARD_CONFIG.departures?.hafasAccessId;
         if (hafasKey) {
           try {
@@ -241,6 +242,17 @@ const Calendar = (() => {
               const trips = hData.Trip || [];
               if (trips.length > 0) {
                 transitMin = parsePTDuration(trips[0].duration);
+                let legs = trips[0].LegList?.Leg || [];
+                if (!Array.isArray(legs)) legs = [legs];
+                transitLegs = legs.map(leg => {
+                  const name = (leg.name || '').trim();
+                  const dur = parsePTDuration(leg.duration);
+                  const to = (leg.Destination?.name || '').replace(' (Berlin)', '').replace(' Bhf', '');
+                  if (!name || name === 'Fußweg' || leg.type === 'WALK') {
+                    return { type: 'walk', duration: dur };
+                  }
+                  return { type: 'transit', line: name, to, duration: dur };
+                });
               }
             }
           } catch (e) { /* skip */ }
@@ -257,7 +269,17 @@ const Calendar = (() => {
             if (transitRes.ok) {
               const tData = await transitRes.json();
               if (tData.itineraries?.length > 0) {
-                transitMin = Math.round(tData.itineraries[0].duration / 60);
+                const it = tData.itineraries[0];
+                transitMin = Math.round(it.duration / 60);
+                transitLegs = (it.legs || []).map(leg => {
+                  const dur = Math.round((leg.duration || 0) / 60);
+                  if (leg.mode === 'WALK') {
+                    return { type: 'walk', duration: dur };
+                  }
+                  const line = leg.route || leg.routeShortName || leg.mode;
+                  const to = (leg.to?.name || '').replace(' (Berlin)', '');
+                  return { type: 'transit', line, to, duration: dur };
+                });
               }
             }
           } catch (e) { /* skip */ }
@@ -269,32 +291,52 @@ const Calendar = (() => {
           const commuteEl = eventEl.querySelector('.event-commute');
           if (commuteEl) {
             const now = new Date();
-            const parts = [];
+            const lang = Lang.get();
 
-            // "Leave at" note based on event start time
+            // "Leave" badge next to event name
             const evStart = events[i].start;
             if (evStart && !events[i].allDay) {
               const bestTime = transitMin || bikeMin;
               const leaveAt = new Date(evStart.getTime() - bestTime * 60000);
-              const lang = Lang.get();
               if (leaveAt > now) {
-                const leaveStr = `${leaveAt.getHours().toString().padStart(2,'0')}:${leaveAt.getMinutes().toString().padStart(2,'0')}`;
-                const leaveLabel = lang === 'de' ? `🚪 Los um ${leaveStr}` : lang === 'es' ? `🚪 Salir a las ${leaveStr}` : `🚪 Leave at ${leaveStr}`;
-                parts.push(`<span class="event-leave">${leaveLabel}</span>`);
+                const leaveInMin = Math.round((leaveAt - now) / 60000);
+                let leaveBadge = '';
+                if (leaveInMin <= 60) {
+                  // Less than 1h: show "leave in X min"
+                  leaveBadge = lang === 'de' ? `🚪 los in ${leaveInMin} min` : lang === 'es' ? `🚪 salir en ${leaveInMin} min` : `🚪 leave in ${leaveInMin} min`;
+                } else {
+                  // More than 1h: show "leave at HH:MM"
+                  const leaveStr = `${leaveAt.getHours().toString().padStart(2,'0')}:${leaveAt.getMinutes().toString().padStart(2,'0')}`;
+                  leaveBadge = lang === 'de' ? `🚪 los um ${leaveStr}` : lang === 'es' ? `🚪 salir a las ${leaveStr}` : `🚪 leave at ${leaveStr}`;
+                }
+                const untilEl = eventEl.querySelector('.event-until');
+                if (untilEl) {
+                  untilEl.textContent = leaveBadge;
+                } else {
+                  const row = eventEl.querySelector('.event-row');
+                  if (row) row.insertAdjacentHTML('beforeend', `<span class="event-until">${leaveBadge}</span>`);
+                }
               }
             }
 
-            if (transitMin) {
-              const eta = new Date(now.getTime() + transitMin * 60000);
-              const etaStr = `${eta.getHours().toString().padStart(2,'0')}:${eta.getMinutes().toString().padStart(2,'0')}`;
-              parts.push(`🚋 ${transitMin} min → ${etaStr}`);
+            // Full route display with walk segments and destinations
+            let routeHtml = '';
+            if (transitMin && transitLegs.length > 0) {
+              const legParts = transitLegs.map(leg => {
+                if (leg.type === 'walk') {
+                  return `<span class="event-route-walk">🚶${leg.duration}′</span>`;
+                }
+                const toLabel = leg.to ? ` → ${leg.to}` : '';
+                return `<span class="event-route-leg">${leg.line}</span><span class="event-route-to">${toLabel}</span>`;
+              }).join('');
+              routeHtml += `<div class="event-route-line">🚋 ${transitMin} min · ${legParts}</div>`;
+            } else if (transitMin) {
+              routeHtml += `<div class="event-route-line">🚋 ${transitMin} min</div>`;
             }
             if (bikeMin) {
-              const eta = new Date(now.getTime() + bikeMin * 60000);
-              const etaStr = `${eta.getHours().toString().padStart(2,'0')}:${eta.getMinutes().toString().padStart(2,'0')}`;
-              parts.push(`🚲 ${bikeMin} min · ${bikeKm} km → ${etaStr}`);
+              routeHtml += `<div class="event-route-line">🚲 ${bikeMin} min · ${bikeKm} km</div>`;
             }
-            commuteEl.innerHTML = parts.join('<span class="event-commute-sep"> · </span>');
+            commuteEl.innerHTML = routeHtml;
           }
         }
       } catch (err) {
@@ -303,85 +345,121 @@ const Calendar = (() => {
     }
   }
 
-  function renderTomorrowPreview(icsText) {
+  let _multiDayCache = []; // cached events per day [{date, label, events}]
+  let _selectedDay = 0;   // 0=today, 1=tomorrow, 2=day after
+
+  function renderMultiDay(icsText) {
     const config = HOMEBOARD_CONFIG.calendar;
     const lines = icsText.replace(/\r\n /g, '').split(/\r?\n/);
     const today = new Date();
-    const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
-    const tomorrowStr = dateToStr(tomorrow);
-    const tomorrowDow = tomorrow.getDay();
     const dowMap = { SU: 0, MO: 1, TU: 2, WE: 3, TH: 4, FR: 5, SA: 6 };
+    const lang = Lang.get();
+    const dayNamesShort = lang === 'de'
+      ? ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa']
+      : lang === 'es'
+      ? ['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá']
+      : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const patterns = (config.hidePatterns || []).map(p => new RegExp(p, 'i'));
 
-    let event = null;
-    const tomorrowEvents = [];
+    // Parse events for next 7 days
+    _multiDayCache = [];
+    for (let d = 0; d < 7; d++) {
+      const date = new Date(today.getFullYear(), today.getMonth(), today.getDate() + d);
+      const dateStr = dateToStr(date);
+      const dow = date.getDay();
 
-    for (const line of lines) {
-      if (line === 'BEGIN:VEVENT') {
-        event = { exdates: [] };
-      } else if (line === 'END:VEVENT' && event) {
-        if (event.summary && event.start) {
-          if (occursToday(event, tomorrowStr, tomorrowDow, tomorrow, dowMap)) {
-            tomorrowEvents.push(event);
+      let event = null;
+      const dayEvents = [];
+
+      for (const line of lines) {
+        if (line === 'BEGIN:VEVENT') {
+          event = { exdates: [] };
+        } else if (line === 'END:VEVENT' && event) {
+          if (event.summary && event.start) {
+            if (occursToday(event, dateStr, dow, date, dowMap)) {
+              if (!patterns.some(re => re.test(event.summary || ''))) {
+                dayEvents.push(event);
+              }
+            }
           }
-        }
-        event = null;
-      } else if (event) {
-        if (line.startsWith('DTSTART')) {
-          const p = parseDT(line);
-          event.start = p.date;
-          event.allDay = p.allDay;
-        } else if (line.startsWith('DTEND')) {
-          event.end = parseDT(line).date;
-        } else if (line.startsWith('SUMMARY')) {
-          event.summary = line.split(':').slice(1).join(':');
-        } else if (line.startsWith('RRULE')) {
-          event.rrule = parseRRULE(line);
-        } else if (line.startsWith('EXDATE')) {
-          event.exdates.push(line.split(':').pop().slice(0, 8));
+          event = null;
+        } else if (event) {
+          if (line.startsWith('DTSTART')) { const p = parseDT(line); event.start = p.date; event.allDay = p.allDay; }
+          else if (line.startsWith('DTEND')) { event.end = parseDT(line).date; }
+          else if (line.startsWith('SUMMARY')) { event.summary = line.split(':').slice(1).join(':'); }
+          else if (line.startsWith('LOCATION')) { event.location = line.split(':').slice(1).join(':').replace(/\\,/g, ',').replace(/\\\\/g, '\\'); }
+          else if (line.startsWith('RRULE')) { event.rrule = parseRRULE(line); }
+          else if (line.startsWith('EXDATE')) { event.exdates.push(line.split(':').pop().slice(0, 8)); }
         }
       }
+
+      dayEvents.sort((a, b) => {
+        if (a.allDay && !b.allDay) return -1;
+        if (!a.allDay && b.allDay) return 1;
+        return (a.start || 0) - (b.start || 0);
+      });
+
+      let label;
+      if (d === 0) label = lang === 'de' ? 'Heute' : lang === 'es' ? 'Hoy' : 'Today';
+      else if (d === 1) label = lang === 'de' ? 'Morgen' : lang === 'es' ? 'Mañana' : 'Tomorrow';
+      else label = dayNamesShort[dow];
+
+      _multiDayCache.push({ date, label, dayName: dayNamesShort[dow], events: dayEvents });
     }
 
-    // Filter and sort
-    const patterns = (config.hidePatterns || []).map(p => new RegExp(p, 'i'));
-    const filtered = tomorrowEvents.filter(ev => !patterns.some(re => re.test(ev.summary || '')));
-    filtered.sort((a, b) => {
-      if (a.allDay && !b.allDay) return -1;
-      if (!a.allDay && b.allDay) return 1;
-      return (a.start || 0) - (b.start || 0);
-    });
+    renderDayTabs();
+    renderWeekStrip();
+  }
 
+  function switchDay(idx) {
+    _selectedDay = idx;
+    renderDayTabs();
+    // Re-render main event list for selected day
+    const config = HOMEBOARD_CONFIG.calendar;
+    const dayData = _multiDayCache[idx];
+    if (dayData) {
+      render(dayData.events.slice(0, config.maxEvents));
+      // Update card header title
+      const headerLabel = document.querySelector('.card-calendar .card-header span[data-i18n="calendar_title"]');
+      if (headerLabel) headerLabel.textContent = dayData.label;
+    }
+  }
+
+  function renderDayTabs() {
     const previewEl = document.getElementById('calendar-tomorrow');
     if (!previewEl) return;
 
-    if (filtered.length === 0) {
-      previewEl.innerHTML = '';
-      return;
-    }
-
-    const lang = Lang.get();
-    const label = lang === 'de' ? 'Morgen' : lang === 'es' ? 'Mañana' : 'Tomorrow';
-
-    // Build full event list for tomorrow
-    const eventListHtml = filtered.map(ev => {
-      const time = (!ev.allDay && ev.start)
-        ? `<span class="event-time">${ev.start.getHours().toString().padStart(2,'0')}:${ev.start.getMinutes().toString().padStart(2,'0')}</span>`
-        : '';
-      return `<li>${time}${ev.summary || 'Untitled'}</li>`;
+    // Show tabs for first 3 days
+    const tabs = _multiDayCache.slice(0, 3).map((day, i) => {
+      const active = i === _selectedDay ? ' cal-tab-active' : '';
+      const count = day.events.length;
+      const badge = count > 0 ? `<span class="cal-tab-count">${count}</span>` : '';
+      return `<button class="cal-tab${active}" onclick="Calendar.switchDay(${i})">${day.label} ${badge}</button>`;
     }).join('');
 
-    // Collapsed: show count + first event, clickable to expand
-    const first = filtered[0];
-    const firstTime = (!first.allDay && first.start)
-      ? `${first.start.getHours().toString().padStart(2,'0')}:${first.start.getMinutes().toString().padStart(2,'0')} `
-      : '';
-    const countBadge = filtered.length > 1 ? `<span class="tomorrow-count">${filtered.length}</span>` : '';
+    previewEl.innerHTML = `<div class="cal-tabs">${tabs}</div>`;
+  }
 
-    previewEl.innerHTML = `<div class="calendar-tomorrow-header" onclick="document.getElementById('tomorrow-events').classList.toggle('open')">
-      <span class="calendar-tomorrow-label">${label}: ${countBadge}</span> ${firstTime}${first.summary}
-      ${filtered.length > 1 ? '<span class="tomorrow-toggle">▾</span>' : ''}
-    </div>
-    <ul class="tomorrow-list" id="tomorrow-events">${eventListHtml}</ul>`;
+  function renderWeekStrip() {
+    const previewEl = document.getElementById('calendar-tomorrow');
+    if (!previewEl) return;
+
+    // Mini week overview: 7 days with dots
+    const stripHtml = _multiDayCache.map((day, i) => {
+      const isToday = i === 0;
+      const isSelected = i === _selectedDay;
+      const dots = Math.min(day.events.length, 4);
+      const dotHtml = dots > 0
+        ? Array(dots).fill('<span class="cal-week-dot"></span>').join('')
+        : '<span class="cal-week-dot cal-week-dot-empty"></span>';
+      return `<div class="cal-week-day ${isToday ? 'cal-week-today' : ''} ${isSelected ? 'cal-week-selected' : ''}" onclick="Calendar.switchDay(${i})">
+        <span class="cal-week-name">${day.dayName}</span>
+        <span class="cal-week-date">${day.date.getDate()}</span>
+        <div class="cal-week-dots">${dotHtml}</div>
+      </div>`;
+    }).join('');
+
+    previewEl.innerHTML += `<div class="cal-week-strip">${stripHtml}</div>`;
   }
 
   function render(events) {
@@ -446,5 +524,5 @@ const Calendar = (() => {
     return (h ? parseInt(h[1]) * 60 : 0) + (m ? parseInt(m[1]) : 0);
   }
 
-  return { init };
+  return { init, switchDay };
 })();
