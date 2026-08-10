@@ -201,6 +201,7 @@ const Weather = (() => {
 
     // Skip today (index 0), show configured forecast days
     const numDays = HOMEBOARD_CONFIG.weather.forecastDays || 4;
+    const todayHigh = Math.round(daily.temperature_2m_max[0]);
     container.innerHTML = daily.time.slice(1, numDays + 1).map((dateStr, i) => {
       const idx = i + 1;
       const date = new Date(dateStr + 'T12:00:00');
@@ -210,10 +211,16 @@ const Weather = (() => {
       const low = Math.round(daily.temperature_2m_min[idx]);
       const icon = WMO_ICONS[code] || '\u2600\uFE0F';
 
+      // Warmer/colder than today indicator
+      const diff = high - todayHigh;
+      let trend = '';
+      if (diff >= 3) trend = '<span class="forecast-trend forecast-warmer">↑</span>';
+      else if (diff <= -3) trend = '<span class="forecast-trend forecast-colder">↓</span>';
+
       return `<div class="forecast-day">
         <span class="forecast-name">${day}</span>
         <span class="forecast-icon">${icon}</span>
-        <span class="forecast-temps">${high}\u00B0 <small>${low}\u00B0</small></span>
+        <span class="forecast-temps">${high}\u00B0 <small>${low}\u00B0</small>${trend}</span>
       </div>`;
     }).join('');
   }
