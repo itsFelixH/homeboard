@@ -129,11 +129,29 @@ const Weather = (() => {
     const feelsEl = document.getElementById('weather-feels');
     if (feelsEl) feelsEl.textContent = `${feelsLike}\u00B0`;
 
-    // Clothing suggestion
+    // Clothing suggestion + weather warnings
     const clothingEl = document.getElementById('weather-clothing');
     if (clothingEl) {
       if (HOMEBOARD_CONFIG.weather.showClothing !== false) {
-        clothingEl.textContent = getClothingSuggestion(current.apparent_temperature, code, lang);
+        const suggestions = [];
+        const clothing = getClothingSuggestion(current.apparent_temperature, code, lang);
+        if (clothing) suggestions.push(clothing);
+
+        // Strong wind warning
+        const windSpeed = current.wind_speed_10m || 0;
+        if (windSpeed >= 50) {
+          suggestions.push(lang === 'de' ? '💨 Starker Wind — Balkon sichern' : '💨 Strong wind — secure balcony');
+        } else if (windSpeed >= 35) {
+          suggestions.push(lang === 'de' ? '💨 Böiger Wind' : '💨 Gusty wind');
+        }
+
+        // Heat warning
+        const feelsLike = current.apparent_temperature;
+        if (feelsLike >= 32) {
+          suggestions.push(lang === 'de' ? '🥵 Viel trinken, Sonne meiden' : '🥵 Stay hydrated, avoid sun');
+        }
+
+        clothingEl.textContent = suggestions.join(' · ');
       } else {
         clothingEl.textContent = '';
       }
