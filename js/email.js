@@ -1,42 +1,60 @@
 /**
- * Email module - shows unread email count
- * Uses Gmail Atom feed via proxy (requires app-specific password)
- * Configure: gmail address + app password in config
- * 
- * To get an app password: Google Account > Security > 2-Step Verification > App passwords
- * The proxy fetches https://mail.google.com/mail/feed/atom with Basic Auth
+ * Email module - Gmail unread count via OAuth2
+ * Uses server-side /api/gmail/unread endpoint (OAuth2 token managed by server)
+ * First-time setup: click "Connect Gmail" to authorize via Google
  */
 const Email = (() => {
   let refreshInterval;
 
-  function init() {
+  async function init() {
     const config = HOMEBOARD_CONFIG.email;
-    if (!config || !config.address) return;
-    fetchCount();
-    refreshInterval = setInterval(fetchCount, (config.refreshMinutes || 5) * 60 * 1000);
+    if (!config || !config.clientId) return;
+
+    // Check if Gmail is connected
+    const connected = await checkStatus();
+    if (connected) {
+      fetchCount();
+      refreshInterval = setInterval(fetchCount, (config.refreshMinutes || 5) * 60 * 1000);
+    } else {
+      showConnectButton();
+    }
+  }
+
+  async function checkStatus() {
+    try {
+      const res = await fetch('/api/gmail/status');
+      if (!res.ok) return false;
+      const data = await res.json();
+      return data.connected === true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function showConnectButton() {
+    const container = document.getElementById('email-content');
+    container.innerHTML = `<a href="/auth/gmail" class="email-link email-connect">
+      <span class="email-icon">🔗</span>
+      <span class="email-label">Connect Gmail</span>
+    </a>`;
   }
 
   async function fetchCount() {
-    const config = HOMEBOARD_CONFIG.email;
     const container = document.getElementById('email-content');
 
     try {
-      // Use proxy with Basic Auth header
-      const credentials = btoa(`${config.address}:${config.appPassword}`);
-      const feedUrl = 'https://mail.google.com/mail/feed/atom';
-      const url = `/proxy?url=${encodeURIComponent(feedUrl)}&auth=${credentials}`;
-
-      const res = await fetch(url);
+      const res = await fetch('/api/gmail/unread');
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const text = await res.text();
+      const data = await res.json();
 
-      // Parse the Atom XML for fullcount
-      const match = text.match(/<fullcount>(\d+)<\/fullcount>/);
-      const count = match ? parseInt(match[1]) : 0;
-      render(count);
+      if (data.error === 'not_connected' || data.error === 'token_expired') {
+        showConnectButton();
+        return;
+      }
+
+      render(data.count || 0);
     } catch (err) {
       console.error('Email fetch failed:', err);
-      // Show manual fallback or error
       container.innerHTML = `<a href="https://mail.google.com" target="_blank" class="email-link">
         <span class="email-icon">📧</span>
         <span class="email-label">Open Gmail</span>
