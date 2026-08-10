@@ -1,0 +1,236 @@
+# ============================================================
+# Homeboard Configuration
+# ============================================================
+# Copy this file to config.local.yaml and fill in your values.
+# config.local.yaml is gitignored so your personal data stays private.
+#
+# Usage:
+#   cp config.template.yaml config.local.yaml
+# ============================================================
+
+# ------------------------------------------------------------
+# Cards
+# ------------------------------------------------------------
+# Controls which cards are shown, their display order, and per-card settings.
+# - The order of entries here determines the layout order on the dashboard.
+# - Set enabled: false to hide a card entirely (it won't load or render).
+# - Each card can have additional settings that override module defaults.
+#
+cards:
+  weather:
+    enabled: true
+    units: celsius          # 'celsius' or 'fahrenheit'
+    refreshMinutes: 15
+    showClothing: true      # Show clothing suggestion based on weather
+    showForecast: true      # Show 4-day forecast row
+    forecastDays: 4         # Number of forecast days (1-7)
+
+  rain:
+    enabled: true
+    refreshMinutes: 15
+    forecastHours: 12       # How many hours ahead to show (1-24)
+
+  departures:
+    enabled: true
+    refreshSeconds: 30
+    durationMinutes: 30     # Time window for departures
+    maxResults: 5           # Max departures per direction
+    # stops: configured below in the departures section
+
+  commute:
+    enabled: true
+    refreshMinutes: 10
+    showBike: true          # Show cycling route
+    showTransit: true       # Show public transit route
+    bikeSpeedFactor: 1.5    # Multiply OSRM estimate (1.0 = optimistic, 1.5 = realistic)
+
+  aqi:
+    enabled: true
+    refreshMinutes: 30
+
+  uv:
+    enabled: true
+    refreshMinutes: 30
+
+  pollen:
+    enabled: true
+    refreshMinutes: 60
+    # Which pollen types to track (empty = auto-detect active ones)
+    types: []               # e.g. ['grass', 'birch', 'alder', 'mugwort', 'ragweed', 'olive']
+
+  plants:
+    enabled: true
+    warningDays: 7          # Show warning after this many days without watering
+
+  calendar:
+    enabled: true
+    maxEvents: 5
+    refreshMinutes: 30
+    showTomorrow: true      # Show preview of tomorrow's first event
+    showCommute: true       # Show bike/transit time for events with locations
+    hidePatterns: []        # Regex patterns to filter out events, e.g. ['Arbeit', 'Meeting']
+
+  birthdays:
+    enabled: true
+    refreshMinutes: 60
+    lookaheadDays: 7        # How many days ahead to show upcoming birthdays
+
+  countdown:
+    enabled: true
+    maxVacations: 3         # How many upcoming vacations to show
+    keyword: Urlaub         # Calendar event keyword to detect vacations
+
+  news:
+    enabled: true
+    refreshMinutes: 10
+    perPage: 5              # Articles per page
+    cycleSeconds: 30        # Auto-advance interval
+    defaultCategory: homepage  # Starting category: homepage, inland, ausland, wirtschaft, sport
+
+  word:
+    enabled: true
+
+  spell:
+    enabled: true
+    cycleSeconds: 60        # Auto-rotate interval between HP content types
+
+  history:
+    enabled: true
+    minYear: 1500           # Prefer events after this year
+
+  trash:
+    enabled: true
+    refreshHours: 6
+    previewDays: 7          # How many days ahead to show in the calendar view
+
+  github:
+    enabled: true
+    refreshMinutes: 30
+    maxEvents: 4            # Max activity items to show
+
+  xkcd:
+    enabled: true
+
+  packages:
+    enabled: true
+    refreshMinutes: 30
+
+  email:
+    enabled: true
+    refreshMinutes: 5
+
+  slideshow:
+    enabled: true
+    intervalSeconds: 30
+
+# ------------------------------------------------------------
+# Location (used by weather, rain, sunrise/sunset, AQI, UV, pollen)
+# ------------------------------------------------------------
+location:
+  latitude: 0
+  longitude: 0
+
+# ------------------------------------------------------------
+# Greeting
+# ------------------------------------------------------------
+greeting:
+  name: ''                  # Your first name (shown in greeting)
+
+# ------------------------------------------------------------
+# Commute destinations
+# ------------------------------------------------------------
+commute:
+  origin:
+    latitude: 0
+    longitude: 0
+  destinations: []
+  # Example:
+  # destinations:
+  #   - label: Office
+  #     latitude: 52.50
+  #     longitude: 13.40
+  #   - label: University
+  #     latitude: 52.51
+  #     longitude: 13.39
+
+# ------------------------------------------------------------
+# Calendar - ICS feed
+# For Google Calendar: Settings > Calendar > "Secret address in iCal format"
+# ------------------------------------------------------------
+calendar:
+  icsUrl: ''
+
+# ------------------------------------------------------------
+# Birthdays - separate ICS calendar for birthday reminders
+# If event descriptions contain URLs, social icons are shown automatically.
+# ------------------------------------------------------------
+birthdays:
+  icsUrl: ''
+
+# ------------------------------------------------------------
+# Slideshow - image paths (relative or absolute URLs)
+# ------------------------------------------------------------
+slideshow:
+  images: []               # Empty = random placeholders from picsum.photos
+
+# ------------------------------------------------------------
+# Transit departures - multiple stops with interactive switching
+# Find your stop: https://v6.vbb.transport.rest/locations?query=YOUR+STOP
+# Product filters: suburban (S-Bahn), subway (U-Bahn), bus, tram, regional, express (ICE/IC)
+# ------------------------------------------------------------
+departures:
+  hafasAccessId: ''         # VBB HAFAS API key (optional, free at vbb.de)
+  stops: []
+  # Example:
+  # stops:
+  #   - id: '900024203'
+  #     label: S Savignyplatz
+  #     splitView: true
+  #     splitLabels: ['Stadtmitte ←', 'Westkreuz →']
+  #     splitKeywords: ['Spandau', 'Westkreuz']
+  #     products:
+  #       suburban: true
+
+# ------------------------------------------------------------
+# Vacation countdown
+# Auto-detects vacation events from calendar (keyword configured in cards.countdown)
+# Click the pencil icon on the dashboard to rename vacations (saved in localStorage)
+# ------------------------------------------------------------
+countdown:
+  date: ''                  # Manual fallback: 'YYYY-MM-DD'
+  label: Vacation           # Fallback label
+  names: {}
+  # Custom names by date (also editable via GUI):
+  # names:
+  #   '2026-09-17': Barcelona
+  #   '2026-12-20': Weihnachten
+
+# ------------------------------------------------------------
+# Trash pickup schedule
+# Berlin: download ICS from https://www.bsr.de/abfuhrkalender-20520.php
+# Place in data/ folder and reference as '/data/Abfuhrkalender.ics'
+# ------------------------------------------------------------
+trash:
+  icsUrl: ''               # Local path '/data/Abfuhrkalender.ics' or remote URL
+
+# ------------------------------------------------------------
+# Package tracking (localStorage-based, DHL/Hermes/DPD)
+# Add packages via the form on the dashboard
+# ------------------------------------------------------------
+packages:
+  dhlApiKey: ''             # Optional: DHL API key for live status
+
+# ------------------------------------------------------------
+# GitHub activity feed (public events)
+# ------------------------------------------------------------
+github:
+  username: ''
+
+# ------------------------------------------------------------
+# Email unread count (Gmail Atom feed)
+# Requires: Google account with 2FA + App Password
+# Get app password: Google Account > Security > 2-Step Verification > App passwords
+# ------------------------------------------------------------
+email:
+  address: ''              # Gmail address
+  appPassword: ''          # App-specific password (NOT your regular password)
