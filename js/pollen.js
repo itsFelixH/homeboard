@@ -63,6 +63,22 @@ const Pollen = (() => {
         <span class="pollen-level" style="color:${level.color}">${level.label}</span>
       </div>`;
     }).join('');
+
+    // Actionable recommendation
+    const lang = Lang.get();
+    const highTypes = types.filter(t => (current[t.key] || 0) > 30);
+    let rec = '';
+    if (highTypes.length > 0) {
+      const names = highTypes.map(t => t.name).join(', ');
+      rec = lang === 'de'
+        ? `💊 Antihistaminikum empfohlen (${names})`
+        : `💊 Consider antihistamine (${names})`;
+    } else if (types.some(t => (current[t.key] || 0) > 10)) {
+      rec = lang === 'de' ? '😮‍💨 Fenster geschlossen halten' : '😮‍💨 Keep windows closed';
+    }
+    if (rec) {
+      container.innerHTML += `<div class="metric-rec">${rec}</div>`;
+    }
   }
 
   return { init };
