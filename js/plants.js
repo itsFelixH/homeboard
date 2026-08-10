@@ -37,6 +37,10 @@ const Plants = (() => {
     const daysSince = Math.floor((now - last) / (1000 * 60 * 60 * 24));
 
     let statusText, statusClass;
+    const warningDays = (HOMEBOARD_CONFIG.plants && HOMEBOARD_CONFIG.plants.warningDays) || 7;
+    const soonDays = Math.max(warningDays - 2, 3);
+    let rec = '';
+
     if (daysSince === 0) {
       statusText = lang === 'de' ? 'Heute gegossen ✓' : 'Watered today ✓';
       statusClass = 'plants-status-ok';
@@ -45,14 +49,18 @@ const Plants = (() => {
       statusClass = 'plants-status-ok';
     } else {
       statusText = lang === 'de' ? `Vor ${daysSince} Tagen gegossen` : `${daysSince} days ago`;
-      const warningDays = (HOMEBOARD_CONFIG.plants && HOMEBOARD_CONFIG.plants.warningDays) || 7;
-      const soonDays = Math.max(warningDays - 2, 3);
       statusClass = daysSince >= warningDays ? 'plants-status-overdue' : daysSince >= soonDays ? 'plants-status-soon' : 'plants-status-ok';
+      if (daysSince >= warningDays) {
+        rec = lang === 'de' ? '💧 Jetzt gießen!' : '💧 Water them now!';
+      } else if (daysSince >= soonDays) {
+        rec = lang === 'de' ? '🪴 Morgen gießen' : '🪴 Water tomorrow';
+      }
     }
 
     container.innerHTML = `<div class="plants-display">
       <div class="plants-info">
-        <span class="plants-status ${statusClass}">${daysSince >= ((HOMEBOARD_CONFIG.plants && HOMEBOARD_CONFIG.plants.warningDays) || 7) ? '⚠️' : '🌱'} ${statusText}</span>
+        <span class="plants-status ${statusClass}">${daysSince >= warningDays ? '⚠️' : '🌱'} ${statusText}</span>
+        ${rec ? `<span class="metric-rec">${rec}</span>` : ''}
       </div>
       <button class="plants-water-btn-main" onclick="Plants.waterNow()">💧</button>
     </div>`;
