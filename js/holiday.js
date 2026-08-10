@@ -174,12 +174,19 @@ const Holiday = (() => {
       const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 
       let daysText, sublabel;
+      const lang = Lang.get();
       if (diffDays < 0) {
         daysText = '\u2714';
         sublabel = i18n('countdown_started') || 'Already started!';
       } else if (diffDays === 0) {
         daysText = '\uD83C\uDF89';
         sublabel = i18n('countdown_today') || 'Today!';
+      } else if (diffDays === 1) {
+        daysText = diffDays;
+        sublabel = lang === 'de' ? '🧳 Koffer packen!' : '🧳 Pack your bags!';
+      } else if (diffDays <= 3) {
+        daysText = diffDays;
+        sublabel = lang === 'de' ? '✈️ Bald gehts los!' : '✈️ Almost there!';
       } else {
         daysText = diffDays;
         sublabel = '';
