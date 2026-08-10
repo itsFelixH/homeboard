@@ -8,40 +8,31 @@
  *   name: Display Name
  *   icon: "🎨"
  *   colors:
- *     bg: "#09090b"
- *     surface: "#18181b"
- *     ...
+ *     bg, surface, surface-hover, border
+ *     text, text-muted, text-faint
+ *     accent, accent-dim, highlight
+ *     ok, warning, danger
  *   style:
- *     font: "'Inter', sans-serif"
- *     monoFont: "'JetBrains Mono', monospace"
- *     radius: "14px"
- *     gap: "12px"
- *     cardShadow: "none"
- *     cardBorder: true
- *     headerWeight: "600"
- *     animation: true
- *     textShadow: "none"
+ *     font, radius, spacing, shadow
+ *     borders, header-weight, transitions, glow
  */
 const Themes = (() => {
-  let _themes = {}; // id -> { name, icon, colors, style }
+  let _themes = {};
   let _current = 'dark';
   let _ready = false;
   const _onReady = [];
 
-  // Defaults for style settings (used when theme doesn't specify them)
   const STYLE_DEFAULTS = {
     font: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-    monoFont: "'JetBrains Mono', monospace",
     radius: '14px',
-    gap: '12px',
-    cardShadow: 'none',
-    cardBorder: true,
-    headerWeight: '600',
-    animation: true,
-    textShadow: 'none'
+    spacing: '12px',
+    shadow: 'none',
+    borders: true,
+    'header-weight': '600',
+    transitions: true,
+    glow: 'none'
   };
 
-  /** Load all themes from server */
   async function load() {
     try {
       const indexRes = await fetch('themes/index.yaml');
@@ -71,10 +62,6 @@ const Themes = (() => {
             colors: theme.colors,
             style: { ...STYLE_DEFAULTS, ...(theme.style || {}) }
           };
-          // Legacy: support top-level "font" key
-          if (theme.font && !theme.style?.font) {
-            _themes[theme.id].style.font = theme.font;
-          }
         }
       }
     } catch (e) {
@@ -83,9 +70,9 @@ const Themes = (() => {
         name: 'Dark', icon: '🌙',
         colors: {
           bg: '#09090b', surface: '#18181b', 'surface-hover': '#1f1f23',
-          border: '#27272a', text: '#fafafa', 'text-2': '#a1a1aa',
-          'text-3': '#71717a', accent: '#6366f1', 'accent-dim': '#6366f120',
-          cyan: '#06b6d4', green: '#10b981', amber: '#f59e0b', red: '#ef4444'
+          border: '#27272a', text: '#fafafa', 'text-muted': '#a1a1aa',
+          'text-faint': '#71717a', accent: '#a78bfa', 'accent-dim': '#a78bfa12',
+          highlight: '#a78bfa', ok: '#a78bfa', warning: '#a78bfaaa', danger: '#f87171'
         },
         style: { ...STYLE_DEFAULTS }
       };
@@ -95,7 +82,6 @@ const Themes = (() => {
     _onReady.forEach(fn => fn());
   }
 
-  /** Apply a theme by id */
   function apply(id) {
     const theme = _themes[id] || _themes.dark || Object.values(_themes)[0];
     if (!theme) return;
@@ -103,27 +89,34 @@ const Themes = (() => {
     _current = id;
     const root = document.documentElement;
 
-    // Apply color variables
-    for (const [key, value] of Object.entries(theme.colors)) {
+    // Apply color variables (maps YAML names to CSS --vars)
+    // Also set legacy aliases so existing CSS rules still work
+    const colors = theme.colors;
+    for (const [key, value] of Object.entries(colors)) {
       root.style.setProperty(`--${key}`, value);
     }
+    // Legacy aliases (CSS still uses --text-2, --text-3, --cyan, --green, --amber, --red, --gap)
+    if (colors['text-muted']) root.style.setProperty('--text-2', colors['text-muted']);
+    if (colors['text-faint']) root.style.setProperty('--text-3', colors['text-faint']);
+    if (colors['highlight']) root.style.setProperty('--cyan', colors['highlight']);
+    if (colors['ok']) root.style.setProperty('--green', colors['ok']);
+    if (colors['warning']) root.style.setProperty('--amber', colors['warning']);
+    if (colors['danger']) root.style.setProperty('--red', colors['danger']);
 
-    // Apply style settings as CSS variables
+    // Apply style settings
     const s = theme.style;
     root.style.setProperty('--radius', s.radius);
-    root.style.setProperty('--gap', s.gap);
-    root.style.setProperty('--card-shadow', s.cardShadow);
-    root.style.setProperty('--card-border-width', s.cardBorder ? '1px' : '0');
-    root.style.setProperty('--header-weight', s.headerWeight);
-    root.style.setProperty('--text-shadow', s.textShadow);
-    root.style.setProperty('--theme-font', s.font);
-    root.style.setProperty('--mono-font', s.monoFont);
+    root.style.setProperty('--gap', s.spacing);
+    root.style.setProperty('--card-shadow', s.shadow);
+    root.style.setProperty('--card-border-width', s.borders ? '1px' : '0');
+    root.style.setProperty('--header-weight', s['header-weight']);
+    root.style.setProperty('--text-shadow', s.glow);
 
     // Apply font to body
     document.body.style.fontFamily = s.font;
 
-    // Animation toggle
-    if (!s.animation) {
+    // Transitions toggle
+    if (!s.transitions) {
       root.style.setProperty('--transition', 'none');
       root.style.setProperty('--hover-transform', 'none');
     } else {
@@ -135,17 +128,14 @@ const Themes = (() => {
     root.setAttribute('data-theme', id);
   }
 
-  /** Get current theme id */
   function current() {
     return _current;
   }
 
-  /** Get all loaded themes */
   function all() {
     return _themes;
   }
 
-  /** Register a callback for when themes finish loading */
   function onReady(fn) {
     if (_ready) fn();
     else _onReady.push(fn);
