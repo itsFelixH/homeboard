@@ -55,30 +55,48 @@ const Pollen = (() => {
     const display = active.length > 0 ? active : types.slice(0, 3);
 
     const container = document.getElementById('pollen-list');
-    container.innerHTML = display.map(t => {
-      const value = current[t.key] || 0;
-      const level = LEVELS.find(l => value <= l.max) || LEVELS[LEVELS.length - 1];
-      return `<div class="pollen-item">
-        <span class="pollen-type">${t.emoji} ${t.name}</span>
-        <span class="pollen-level" style="color:${level.color}">${level.label}</span>
-      </div>`;
-    }).join('');
 
-    // Actionable recommendation
-    const lang = Lang.get();
-    const highTypes = types.filter(t => (current[t.key] || 0) > 30);
-    let rec = '';
-    if (highTypes.length > 0) {
-      const names = highTypes.map(t => t.name).join(', ');
-      rec = lang === 'de'
-        ? `💊 Antihistaminikum empfohlen (${names})`
-        : `💊 Consider antihistamine (${names})`;
-    } else if (types.some(t => (current[t.key] || 0) > 10)) {
-      rec = lang === 'de' ? '😮‍💨 Fenster geschlossen halten' : '😮‍💨 Keep windows closed';
-    }
-    if (rec) {
-      container.innerHTML += `<div class="metric-rec">${rec}</div>`;
-    }
+    // Get previous values for trend
+    State.get('pollen_previous').then(prev => {
+      const prevData = prev || {};
+
+      container.innerHTML = display.map(t => {
+        const value = current[t.key] || 0;
+        const level = LEVELS.find(l => value <= l.max) || LEVELS[LEVELS.length - 1];
+        // Trend arrow
+        let trend = '';
+        const prevVal = prevData[t.key];
+        if (prevVal !== undefined) {
+          if (value > prevVal + 5) trend = ' <span class="forecast-warmer">↑</span>';
+          else if (value < prevVal - 5) trend = ' <span class="forecast-colder">↓</span>';
+        }
+        return `<div class="pollen-item">
+          <span class="pollen-type">${t.emoji} ${t.name}</span>
+          <span class="pollen-level" style="color:${level.color}">${level.label}${trend}</span>
+        </div>`;
+      }).join('');
+
+      // Actionable recommendation
+      const lang = Lang.get();
+      const highTypes = types.filter(t => (current[t.key] || 0) > 30);
+      let rec = '';
+      if (highTypes.length > 0) {
+        const names = highTypes.map(t => t.name).join(', ');
+        rec = lang === 'de'
+          ? `💊 Antihistaminikum empfohlen (${names})`
+          : `💊 Consider antihistamine (${names})`;
+      } else if (types.some(t => (current[t.key] || 0) > 10)) {
+        rec = lang === 'de' ? '😮‍💨 Fenster geschlossen halten' : '😮‍💨 Keep windows closed';
+      }
+      if (rec) {
+        container.innerHTML += `<div class="metric-rec">${rec}</div>`;
+      }
+
+      // Store current values for next comparison
+      const toStore = {};
+      types.forEach(t => { toStore[t.key] = current[t.key] || 0; });
+      State.set('pollen_previous', toStore);
+    });
   }
 
   return { init };
