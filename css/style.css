@@ -369,23 +369,34 @@ body {
 .event-allday-row { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px 0 8px; border-bottom: 1px solid var(--border); }
 .event-allday-pill { display: inline-block; background: var(--accent-dim); color: var(--accent); font-size: 0.65rem; font-weight: 600; padding: 3px 8px; border-radius: 100px; text-decoration: none; }
 .event-allday-pill:hover { background: var(--accent); color: var(--bg); }
-.event-until { font-size: 0.6rem; color: var(--text-3); background: var(--surface-hover); padding: 2px 6px; border-radius: 100px; margin-left: 6px; white-space: nowrap; }
+.event-until { font-size: 0.6rem; color: var(--accent); background: var(--accent-dim); padding: 2px 6px; border-radius: 100px; margin-left: 6px; white-space: nowrap; font-weight: 600; }
 .event-placeholder { color: var(--text-3); font-style: italic; }
 .event-time { color: var(--accent); font-weight: 600; margin-right: 6px; font-size: 0.7rem; }
-.event-commute { font-size: 0.62rem; color: var(--accent); padding-left: 2px; }
+.event-commute { font-size: 0.62rem; color: var(--text-3); padding-left: 2px; margin-top: 2px; }
 .event-commute:empty { display: none; }
-.event-commute-sep { color: var(--text-3); }
+.event-route-line { display: flex; align-items: center; gap: 3px; flex-wrap: wrap; padding: 1px 0; }
+.event-route-leg { background: var(--surface-hover); border: 1px solid var(--border); padding: 1px 5px; border-radius: 3px; font-size: 0.58rem; font-weight: 600; }
+.event-route-to { font-size: 0.55rem; color: var(--text-3); }
+.event-route-walk { font-size: 0.55rem; color: var(--text-3); }
+.event-route-arrow { color: var(--text-3); font-size: 0.5rem; }
 .event-leave { font-weight: 600; }
-.calendar-tomorrow { font-size: 0.7rem; color: var(--text-3); padding-top: 8px; margin-top: 8px; border-top: 1px solid var(--border); min-height: 0; }
+.calendar-tomorrow { font-size: 0.7rem; padding-top: 10px; margin-top: 10px; border-top: 1px solid var(--border); }
 .calendar-tomorrow:empty { display: none; }
-.calendar-tomorrow-header { cursor: pointer; display: flex; align-items: center; gap: 4px; }
-.calendar-tomorrow-header:hover { color: var(--text-2); }
-.calendar-tomorrow-label { font-weight: 600; color: var(--text-2); }
-.tomorrow-count { background: var(--accent-dim); color: var(--accent); font-size: 0.58rem; font-weight: 700; padding: 1px 5px; border-radius: 100px; }
-.tomorrow-toggle { color: var(--text-3); font-size: 0.6rem; margin-left: auto; }
-.tomorrow-list { list-style: none; max-height: 0; overflow: hidden; transition: max-height 0.3s; padding: 0; margin: 0; }
-.tomorrow-list.open { max-height: 300px; margin-top: 6px; }
-.tomorrow-list li { padding: 2px 0; color: var(--text-2); }
+.cal-tabs { display: flex; gap: 4px; margin-bottom: 8px; }
+.cal-tab { background: none; border: 1px solid var(--border); border-radius: 100px; color: var(--text-3); font-size: 0.62rem; font-family: inherit; padding: 3px 10px; cursor: pointer; transition: all 0.2s; }
+.cal-tab:hover { border-color: var(--accent); color: var(--accent); }
+.cal-tab-active { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+.cal-tab-count { font-size: 0.55rem; font-weight: 700; margin-left: 3px; }
+.cal-week-strip { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.cal-week-day { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 4px 2px; border-radius: 6px; cursor: pointer; transition: background 0.2s; }
+.cal-week-day:hover { background: var(--surface-hover); }
+.cal-week-today { background: var(--accent-dim); }
+.cal-week-selected { border: 1px solid var(--accent); }
+.cal-week-name { font-size: 0.5rem; font-weight: 600; color: var(--text-3); text-transform: uppercase; }
+.cal-week-date { font-size: 0.65rem; font-weight: 500; color: var(--text-2); }
+.cal-week-dots { display: flex; gap: 2px; }
+.cal-week-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--accent); }
+.cal-week-dot-empty { background: var(--border); }
 
 /* === BIRTHDAYS === */
 .birthdays-list { display: flex; flex-direction: column; gap: 6px; }
