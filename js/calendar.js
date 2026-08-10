@@ -336,14 +336,29 @@ const Calendar = (() => {
       return;
     }
 
-    const first = filtered[0];
     const lang = Lang.get();
     const label = lang === 'de' ? 'Morgen' : lang === 'es' ? 'Mañana' : 'Tomorrow';
-    const time = (!first.allDay && first.start)
+
+    // Build full event list for tomorrow
+    const eventListHtml = filtered.map(ev => {
+      const time = (!ev.allDay && ev.start)
+        ? `<span class="event-time">${ev.start.getHours().toString().padStart(2,'0')}:${ev.start.getMinutes().toString().padStart(2,'0')}</span>`
+        : '';
+      return `<li>${time}${ev.summary || 'Untitled'}</li>`;
+    }).join('');
+
+    // Collapsed: show count + first event, clickable to expand
+    const first = filtered[0];
+    const firstTime = (!first.allDay && first.start)
       ? `${first.start.getHours().toString().padStart(2,'0')}:${first.start.getMinutes().toString().padStart(2,'0')} `
       : '';
+    const countBadge = filtered.length > 1 ? `<span class="tomorrow-count">${filtered.length}</span>` : '';
 
-    previewEl.innerHTML = `<span class="calendar-tomorrow-label">${label}:</span> ${time}${first.summary}`;
+    previewEl.innerHTML = `<div class="calendar-tomorrow-header" onclick="document.getElementById('tomorrow-events').classList.toggle('open')">
+      <span class="calendar-tomorrow-label">${label}: ${countBadge}</span> ${firstTime}${first.summary}
+      ${filtered.length > 1 ? '<span class="tomorrow-toggle">▾</span>' : ''}
+    </div>
+    <ul class="tomorrow-list" id="tomorrow-events">${eventListHtml}</ul>`;
   }
 
   function render(events) {
