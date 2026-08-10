@@ -142,9 +142,12 @@ const Departures = (() => {
     const stop = current.stop;
     const departures = current.departures;
 
-    // Update header label
+    // Update header label with walk time
     const headerLabel = document.querySelector('.card-departures .card-header span[data-i18n="departures"]');
-    if (headerLabel) headerLabel.textContent = stop.label;
+    if (headerLabel) {
+      const walkBadge = stop.walkMinutes ? ` <small class="dep-walk">🚶${stop.walkMinutes}′</small>` : '';
+      headerLabel.innerHTML = `${stop.label}${walkBadge}`;
+    }
 
     // Arrow navigation
     let navHtml = '';
@@ -185,8 +188,8 @@ const Departures = (() => {
 
       const { east, west } = splitByDirection(departures, stop);
       const max = config.maxResults || 5;
-      renderTable('departures-east', east.slice(0, max));
-      renderTable('departures-west', west.slice(0, max));
+      renderTable('departures-east', east.slice(0, max), stop);
+      renderTable('departures-west', west.slice(0, max), stop);
     } else {
       // List view
       if (splitEl) splitEl.style.display = 'none';
@@ -200,7 +203,7 @@ const Departures = (() => {
       if (lv) {
         lv.style.display = 'block';
         const max = config.maxResults || 5;
-        renderListView(lv, departures.slice(0, max));
+        renderListView(lv, departures.slice(0, max), stop);
       }
     }
   }
@@ -247,19 +250,25 @@ const Departures = (() => {
     return { east, west };
   }
 
-  function renderTable(elementId, departures) {
+  function renderTable(elementId, departures, stop) {
     const tbody = document.getElementById(elementId);
     if (!tbody) return;
 
-    if (departures.length === 0) {
+    const filtered = filterReachable(departures, stop);
+
+    if (filtered.length === 0) {
       tbody.innerHTML = `<tr><td colspan="4" class="departures-empty">--</td></tr>`;
       return;
     }
 
-    tbody.innerHTML = departures.map(dep => {
+    const walkMin = stop.walkMinutes || 0;
+    tbody.innerHTML = filtered.map(dep => {
       const delay = dep.delay > 0 ? `<span class="dep-delay">+${dep.delay}</span>` : '';
       const relTime = formatRelativeTime(dep.time);
-      return `<tr>
+      if (relTime === null) return ''; // past, skip
+      const mins = getRelativeMinutes(dep.time);
+      const dimClass = (walkMin > 0 && mins <= walkMin + 2) ? ' dep-dim' : '';
+      return `<tr class="${dimClass}">
         <td><span class="dep-line" style="background:${dep.lineColor}">${dep.line}</span></td>
         <td class="dep-direction">${dep.direction}</td>
         <td class="dep-time">${relTime}</td>
@@ -268,16 +277,22 @@ const Departures = (() => {
     }).join('');
   }
 
-  function renderListView(container, departures) {
-    if (departures.length === 0) {
+  function renderListView(container, departures, stop) {
+    const filtered = filterReachable(departures, stop);
+
+    if (filtered.length === 0) {
       container.innerHTML = `<div class="departures-empty">--</div>`;
       return;
     }
 
-    container.innerHTML = `<table class="departures-table"><tbody>${departures.map(dep => {
+    const walkMin = stop.walkMinutes || 0;
+    container.innerHTML = `<table class="departures-table"><tbody>${filtered.map(dep => {
       const delay = dep.delay > 0 ? `<span class="dep-delay">+${dep.delay}</span>` : '';
       const relTime = formatRelativeTime(dep.time);
-      return `<tr>
+      if (relTime === null) return '';
+      const mins = getRelativeMinutes(dep.time);
+      const dimClass = (walkMin > 0 && mins <= walkMin + 2) ? ' dep-dim' : '';
+      return `<tr class="${dimClass}">
         <td><span class="dep-line" style="background:${dep.lineColor}">${dep.line}</span></td>
         <td class="dep-direction">${dep.direction}</td>
         <td class="dep-time">${relTime}</td>
@@ -295,10 +310,29 @@ const Departures = (() => {
     let diff = depMinutes - nowMinutes;
     // Handle midnight wraparound
     if (diff < -720) diff += 1440;
-    if (diff < 0) return 'jetzt';
+    if (diff < 0) return null; // past — will be filtered out
     if (diff === 0) return 'jetzt';
     if (diff <= 60) return `${diff} min`;
     return timeStr.slice(0, 5);
+  }
+
+  /** Get relative minutes until departure (for filtering) */
+  function getRelativeMinutes(timeStr) {
+    if (!timeStr || timeStr === '--:--') return -1;
+    const now = new Date();
+    const [h, m] = timeStr.split(':').map(Number);
+    let diff = (h * 60 + m) - (now.getHours() * 60 + now.getMinutes());
+    if (diff < -720) diff += 1440;
+    return diff;
+  }
+
+  /** Filter departures: remove past + unreachable (< walk time) */
+  function filterReachable(departures, stop) {
+    const walkMin = stop.walkMinutes || 0;
+    return departures.filter(dep => {
+      const mins = getRelativeMinutes(dep.time);
+      return mins >= walkMin;
+    });
   }
 
   function formatTimeISO(isoString) {
