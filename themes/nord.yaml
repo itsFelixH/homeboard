@@ -1,0 +1,28 @@
+# Nord theme — Arctic, north-bluish color palette
+# Based on https://www.nordtheme.com/
+name: Nord
+icon: "❄️"
+
+colors:
+  bg: "#2e3440"
+  surface: "#3b4252"
+  surface-hover: "#434c5e"
+  border: "#4c566a"
+  text: "#eceff4"
+  text-2: "#d8dee9"
+  text-3: "#7b88a1"
+  accent: "#88c0d0"
+  accent-dim: "#88c0d020"
+  cyan: "#8fbcbb"
+  green: "#a3be8c"
+  amber: "#ebcb8b"
+  red: "#bf616a"
+
+style:
+  radius: "10px"
+  gap: "12px"
+  cardShadow: "0 2px 8px rgba(0,0,0,0.25)"
+  cardBorder: false
+  headerWeight: "500"
+  animation: true
+  textShadow: "none"
