@@ -7,6 +7,7 @@ COPY index.html favicon.svg manifest.json server.py ./
 COPY config.template.yaml ./
 COPY css/ ./css/
 COPY js/ ./js/
+COPY themes/ ./themes/
 
 EXPOSE 7070
 
