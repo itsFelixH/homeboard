@@ -123,12 +123,27 @@ const Rain = (() => {
       const opacity = precip[i] > 0 ? 1 : 0.4;
       const isCurrent = i === 0;
 
-      return `<div class="rain-bar-col ${isCurrent ? 'rain-bar-current' : ''}">
-        <div class="rain-bar" style="height:${height}%;opacity:${opacity}" title="${precip[i]}mm (${prob[i]}%)"></div>
+      return `<div class="rain-bar-col ${isCurrent ? 'rain-bar-current' : ''}" onclick="Rain.showDetail(this, '${h}:00', ${precip[i]}, ${prob[i]})">
+        <div class="rain-bar" style="height:${height}%;opacity:${opacity}"></div>
         <span class="rain-hour">${h}</span>
       </div>`;
     }).join('');
   }
 
-  return { init };
+  function showDetail(el, time, mm, pct) {
+    // Remove any existing tooltip
+    const existing = document.querySelector('.rain-tooltip');
+    if (existing) existing.remove();
+
+    // Create tooltip
+    const tip = document.createElement('div');
+    tip.className = 'rain-tooltip';
+    tip.textContent = `${time} · ${mm.toFixed(1)} mm · ${pct}%`;
+    el.appendChild(tip);
+
+    // Auto-dismiss after 3s or on next click
+    setTimeout(() => tip.remove(), 3000);
+  }
+
+  return { init, showDetail };
 })();
