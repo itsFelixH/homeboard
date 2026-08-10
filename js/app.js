@@ -10,6 +10,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Load YAML config before anything else
   await ConfigLoader.load();
 
+  // Load themes from YAML files
+  await Themes.load();
+
   Theme.init();
   Lang.init();
 
