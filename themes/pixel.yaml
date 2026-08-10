@@ -1,0 +1,29 @@
+# Pixel theme — retro 8-bit aesthetic
+name: Pixel
+icon: "👾"
+
+colors:
+  bg: "#0a0a1a"
+  surface: "#111128"
+  surface-hover: "#1a1a3a"
+  border: "#2a2a4a"
+  text: "#e0e8ff"
+  text-2: "#8888b0"
+  text-3: "#5555a0"
+  accent: "#ff4488"
+  accent-dim: "#ff448820"
+  cyan: "#00ffc8"
+  green: "#00ffc8"
+  amber: "#ffcc00"
+  red: "#ff4466"
+
+style:
+  font: "'Press Start 2P', monospace"
+  monoFont: "'Press Start 2P', monospace"
+  radius: "0px"
+  gap: "8px"
+  cardShadow: "4px 4px 0 var(--border)"
+  cardBorder: true
+  headerWeight: "400"
+  animation: false
+  textShadow: "0 0 8px var(--cyan)"

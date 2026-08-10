@@ -1,0 +1,6 @@
+# Available themes (add your theme file here to register it)
+themes:
+  - dark
+  - light
+  - nord
+  - pixel
