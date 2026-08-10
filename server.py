@@ -20,7 +20,88 @@ PORT = 7070
 
 # Shared state file (persistent across restarts, synced across devices)
 STATE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'state.json')
+DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
+GMAIL_TOKEN_FILE = os.path.join(DATA_DIR, 'gmail_token.json')
 _state_lock = threading.Lock()
+
+# Gmail OAuth2 config (loaded from HOMEBOARD_CONFIG at runtime)
+_gmail_config = None
+
+def _get_gmail_config():
+    """Load Gmail OAuth2 config from config.local.yaml."""
+    global _gmail_config
+    if _gmail_config is not None:
+        return _gmail_config
+    try:
+        import yaml  # PyYAML available in Python stdlib-like on Alpine
+    except ImportError:
+        # Fallback: parse manually from the YAML file
+        config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.local.yaml')
+        if not os.path.exists(config_path):
+            return {}
+        with open(config_path) as f:
+            content = f.read()
+        # Simple extraction for client_id and client_secret
+        import re
+        cid = re.search(r'clientId:\s*[\'"]?([^\s\'"]+)', content)
+        csec = re.search(r'clientSecret:\s*[\'"]?([^\s\'"]+)', content)
+        _gmail_config = {
+            'client_id': cid.group(1) if cid else '',
+            'client_secret': csec.group(1) if csec else ''
+        }
+        return _gmail_config
+    config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.local.yaml')
+    if not os.path.exists(config_path):
+        return {}
+    with open(config_path) as f:
+        import yaml
+        data = yaml.safe_load(f)
+    email_card = (data.get('cards') or {}).get('email') or {}
+    _gmail_config = {
+        'client_id': email_card.get('clientId', ''),
+        'client_secret': email_card.get('clientSecret', '')
+    }
+    return _gmail_config
+
+
+def _gmail_read_token():
+    """Read stored Gmail refresh/access token."""
+    try:
+        with open(GMAIL_TOKEN_FILE, 'r') as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return None
+
+
+def _gmail_write_token(token_data):
+    """Persist Gmail token to disk."""
+    os.makedirs(DATA_DIR, exist_ok=True)
+    tmp = GMAIL_TOKEN_FILE + '.tmp'
+    with open(tmp, 'w') as f:
+        json.dump(token_data, f, indent=2)
+    os.replace(tmp, GMAIL_TOKEN_FILE)
+
+
+def _gmail_refresh_access_token(refresh_token):
+    """Use refresh token to get a new access token."""
+    config = _get_gmail_config()
+    if not config.get('client_id') or not config.get('client_secret'):
+        return None
+    data = urllib.parse.urlencode({
+        'client_id': config['client_id'],
+        'client_secret': config['client_secret'],
+        'refresh_token': refresh_token,
+        'grant_type': 'refresh_token'
+    }).encode()
+    req = urllib.request.Request('https://oauth2.googleapis.com/token', data=data, method='POST')
+    req.add_header('Content-Type', 'application/x-www-form-urlencoded')
+    ctx = ssl.create_default_context()
+    try:
+        with urllib.request.urlopen(req, timeout=10, context=ctx) as resp:
+            return json.loads(resp.read())
+    except Exception as e:
+        print(f'[Gmail] Token refresh failed: {e}')
+        return None
 
 
 def _read_state():
@@ -89,6 +170,14 @@ class HomeboardHandler(http.server.SimpleHTTPRequestHandler):
             self.handle_proxy()
         elif self.path == '/state':
             self.handle_state_get()
+        elif self.path == '/auth/gmail':
+            self.handle_gmail_auth()
+        elif self.path.startswith('/auth/gmail/callback'):
+            self.handle_gmail_callback()
+        elif self.path == '/api/gmail/unread':
+            self.handle_gmail_unread()
+        elif self.path == '/api/gmail/status':
+            self.handle_gmail_status()
         else:
             super().do_GET()
 
@@ -132,6 +221,149 @@ class HomeboardHandler(http.server.SimpleHTTPRequestHandler):
         data = json.dumps(state).encode()
         self.send_response(200)
         self.send_header('Content-Type', 'application/json')
+        self.send_header('Content-Length', str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
+
+    def handle_gmail_auth(self):
+        """Redirect to Google OAuth2 consent screen."""
+        config = _get_gmail_config()
+        if not config.get('client_id'):
+            self.send_error(500, 'Gmail clientId not configured')
+            return
+        params = urllib.parse.urlencode({
+            'client_id': config['client_id'],
+            'redirect_uri': f'http://localhost:{PORT}/auth/gmail/callback',
+            'response_type': 'code',
+            'scope': 'https://www.googleapis.com/auth/gmail.readonly',
+            'access_type': 'offline',
+            'prompt': 'consent'
+        })
+        url = f'https://accounts.google.com/o/oauth2/v2/auth?{params}'
+        self.send_response(302)
+        self.send_header('Location', url)
+        self.end_headers()
+
+    def handle_gmail_callback(self):
+        """Exchange auth code for tokens and store refresh token."""
+        query = urllib.parse.urlparse(self.path).query
+        params = urllib.parse.parse_qs(query)
+        code = params.get('code', [None])[0]
+
+        if not code:
+            error = params.get('error', ['unknown'])[0]
+            self._send_html(f'<h1>Gmail auth failed</h1><p>{error}</p><a href="/">Back to dashboard</a>')
+            return
+
+        config = _get_gmail_config()
+        # Exchange code for tokens
+        data = urllib.parse.urlencode({
+            'code': code,
+            'client_id': config['client_id'],
+            'client_secret': config['client_secret'],
+            'redirect_uri': f'http://localhost:{PORT}/auth/gmail/callback',
+            'grant_type': 'authorization_code'
+        }).encode()
+        req = urllib.request.Request('https://oauth2.googleapis.com/token', data=data, method='POST')
+        req.add_header('Content-Type', 'application/x-www-form-urlencoded')
+        ctx = ssl.create_default_context()
+
+        try:
+            with urllib.request.urlopen(req, timeout=10, context=ctx) as resp:
+                token_data = json.loads(resp.read())
+        except Exception as e:
+            self._send_html(f'<h1>Token exchange failed</h1><p>{e}</p><a href="/">Back</a>')
+            return
+
+        if 'refresh_token' not in token_data:
+            self._send_html('<h1>No refresh token</h1><p>Try revoking access at <a href="https://myaccount.google.com/permissions">Google Permissions</a> and retry.</p>')
+            return
+
+        # Store tokens
+        _gmail_write_token({
+            'refresh_token': token_data['refresh_token'],
+            'access_token': token_data.get('access_token', ''),
+            'expires_at': __import__('time').time() + token_data.get('expires_in', 3600)
+        })
+
+        self._send_html('<h1>Gmail connected!</h1><p>You can close this tab.</p><script>setTimeout(()=>window.close(),2000)</script>')
+
+    def handle_gmail_status(self):
+        """Check if Gmail is connected (has refresh token)."""
+        token = _gmail_read_token()
+        connected = token is not None and 'refresh_token' in token
+        data = json.dumps({'connected': connected}).encode()
+        self.send_response(200)
+        self.send_header('Content-Type', 'application/json')
+        self.send_header('Content-Length', str(len(data)))
+        self.send_header('Cache-Control', 'no-cache')
+        self.end_headers()
+        self.wfile.write(data)
+
+    def handle_gmail_unread(self):
+        """Return unread email count from Gmail API."""
+        token = _gmail_read_token()
+        if not token or 'refresh_token' not in token:
+            data = json.dumps({'error': 'not_connected', 'count': 0}).encode()
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Content-Length', str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+            return
+
+        import time as _time
+
+        # Refresh access token if expired
+        access_token = token.get('access_token', '')
+        if _time.time() >= token.get('expires_at', 0):
+            refreshed = _gmail_refresh_access_token(token['refresh_token'])
+            if refreshed and 'access_token' in refreshed:
+                access_token = refreshed['access_token']
+                token['access_token'] = access_token
+                token['expires_at'] = _time.time() + refreshed.get('expires_in', 3600)
+                _gmail_write_token(token)
+            else:
+                data = json.dumps({'error': 'token_refresh_failed', 'count': 0}).encode()
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Content-Length', str(len(data)))
+                self.end_headers()
+                self.wfile.write(data)
+                return
+
+        # Call Gmail API for unread count
+        try:
+            url = 'https://gmail.googleapis.com/gmail/v1/users/me/labels/INBOX'
+            req = urllib.request.Request(url)
+            req.add_header('Authorization', f'Bearer {access_token}')
+            ctx = ssl.create_default_context()
+            with urllib.request.urlopen(req, timeout=10, context=ctx) as resp:
+                label_data = json.loads(resp.read())
+            unread = label_data.get('messagesUnread', 0)
+            data = json.dumps({'count': unread}).encode()
+        except urllib.error.HTTPError as e:
+            if e.code == 401:
+                # Token invalid, clear it
+                data = json.dumps({'error': 'token_expired', 'count': 0}).encode()
+            else:
+                data = json.dumps({'error': str(e), 'count': 0}).encode()
+        except Exception as e:
+            data = json.dumps({'error': str(e)[:100], 'count': 0}).encode()
+
+        self.send_response(200)
+        self.send_header('Content-Type', 'application/json')
+        self.send_header('Content-Length', str(len(data)))
+        self.send_header('Cache-Control', 'no-cache')
+        self.end_headers()
+        self.wfile.write(data)
+
+    def _send_html(self, body):
+        """Send a simple HTML page."""
+        html = f'<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{{font-family:system-ui;background:#09090b;color:#fafafa;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;}}a{{color:#818cf8;}}</style></head><body>{body}</body></html>'
+        data = html.encode()
+        self.send_response(200)
+        self.send_header('Content-Type', 'text/html; charset=utf-8')
         self.send_header('Content-Length', str(len(data)))
         self.end_headers()
         self.wfile.write(data)
