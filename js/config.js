@@ -229,8 +229,8 @@ const ConfigLoader = (() => {
     // --- Email ---
     const emailCard = cards.email || {};
     config.email = {
-      address: emailCard.address || '',
-      appPassword: emailCard.appPassword || '',
+      clientId: emailCard.clientId || '',
+      clientSecret: emailCard.clientSecret || '',
       refreshMinutes: emailCard.refreshMinutes || 5
     };
 
