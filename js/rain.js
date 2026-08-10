@@ -91,9 +91,9 @@ const Rain = (() => {
     }
 
     if (rainSoon) {
-      recEl.textContent = lang === 'de' ? '☂️ Regenschirm mitnehmen' : '☂️ Bring an umbrella';
+      recEl.textContent = lang === 'de' ? '☂️ Regenschirm mitnehmen' : lang === 'es' ? '☂️ Lleva paraguas' : '☂️ Bring an umbrella';
     } else if (totalMm === 0 && maxProb < 30) {
-      recEl.textContent = lang === 'de' ? '🪟 Guter Tag zum Lüften' : '🪟 Good day to air out';
+      recEl.textContent = lang === 'de' ? '🪟 Guter Tag zum Lüften' : lang === 'es' ? '🪟 Buen día para ventilar' : '🪟 Good day to air out';
     } else if (maxProb > 60) {
       // Find the dry window (last hour with < 30% probability before rain starts)
       let dryUntilHour = null;
@@ -106,9 +106,11 @@ const Rain = (() => {
       if (dryUntilHour !== null) {
         recEl.textContent = lang === 'de'
           ? `🚲 Trocken bis ${dryUntilHour}:00`
+          : lang === 'es'
+          ? `🚲 Seco hasta las ${dryUntilHour}:00`
           : `🚲 Dry window until ${dryUntilHour}:00`;
       } else {
-        recEl.textContent = lang === 'de' ? '🌧️ Später Regen möglich' : '🌧️ Rain likely later';
+        recEl.textContent = lang === 'de' ? '🌧️ Später Regen möglich' : lang === 'es' ? '🌧️ Lluvia probable más tarde' : '🌧️ Rain likely later';
       }
     } else {
       recEl.textContent = '';

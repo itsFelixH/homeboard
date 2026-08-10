@@ -27,7 +27,7 @@ const Plants = (() => {
 
     if (!last) {
       container.innerHTML = `<div class="plants-display">
-        <span class="plants-status plants-status-overdue">🌱 ${lang === 'de' ? 'Noch nie gegossen' : 'Never watered'}</span>
+        <span class="plants-status plants-status-overdue">🌱 ${lang === 'de' ? 'Noch nie gegossen' : lang === 'es' ? 'Nunca regado' : 'Never watered'}</span>
         <button class="plants-water-btn-main" onclick="Plants.waterNow()">💧</button>
       </div>`;
       return;
@@ -42,18 +42,18 @@ const Plants = (() => {
     let rec = '';
 
     if (daysSince === 0) {
-      statusText = lang === 'de' ? 'Heute gegossen ✓' : 'Watered today ✓';
+      statusText = lang === 'de' ? 'Heute gegossen ✓' : lang === 'es' ? 'Regado hoy ✓' : 'Watered today ✓';
       statusClass = 'plants-status-ok';
     } else if (daysSince === 1) {
-      statusText = lang === 'de' ? 'Gestern gegossen' : 'Watered yesterday';
+      statusText = lang === 'de' ? 'Gestern gegossen' : lang === 'es' ? 'Regado ayer' : 'Watered yesterday';
       statusClass = 'plants-status-ok';
     } else {
-      statusText = lang === 'de' ? `Vor ${daysSince} Tagen gegossen` : `${daysSince} days ago`;
+      statusText = lang === 'de' ? `Vor ${daysSince} Tagen gegossen` : lang === 'es' ? `Hace ${daysSince} días` : `${daysSince} days ago`;
       statusClass = daysSince >= warningDays ? 'plants-status-overdue' : daysSince >= soonDays ? 'plants-status-soon' : 'plants-status-ok';
       if (daysSince >= warningDays) {
-        rec = lang === 'de' ? '💧 Jetzt gießen!' : '💧 Water them now!';
+        rec = lang === 'de' ? '💧 Jetzt gießen!' : lang === 'es' ? '💧 ¡Regar ahora!' : '💧 Water them now!';
       } else if (daysSince >= soonDays) {
-        rec = lang === 'de' ? '🪴 Morgen gießen' : '🪴 Water tomorrow';
+        rec = lang === 'de' ? '🪴 Morgen gießen' : lang === 'es' ? '🪴 Regar mañana' : '🪴 Water tomorrow';
       }
     }
 

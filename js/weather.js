@@ -140,15 +140,15 @@ const Weather = (() => {
         // Strong wind warning
         const windSpeed = current.wind_speed_10m || 0;
         if (windSpeed >= 50) {
-          suggestions.push(lang === 'de' ? '💨 Starker Wind — Balkon sichern' : '💨 Strong wind — secure balcony');
+          suggestions.push(lang === 'de' ? '💨 Starker Wind — Balkon sichern' : lang === 'es' ? '💨 Viento fuerte — asegurar balcón' : '💨 Strong wind — secure balcony');
         } else if (windSpeed >= 35) {
-          suggestions.push(lang === 'de' ? '💨 Böiger Wind' : '💨 Gusty wind');
+          suggestions.push(lang === 'de' ? '💨 Böiger Wind' : lang === 'es' ? '💨 Viento racheado' : '💨 Gusty wind');
         }
 
         // Heat warning
         const feelsLike = current.apparent_temperature;
         if (feelsLike >= 32) {
-          suggestions.push(lang === 'de' ? '🥵 Viel trinken, Sonne meiden' : '🥵 Stay hydrated, avoid sun');
+          suggestions.push(lang === 'de' ? '🥵 Viel trinken, Sonne meiden' : lang === 'es' ? '🥵 Hidratarse, evitar el sol' : '🥵 Stay hydrated, avoid sun');
         }
 
         clothingEl.textContent = suggestions.join(' · ');
@@ -176,6 +176,15 @@ const Weather = (() => {
       if (feelsLike < 15) return '🧶 Pullover empfohlen';
       if (feelsLike > 28) return '🩳 Leichte Kleidung & Wasser';
       if (feelsLike > 22) return '👕 T-Shirt Wetter';
+      return '';
+    }
+    if (lang === 'es') {
+      if (isSnow || feelsLike < 0) return '🧥 Abrigo y bufanda';
+      if (feelsLike < 8) return '🧥 Lleva chaqueta';
+      if (isRain) return '☂️ No olvides el paraguas';
+      if (feelsLike < 15) return '🧶 Jersey recomendado';
+      if (feelsLike > 28) return '🩳 Ropa ligera y agua';
+      if (feelsLike > 22) return '👕 Tiempo de camiseta';
       return '';
     }
     // English fallback

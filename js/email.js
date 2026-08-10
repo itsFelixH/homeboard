@@ -67,8 +67,8 @@ const Email = (() => {
     const lang = Lang.get();
 
     const label = count === 0
-      ? (lang === 'de' ? 'Keine neuen E-Mails' : 'No new emails')
-      : (lang === 'de' ? `${count} ungelesen` : `${count} unread`);
+      ? (lang === 'de' ? 'Keine neuen E-Mails' : lang === 'es' ? 'Sin correos nuevos' : 'No new emails')
+      : (lang === 'de' ? `${count} ungelesen` : lang === 'es' ? `${count} sin leer` : `${count} unread`);
 
     const countClass = count > 0 ? 'email-count-active' : 'email-count-zero';
 

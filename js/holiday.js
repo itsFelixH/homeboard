@@ -183,10 +183,10 @@ const Holiday = (() => {
         sublabel = i18n('countdown_today') || 'Today!';
       } else if (diffDays === 1) {
         daysText = diffDays;
-        sublabel = lang === 'de' ? '🧳 Koffer packen!' : '🧳 Pack your bags!';
+        sublabel = lang === 'de' ? '🧳 Koffer packen!' : lang === 'es' ? '🧳 ¡Hacer la maleta!' : '🧳 Pack your bags!';
       } else if (diffDays <= 3) {
         daysText = diffDays;
-        sublabel = lang === 'de' ? '✈️ Bald gehts los!' : '✈️ Almost there!';
+        sublabel = lang === 'de' ? '✈️ Bald gehts los!' : lang === 'es' ? '✈️ ¡Casi es hora!' : '✈️ Almost there!';
       } else {
         daysText = diffDays;
         sublabel = '';

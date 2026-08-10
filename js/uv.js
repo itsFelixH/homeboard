@@ -64,6 +64,11 @@ const UV = (() => {
         if (hour >= 15) return `✓ UV sinkt — sicher draußen`;
         return `⚠️ Mittagssonne meiden · sicher ab 15:00`;
       }
+      if (lang === 'es') {
+        if (hour < 11) return `🕶️ Protector solar · seguro hasta 11:00`;
+        if (hour >= 15) return `✓ UV bajando — seguro al aire libre`;
+        return `⚠️ Evitar sol · seguro después de 15:00`;
+      }
       if (hour < 11) return `🕶️ Sunscreen · safe until 11:00`;
       if (hour >= 15) return `✓ UV dropping — safe outdoors`;
       return `⚠️ Avoid sun · safe after 15:00`;
@@ -71,6 +76,10 @@ const UV = (() => {
     if (lang === 'de') {
       if (uvi <= 2) return '';
       return '🧴 Sonnencreme empfohlen';
+    }
+    if (lang === 'es') {
+      if (uvi <= 2) return '';
+      return '🧴 Protector solar recomendado';
     }
     if (uvi <= 2) return '';
     return '🧴 Sunscreen recommended';

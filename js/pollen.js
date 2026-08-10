@@ -84,9 +84,11 @@ const Pollen = (() => {
         const names = highTypes.map(t => t.name).join(', ');
         rec = lang === 'de'
           ? `💊 Antihistaminikum empfohlen (${names})`
+          : lang === 'es'
+          ? `💊 Antihistamínico recomendado (${names})`
           : `💊 Consider antihistamine (${names})`;
       } else if (types.some(t => (current[t.key] || 0) > 10)) {
-        rec = lang === 'de' ? '😮‍💨 Fenster geschlossen halten' : '😮‍💨 Keep windows closed';
+        rec = lang === 'de' ? '😮‍💨 Fenster geschlossen halten' : lang === 'es' ? '😮‍💨 Mantener ventanas cerradas' : '😮‍💨 Keep windows closed';
       }
       if (rec) {
         container.innerHTML += `<div class="metric-rec">${rec}</div>`;

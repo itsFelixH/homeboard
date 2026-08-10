@@ -85,6 +85,13 @@ const AirQuality = (() => {
       if (aqi <= 80) return '⚠ Aktivität im Freien einschränken';
       return '⛔ Im Innenbereich bleiben';
     }
+    if (lang === 'es') {
+      if (aqi <= 20) return '✓ Buen momento para ventilar';
+      if (aqi <= 40) return '✓ Actividad normal';
+      if (aqi <= 60) return '⚠ Sensibles: reducir exposición';
+      if (aqi <= 80) return '⚠ Limitar actividad exterior';
+      return '⛔ Quedarse en interior';
+    }
     if (aqi <= 20) return '✓ Great for ventilation';
     if (aqi <= 40) return '✓ Normal activity fine';
     if (aqi <= 60) return '⚠ Sensitive groups reduce exposure';
