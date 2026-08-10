@@ -63,10 +63,17 @@ const XKCD = (() => {
       <div class="xkcd-nav">
         <button class="xkcd-nav-btn" onclick="XKCD.prev()" ${isFirst ? 'disabled' : ''}>‹ Prev</button>
         <button class="xkcd-nav-btn" onclick="XKCD.random()">🎲</button>
+        <button class="xkcd-nav-btn" onclick="XKCD.latest()" ${isLatest ? 'disabled' : ''}>Today</button>
         <button class="xkcd-nav-btn" onclick="XKCD.next()" ${isLatest ? 'disabled' : ''}>Next ›</button>
       </div>
     `;
   }
 
-  return { init, prev, next, random };
+  function latest() {
+    if (latestNum && currentNum !== latestNum) {
+      fetchComic(); // no arg = fetch latest
+    }
+  }
+
+  return { init, prev, next, random, latest };
 })();
