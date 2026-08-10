@@ -7,6 +7,11 @@ import http.server
 import urllib.request
 import urllib.parse
 import ssl
+import mimetypes
+
+# Register YAML MIME type (not in Python's default mimetypes)
+mimetypes.add_type('text/yaml', '.yaml')
+mimetypes.add_type('text/yaml', '.yml')
 
 PORT = 7070
 
