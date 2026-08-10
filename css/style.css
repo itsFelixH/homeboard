@@ -5,8 +5,8 @@
 /* === Fonts (must be before all other rules) === */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500&family=Press+Start+2P&display=swap');
 
-/* === Theme: Dark (default) === */
-:root, [data-theme="dark"] {
+/* === Theme defaults (applied by JS from themes/*.yaml, these are fallbacks) === */
+:root {
   --bg: #09090b;
   --surface: #18181b;
   --surface-hover: #1f1f23;
@@ -24,48 +24,13 @@
   --gap: 12px;
 }
 
-/* === Theme: Light === */
-[data-theme="light"] {
-  --bg: #f8fafc;
-  --surface: #ffffff;
-  --surface-hover: #f1f5f9;
-  --border: #e2e8f0;
-  --text: #0f172a;
-  --text-2: #64748b;
-  --text-3: #94a3b8;
-  --accent: #4f46e5;
-  --accent-dim: #4f46e510;
-  --cyan: #0891b2;
-  --green: #059669;
-  --amber: #d97706;
-  --red: #dc2626;
-}
-
-/* === Theme: Pixel === */
-[data-theme="pixel"] {
-  --bg: #0a0a1a;
-  --surface: #111128;
-  --surface-hover: #1a1a3a;
-  --border: #2a2a4a;
-  --text: #e0e8ff;
-  --text-2: #8888b0;
-  --text-3: #5555a0;
-  --accent: #ff4488;
-  --accent-dim: #ff448820;
-  --cyan: #00ffc8;
-  --green: #00ffc8;
-  --amber: #ffcc00;
-  --red: #ff4466;
-}
-
-/* === Fonts === */
-
-[data-theme="pixel"] { font-family: 'Press Start 2P', monospace !important; }
-/* Theme menu: prevent pixel theme font from bleeding in */
+/* === Theme-driven font size scaling (for bitmap/pixel fonts that need smaller sizes) === */
+/* Themes set --font-scale (default 1) to shrink text proportionally */
 [data-theme="pixel"] .custom-select-menu button { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; font-size: 0.75rem; }
-[data-theme="pixel"] .time { font-family: 'Press Start 2P', monospace; font-size: 1.8rem !important; color: var(--cyan); text-shadow: 0 0 12px var(--cyan); }
-[data-theme="pixel"] .metric-value { font-family: 'Press Start 2P', monospace; font-size: 1.2rem !important; }
-[data-theme="pixel"] .card-header span { font-family: 'Press Start 2P', monospace; font-size: 0.45rem !important; }
+[data-theme="pixel"] .topbar-time { font-size: 1rem; }
+[data-theme="pixel"] .metric-value { font-size: 1.2rem; }
+[data-theme="pixel"] .card-header span { font-size: 0.45rem; }
+[data-theme="pixel"] .countdown-days { font-size: 0.9rem; }
 
 /* === Reset === */
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
@@ -109,13 +74,8 @@ body {
   font-weight: 200;
   letter-spacing: -1px;
   line-height: 1;
-}
-
-[data-theme="pixel"] .topbar-time {
-  font-family: 'Press Start 2P', monospace;
-  font-size: 1rem;
-  color: var(--cyan);
-  text-shadow: 0 0 10px var(--cyan);
+  font-family: var(--mono-font, inherit);
+  text-shadow: var(--text-shadow, none);
 }
 
 .topbar-date {
@@ -238,18 +198,19 @@ body {
 /* === Card Base === */
 .card {
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: var(--card-border-width, 1px) solid var(--border);
   border-radius: var(--radius);
   padding: 16px;
   display: flex;
   flex-direction: column;
-  transition: background 0.2s, border-color 0.2s, transform 0.15s;
+  box-shadow: var(--card-shadow, none);
+  transition: var(--transition, background 0.2s, border-color 0.2s, transform 0.15s);
 }
 
 .card:hover {
   background: var(--surface-hover);
   border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
-  transform: translateY(-1px);
+  transform: var(--hover-transform, translateY(-1px));
 }
 
 /* Card header with icon */
@@ -263,7 +224,7 @@ body {
 }
 
 .card-header i { width: 15px; height: 15px; stroke-width: 2; }
-.card-header span { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
+.card-header span { font-size: 0.75rem; font-weight: var(--header-weight, 600); text-transform: uppercase; letter-spacing: 0.06em; text-shadow: var(--text-shadow, none); }
 .card-header-link { margin-left: auto; color: var(--text-3); transition: color 0.2s; }
 .card-header-link:hover { color: var(--accent); }
 
@@ -283,7 +244,7 @@ body {
 .weather-icon { font-size: 2.5rem; line-height: 1; }
 
 .weather-primary { display: flex; flex-direction: column; }
-.weather-temp { font-size: 2.4rem; font-weight: 200; line-height: 1; }
+.weather-temp { font-size: 2.4rem; font-weight: 200; line-height: 1; font-family: var(--mono-font, inherit); }
 .weather-desc { font-size: 0.78rem; color: var(--text-2); text-transform: capitalize; margin-top: 2px; }
 
 .weather-meta {
@@ -333,7 +294,7 @@ body {
 
 /* === METRICS (AQI, UV) === */
 .metric-row { display: flex; align-items: baseline; gap: 8px; }
-.metric-value { font-size: 2rem; font-weight: 200; line-height: 1; }
+.metric-value { font-size: 2rem; font-weight: 200; line-height: 1; font-family: var(--mono-font, inherit); text-shadow: var(--text-shadow, none); }
 .metric-label { font-size: 0.8rem; color: var(--text-2); }
 .metric-sub { font-size: 0.68rem; color: var(--text-3); margin-top: 6px; }
 .metric-rec { font-size: 0.68rem; color: var(--text-2); margin-top: 6px; min-height: 1em; }
@@ -356,7 +317,7 @@ body {
 .departures-table tbody tr:last-child { border-bottom: none; }
 .dep-line { display: inline-block; padding: 2px 6px; border-radius: 4px; color: #fff; font-size: 0.62rem; font-weight: 700; text-align: center; min-width: 28px; }
 .dep-direction { max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-2); }
-.dep-time { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: var(--cyan); font-weight: 500; }
+.dep-time { font-family: var(--mono-font, 'JetBrains Mono', monospace); font-size: 0.7rem; color: var(--cyan); font-weight: 500; }
 .dep-delay { color: var(--red); font-size: 0.65rem; font-weight: 600; }
 .departures-empty { color: var(--text-3); font-style: italic; text-align: center; padding: 8px; }
 .departures-dots { margin-left: auto; }
@@ -429,8 +390,7 @@ body {
 .countdown-item { display: flex; align-items: center; gap: 0; }
 .countdown-link-wrap { display: flex; align-items: center; gap: 12px; flex: 1; text-decoration: none; color: var(--text); padding: 6px 8px; border-radius: 8px; transition: background 0.2s; }
 .countdown-link-wrap:hover { background: var(--accent-dim); }
-.countdown-days { font-size: 1.6rem; font-weight: 200; color: var(--accent); line-height: 1; min-width: 48px; }
-[data-theme="pixel"] .countdown-days { font-family: 'Press Start 2P'; font-size: 0.9rem; text-shadow: 0 0 8px var(--accent); }
+.countdown-days { font-size: 1.6rem; font-weight: 200; color: var(--accent); line-height: 1; min-width: 48px; font-family: var(--mono-font, inherit); text-shadow: var(--text-shadow, none); }
 .countdown-meta { display: flex; flex-direction: column; gap: 1px; }
 .countdown-label { font-size: 0.78rem; font-weight: 500; }
 .countdown-label-input { font-size: 0.78rem; font-weight: 500; font-family: inherit; background: var(--bg); color: var(--text); border: 1px solid var(--accent); border-radius: 4px; padding: 1px 6px; outline: none; width: 100%; max-width: 160px; }
