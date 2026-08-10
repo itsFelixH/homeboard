@@ -55,18 +55,25 @@ const UV = (() => {
   }
 
   function getUvRec(uvi, lang) {
+    // Show safe outdoor hours when UV is high
+    const hour = new Date().getHours();
+    if (uvi > 5) {
+      // Peak UV is typically 11:00–15:00
+      if (lang === 'de') {
+        if (hour < 11) return `🕶️ Sonnencreme · sicher bis 11:00`;
+        if (hour >= 15) return `✓ UV sinkt — sicher draußen`;
+        return `⚠️ Mittagssonne meiden · sicher ab 15:00`;
+      }
+      if (hour < 11) return `🕶️ Sunscreen · safe until 11:00`;
+      if (hour >= 15) return `✓ UV dropping — safe outdoors`;
+      return `⚠️ Avoid sun · safe after 15:00`;
+    }
     if (lang === 'de') {
       if (uvi <= 2) return '';
-      if (uvi <= 5) return '🧴 Sonnencreme empfohlen';
-      if (uvi <= 7) return '🕶️ Sonnenbrille & Creme';
-      if (uvi <= 10) return '⚠️ Mittagssonne meiden';
-      return '⛔ Draußen nicht empfohlen';
+      return '🧴 Sonnencreme empfohlen';
     }
     if (uvi <= 2) return '';
-    if (uvi <= 5) return '🧴 Sunscreen recommended';
-    if (uvi <= 7) return '🕶️ Sunglasses & sunscreen';
-    if (uvi <= 10) return '⚠️ Avoid midday sun';
-    return '⛔ Stay out of the sun';
+    return '🧴 Sunscreen recommended';
   }
 
   return { init };
