@@ -494,6 +494,11 @@ body {
 .package-empty { color: var(--text-3); font-style: italic; font-size: 0.78rem; }
 .package-remove { background: none; border: none; color: var(--text-3); font-size: 1rem; cursor: pointer; padding: 2px 6px; border-radius: 4px; }
 .package-remove:hover { color: var(--red); }
+.package-actions { display: flex; gap: 2px; align-items: center; }
+.package-done { background: none; border: none; color: var(--text-3); font-size: 0.85rem; cursor: pointer; padding: 2px 6px; border-radius: 4px; }
+.package-done:hover { color: var(--green); }
+.package-delivered { opacity: 0.5; }
+.package-delivered .package-label { text-decoration: line-through; }
 
 .package-add-form { display: flex; gap: 4px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
 .pkg-input { background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; font-size: 0.7rem; font-family: inherit; min-width: 0; flex: 1; transition: border-color 0.2s; }
