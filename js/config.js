@@ -58,6 +58,18 @@ const ConfigLoader = (() => {
     // --- Cards section (preserved as-is for app.js card management) ---
     config.cards = cards;
 
+    // --- Warn about unknown card IDs ---
+    const KNOWN_CARDS = new Set([
+      'weather', 'rain', 'departures', 'commute', 'aqi', 'uv', 'pollen',
+      'plants', 'calendar', 'birthdays', 'countdown', 'news', 'word',
+      'spell', 'history', 'trash', 'github', 'xkcd', 'packages', 'email', 'slideshow'
+    ]);
+    Object.keys(cards).forEach(id => {
+      if (!KNOWN_CARDS.has(id)) {
+        console.warn(`[Homeboard] Unknown card "${id}" in config — typo? Available: ${[...KNOWN_CARDS].join(', ')}`);
+      }
+    });
+
     // --- Location ---
     config.location = raw.location || { latitude: 0, longitude: 0 };
 
@@ -80,9 +92,14 @@ const ConfigLoader = (() => {
     };
 
     // --- Commute: merge card settings + dedicated section ---
+    // Default origin to location if not explicitly set
     const commuteSection = raw.commute || {};
+    const commuteOrigin = commuteSection.origin
+      && (commuteSection.origin.latitude || commuteSection.origin.longitude)
+      ? commuteSection.origin
+      : config.location;
     config.commute = {
-      origin: commuteSection.origin || { latitude: 0, longitude: 0 },
+      origin: commuteOrigin,
       destinations: commuteSection.destinations || [],
       refreshMinutes: cards.commute?.refreshMinutes || 10,
       showBike: cards.commute?.showBike !== false,

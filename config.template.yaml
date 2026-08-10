@@ -138,11 +138,12 @@ greeting:
 
 # ------------------------------------------------------------
 # Commute destinations
+# Origin defaults to your location above if not set here.
 # ------------------------------------------------------------
 commute:
-  origin:
-    latitude: 0
-    longitude: 0
+  # origin:                # Optional — defaults to location above
+  #   latitude: 0
+  #   longitude: 0
   destinations: []
   # Example:
   # destinations:
