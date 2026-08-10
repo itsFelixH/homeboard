@@ -1,5 +1,6 @@
 # Local config with API keys
 js/config.local.js
+config.local.yaml
 
 # Local data (BSR calendar, etc.)
 data/
