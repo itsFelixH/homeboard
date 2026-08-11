@@ -420,6 +420,12 @@ class HomeboardHandler(http.server.SimpleHTTPRequestHandler):
                     return
 
             ctx = ssl.create_default_context()
+            # Ensure URL is properly quoted (spaces etc.) without double-encoding existing %XX
+            url_parts = urllib.parse.urlsplit(url)
+            url = urllib.parse.urlunsplit(url_parts._replace(
+                path=urllib.parse.quote(url_parts.path, safe='/%:@'),
+                query=urllib.parse.quote(url_parts.query, safe='=&%+:@')
+            ))
             req = urllib.request.Request(url, headers={
                 'User-Agent': 'Homeboard/1.0',
                 'Accept': '*/*'
