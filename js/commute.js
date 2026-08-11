@@ -94,8 +94,8 @@ const Commute = (() => {
       }
     }
 
-    // Bike via OSRM (× correction factor from config)
-    const bikeFactor = (HOMEBOARD_CONFIG.commute && HOMEBOARD_CONFIG.commute.bikeSpeedFactor) || 1.5;
+    // Bike via OSRM — calculate time from distance at configured speed
+    const bikeSpeedMpm = ((HOMEBOARD_CONFIG.commute && HOMEBOARD_CONFIG.commute.bikeSpeed) || 13) * 1000 / 60;
     try {
       const url = `https://router.project-osrm.org/route/v1/cycling/` +
         `${origin.longitude},${origin.latitude};${dest.longitude},${dest.latitude}?overview=false`;
@@ -103,8 +103,9 @@ const Commute = (() => {
       if (res.ok) {
         const data = await res.json();
         if (data.code === 'Ok' && data.routes.length > 0) {
-          result.bike = Math.round((data.routes[0].duration / 60) * bikeFactor);
-          result.bikeKm = (data.routes[0].distance / 1000).toFixed(1);
+          const distM = data.routes[0].distance;
+          result.bike = Math.round(distM / bikeSpeedMpm);
+          result.bikeKm = (distM / 1000).toFixed(1);
         }
       }
     } catch (err) {

@@ -256,8 +256,11 @@ const Calendar = (() => {
         if (bikeRes.ok) {
           const bikeData = await bikeRes.json();
           if (bikeData.code === 'Ok' && bikeData.routes.length) {
-            bikeMin = Math.round((bikeData.routes[0].duration / 60) * 1.5);
-            bikeKm = (bikeData.routes[0].distance / 1000).toFixed(1);
+            const distM = bikeData.routes[0].distance;
+            bikeKm = (distM / 1000).toFixed(1);
+            // Calculate from distance at configured bike speed
+            const bikeSpeedMpm = ((HOMEBOARD_CONFIG.commute && HOMEBOARD_CONFIG.commute.bikeSpeed) || 13) * 1000 / 60;
+            bikeMin = Math.round(distM / bikeSpeedMpm);
           }
         }
 
@@ -270,8 +273,11 @@ const Calendar = (() => {
           if (walkRes.ok) {
             const walkData = await walkRes.json();
             if (walkData.code === 'Ok' && walkData.routes.length) {
-              walkMin = Math.round(walkData.routes[0].duration / 60);
-              walkKm = (walkData.routes[0].distance / 1000).toFixed(1);
+              const distM = walkData.routes[0].distance;
+              walkKm = (distM / 1000).toFixed(1);
+              // Calculate from distance at configured walk speed
+              const walkSpeedMpm = ((HOMEBOARD_CONFIG.commute && HOMEBOARD_CONFIG.commute.walkSpeed) || 5) * 1000 / 60;
+              walkMin = Math.round(distM / walkSpeedMpm);
             }
           }
         } catch (e) { /* skip */ }
@@ -393,7 +399,7 @@ const Calendar = (() => {
             if (transitMin && transitLegs.length > 0) {
               const legParts = transitLegs.map(leg => {
                 if (leg.type === 'walk') {
-                  return `<span class="event-route-walk">🚶${leg.duration}′</span>`;
+                  return `<span class="event-route-walk">🚶${leg.duration} min</span>`;
                 }
                 const toLabel = leg.to ? ` → ${leg.to}` : '';
                 return `<span class="event-route-leg">${leg.line}</span><span class="event-route-to">${toLabel}</span>`;

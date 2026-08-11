@@ -153,7 +153,8 @@ const ConfigLoader = (() => {
       refreshMinutes: commuteCard.refreshMinutes || 10,
       showBike: commuteCard.showBike !== false,
       showTransit: commuteCard.showTransit !== false,
-      bikeSpeedFactor: commuteCard.bikeSpeedFactor || 1.5
+      bikeSpeed: commuteCard.bikeSpeed || 13,
+      walkSpeed: commuteCard.walkSpeed || 5
     };
 
     // --- Calendar ---

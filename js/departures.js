@@ -157,7 +157,7 @@ const Departures = (() => {
         const headerSpan = header.querySelector('span[data-i18n="departures"]');
         if (headerSpan) headerSpan.after(walkEl);
       }
-      walkEl.textContent = ` 🚶${stop.walkMinutes}′`;
+      walkEl.textContent = ` 🚶${stop.walkMinutes} min`;
     } else if (walkEl) {
       walkEl.textContent = '';
     }
