@@ -374,8 +374,8 @@ body {
 .event-time { color: var(--accent); font-weight: 600; margin-right: 6px; font-size: 0.7rem; }
 .event-commute { font-size: 0.62rem; color: var(--text-3); padding-left: 2px; margin-top: 2px; }
 .event-commute:empty { display: none; }
-.event-route-line { display: flex; align-items: center; gap: 3px; flex-wrap: wrap; padding: 1px 0; opacity: 0.6; }
-.event-route-preferred { opacity: 1; color: var(--text-2); }
+.event-route-line { display: flex; align-items: center; gap: 3px; flex-wrap: wrap; padding: 1px 0; }
+.event-route-preferred { color: var(--text-2); }
 .event-route-leg { background: var(--surface-hover); border: 1px solid var(--border); padding: 1px 5px; border-radius: 3px; font-size: 0.58rem; font-weight: 600; }
 .event-route-to { font-size: 0.55rem; color: var(--text-3); }
 .event-route-walk { font-size: 0.55rem; color: var(--text-3); }
