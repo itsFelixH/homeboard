@@ -7,11 +7,8 @@
  * to hide the card and include arbitrary settings that the module can read.
  */
 document.addEventListener('DOMContentLoaded', async () => {
-  // Load YAML config before anything else
-  await ConfigLoader.load();
-
-  // Load themes from YAML files
-  await Themes.load();
+  // Load config and themes in parallel
+  await Promise.all([ConfigLoader.load(), Themes.load()]);
 
   Theme.init();
   Lang.init();
