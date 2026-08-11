@@ -1,20 +1,8 @@
 /**
  * Theme loader — data-driven themes from YAML files in themes/
  *
- * Reads themes/index.yaml for the list of available themes,
- * loads each theme's YAML, and applies CSS custom properties + settings.
- *
- * Theme YAML structure:
- *   name: Display Name
- *   icon: "🎨"
- *   colors:
- *     bg, surface, surface-hover, border
- *     text, text-muted, text-faint
- *     accent, accent-dim, highlight
- *     ok, warning, danger
- *   style:
- *     font, radius, spacing, shadow
- *     borders, header-weight, transitions, glow
+ * Loads only the active theme eagerly (fast boot), other themes load
+ * in background for the theme picker menu.
  */
 const Themes = (() => {
   let _themes = {};
@@ -40,32 +28,20 @@ const Themes = (() => {
       const indexData = jsyaml.load(await indexRes.text());
       const themeIds = indexData.themes || [];
 
-      const results = await Promise.all(
-        themeIds.map(async (id) => {
-          try {
-            const res = await fetch(`themes/${id}.yaml`);
-            if (!res.ok) return null;
-            const data = jsyaml.load(await res.text());
-            return { id, ...data };
-          } catch (e) {
-            console.warn(`[Themes] Failed to load theme "${id}":`, e);
-            return null;
-          }
-        })
-      );
+      // Fetch only the active theme (blocking) for fast first paint
+      const activeId = localStorage.getItem('homeboard_theme') || 'dark';
+      const activeTheme = await fetchTheme(activeId);
+      if (activeTheme) _themes[activeId] = activeTheme;
 
-      for (const theme of results) {
-        if (theme && theme.colors) {
-          _themes[theme.id] = {
-            name: theme.name || theme.id,
-            icon: theme.icon || '🎨',
-            colors: theme.colors,
-            style: { ...STYLE_DEFAULTS, ...(theme.style || {}) }
-          };
-        }
-      }
+      // Fetch remaining themes in background (non-blocking, for the menu)
+      const otherIds = themeIds.filter(id => id !== activeId);
+      Promise.all(otherIds.map(async (id) => {
+        const theme = await fetchTheme(id);
+        if (theme) _themes[id] = theme;
+      }));
+
     } catch (e) {
-      console.error('[Themes] Failed to load theme index:', e);
+      console.error('[Themes] Failed to load:', e);
       _themes.dark = {
         name: 'Dark', icon: '🌙',
         colors: {
@@ -82,6 +58,24 @@ const Themes = (() => {
     _onReady.forEach(fn => fn());
   }
 
+  async function fetchTheme(id) {
+    try {
+      const res = await fetch(`themes/${id}.yaml`);
+      if (!res.ok) return null;
+      const data = jsyaml.load(await res.text());
+      if (!data || !data.colors) return null;
+      return {
+        name: data.name || id,
+        icon: data.icon || '🎨',
+        colors: data.colors,
+        style: { ...STYLE_DEFAULTS, ...(data.style || {}) }
+      };
+    } catch (e) {
+      console.warn(`[Themes] Failed to load theme "${id}":`, e);
+      return null;
+    }
+  }
+
   function apply(id) {
     const theme = _themes[id] || _themes.dark || Object.values(_themes)[0];
     if (!theme) return;
@@ -89,13 +83,11 @@ const Themes = (() => {
     _current = id;
     const root = document.documentElement;
 
-    // Apply color variables (maps YAML names to CSS --vars)
-    // Also set legacy aliases so existing CSS rules still work
+    // Apply color variables + legacy aliases
     const colors = theme.colors;
     for (const [key, value] of Object.entries(colors)) {
       root.style.setProperty(`--${key}`, value);
     }
-    // Legacy aliases (CSS still uses --text-2, --text-3, --cyan, --green, --amber, --red, --gap)
     if (colors['text-muted']) root.style.setProperty('--text-2', colors['text-muted']);
     if (colors['text-faint']) root.style.setProperty('--text-3', colors['text-faint']);
     if (colors['highlight']) root.style.setProperty('--cyan', colors['highlight']);
@@ -112,10 +104,8 @@ const Themes = (() => {
     root.style.setProperty('--header-weight', s['header-weight']);
     root.style.setProperty('--text-shadow', s.glow);
 
-    // Apply font to body
     document.body.style.fontFamily = s.font;
 
-    // Transitions toggle
     if (!s.transitions) {
       root.style.setProperty('--transition', 'none');
       root.style.setProperty('--hover-transform', 'none');
@@ -124,22 +114,12 @@ const Themes = (() => {
       root.style.setProperty('--hover-transform', 'translateY(-1px)');
     }
 
-    // Set data-theme attribute for CSS-only overrides (pixel font sizes, etc.)
     root.setAttribute('data-theme', id);
   }
 
-  function current() {
-    return _current;
-  }
-
-  function all() {
-    return _themes;
-  }
-
-  function onReady(fn) {
-    if (_ready) fn();
-    else _onReady.push(fn);
-  }
+  function current() { return _current; }
+  function all() { return _themes; }
+  function onReady(fn) { if (_ready) fn(); else _onReady.push(fn); }
 
   return { load, apply, current, all, onReady };
 })();
