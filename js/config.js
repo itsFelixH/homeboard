@@ -16,7 +16,7 @@ let HOMEBOARD_CONFIG = {};
 
 const ConfigLoader = (() => {
   const CACHE_KEY = 'homeboard_config_cache';
-  const CACHE_VERSION = 3;
+  const CACHE_VERSION = 4;
 
   async function load() {
     let yamlText = null;
