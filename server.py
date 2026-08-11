@@ -129,6 +129,7 @@ ALLOWED_DOMAINS = [
     'api.transitous.org',
     'vbb.demo.hafas.cloud',
     'nominatim.openstreetmap.org',
+    'photon.komoot.io',
     'xkcd.com',
 ]
 
