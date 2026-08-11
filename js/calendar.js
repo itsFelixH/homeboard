@@ -202,11 +202,11 @@ const Calendar = (() => {
       if (!ev.location || !isBerlinLocation(ev.location)) continue;
 
       try {
-        // Geocode the location — try full string first, then fallback to street address only
+        // Geocode the location — try Nominatim first, then Photon as fallback
         let destLat = null, destLon = null;
         const locStr = ev.location;
         const queries = [locStr];
-        // Extract street address: try after first comma, or after first known separator
+        // Extract street address: try after first comma, or just last parts
         const parts = locStr.split(',').map(s => s.trim());
         if (parts.length >= 2) {
           queries.push(parts.slice(1).join(', ')); // skip business name
@@ -215,6 +215,7 @@ const Calendar = (() => {
           queries.push(parts.slice(-2).join(', ')); // just city + zip
         }
 
+        // Try Nominatim
         for (const q of queries) {
           const geoUrl = `/proxy?url=${encodeURIComponent(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}`)}`;
           const geoRes = await fetch(geoUrl);
@@ -226,6 +227,25 @@ const Calendar = (() => {
             break;
           }
         }
+
+        // Fallback: Photon (Komoot) geocoder
+        if (!destLat) {
+          for (const q of queries) {
+            try {
+              const photonUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=1&lang=de`;
+              const photonRes = await fetch(photonUrl);
+              if (!photonRes.ok) continue;
+              const photonData = await photonRes.json();
+              if (photonData.features && photonData.features.length) {
+                const [lon, lat] = photonData.features[0].geometry.coordinates;
+                destLat = lat;
+                destLon = lon;
+                break;
+              }
+            } catch (e) { /* skip */ }
+          }
+        }
+
         if (!destLat || !destLon) continue;
 
         // Bike time via OSRM
