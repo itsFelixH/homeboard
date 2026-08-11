@@ -202,15 +202,31 @@ const Calendar = (() => {
       if (!ev.location || !isBerlinLocation(ev.location)) continue;
 
       try {
-        // Geocode the location using Nominatim (via proxy for proper User-Agent)
-        const geoUrl = `/proxy?url=${encodeURIComponent(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(ev.location)}`)}`;
-        const geoRes = await fetch(geoUrl);
-        if (!geoRes.ok) continue;
-        const geoData = await geoRes.json();
-        if (!geoData.length) continue;
+        // Geocode the location — try full string first, then fallback to street address only
+        let destLat = null, destLon = null;
+        const locStr = ev.location;
+        const queries = [locStr];
+        // Extract street address: try after first comma, or after first known separator
+        const parts = locStr.split(',').map(s => s.trim());
+        if (parts.length >= 2) {
+          queries.push(parts.slice(1).join(', ')); // skip business name
+        }
+        if (parts.length >= 3) {
+          queries.push(parts.slice(-2).join(', ')); // just city + zip
+        }
 
-        const destLat = parseFloat(geoData[0].lat);
-        const destLon = parseFloat(geoData[0].lon);
+        for (const q of queries) {
+          const geoUrl = `/proxy?url=${encodeURIComponent(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}`)}`;
+          const geoRes = await fetch(geoUrl);
+          if (!geoRes.ok) continue;
+          const geoData = await geoRes.json();
+          if (geoData.length) {
+            destLat = parseFloat(geoData[0].lat);
+            destLon = parseFloat(geoData[0].lon);
+            break;
+          }
+        }
+        if (!destLat || !destLon) continue;
 
         // Bike time via OSRM
         const bikeUrl = `https://router.project-osrm.org/route/v1/cycling/${origin.longitude},${origin.latitude};${destLon},${destLat}?overview=false`;
