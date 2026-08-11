@@ -34,7 +34,9 @@ const Plants = (() => {
     }
 
     const now = new Date();
-    const daysSince = Math.floor((now - last) / (1000 * 60 * 60 * 24));
+    const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const lastMidnight = new Date(last.getFullYear(), last.getMonth(), last.getDate());
+    const daysSince = Math.round((todayMidnight - lastMidnight) / (1000 * 60 * 60 * 24));
 
     let statusText, statusClass;
     const warningDays = (HOMEBOARD_CONFIG.plants && HOMEBOARD_CONFIG.plants.warningDays) || 7;
