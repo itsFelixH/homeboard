@@ -225,6 +225,21 @@ const Calendar = (() => {
           }
         }
 
+        // Fetch walking route via OSRM
+        let walkMin = null;
+        let walkKm = null;
+        try {
+          const walkUrl = `https://router.project-osrm.org/route/v1/foot/${origin.longitude},${origin.latitude};${destLon},${destLat}?overview=false`;
+          const walkRes = await fetch(walkUrl);
+          if (walkRes.ok) {
+            const walkData = await walkRes.json();
+            if (walkData.code === 'Ok' && walkData.routes.length) {
+              walkMin = Math.round(walkData.routes[0].duration / 60);
+              walkKm = (walkData.routes[0].distance / 1000).toFixed(1);
+            }
+          }
+        } catch (e) { /* skip */ }
+
     // Fetch transit via HAFAS
         let transitMin = null;
         let transitLegs = [];
@@ -287,16 +302,20 @@ const Calendar = (() => {
 
         // Update the rendered event with full commute info
         const eventEl = document.querySelector(`[data-event-idx="${i}"]`);
-        if (eventEl && (bikeMin || transitMin)) {
+        if (eventEl && (bikeMin || transitMin || walkMin)) {
           const commuteEl = eventEl.querySelector('.event-commute');
           if (commuteEl) {
             const now = new Date();
             const lang = Lang.get();
 
             // "Leave" badge next to event name
+            // Preference: walk if <15min, bike if <30min, otherwise transit
             const evStart = events[i].start;
             if (evStart && !events[i].allDay) {
-              const bestTime = transitMin || bikeMin;
+              let bestTime;
+              if (walkMin && walkMin <= 15) bestTime = walkMin;
+              else if (bikeMin && bikeMin <= 30) bestTime = bikeMin;
+              else bestTime = transitMin || bikeMin || walkMin;
               const leaveAt = new Date(evStart.getTime() - bestTime * 60000);
               if (leaveAt > now) {
                 const leaveInMin = Math.round((leaveAt - now) / 60000);
@@ -319,8 +338,22 @@ const Calendar = (() => {
               }
             }
 
-            // Full route display with walk segments and destinations
+            // Full route display — preferred mode first
+            // Preference: walk if <15min, bike if <30min, otherwise transit
             let routeHtml = '';
+            const preferred = (walkMin && walkMin <= 15) ? 'walk' : (bikeMin && bikeMin <= 30) ? 'bike' : 'transit';
+
+            // Walk (only show if ≤30min)
+            if (walkMin && walkMin <= 30) {
+              const pref = preferred === 'walk' ? ' event-route-preferred' : '';
+              routeHtml += `<div class="event-route-line${pref}">🚶 ${walkMin} min · ${walkKm} km</div>`;
+            }
+            // Bike
+            if (bikeMin) {
+              const pref = preferred === 'bike' ? ' event-route-preferred' : '';
+              routeHtml += `<div class="event-route-line${pref}">🚲 ${bikeMin} min · ${bikeKm} km</div>`;
+            }
+            // Transit
             if (transitMin && transitLegs.length > 0) {
               const legParts = transitLegs.map(leg => {
                 if (leg.type === 'walk') {
@@ -329,12 +362,11 @@ const Calendar = (() => {
                 const toLabel = leg.to ? ` → ${leg.to}` : '';
                 return `<span class="event-route-leg">${leg.line}</span><span class="event-route-to">${toLabel}</span>`;
               }).join('');
-              routeHtml += `<div class="event-route-line">🚋 ${transitMin} min · ${legParts}</div>`;
+              const pref = preferred === 'transit' ? ' event-route-preferred' : '';
+              routeHtml += `<div class="event-route-line${pref}">🚋 ${transitMin} min · ${legParts}</div>`;
             } else if (transitMin) {
-              routeHtml += `<div class="event-route-line">🚋 ${transitMin} min</div>`;
-            }
-            if (bikeMin) {
-              routeHtml += `<div class="event-route-line">🚲 ${bikeMin} min · ${bikeKm} km</div>`;
+              const pref = preferred === 'transit' ? ' event-route-preferred' : '';
+              routeHtml += `<div class="event-route-line${pref}">🚋 ${transitMin} min</div>`;
             }
             commuteEl.innerHTML = routeHtml;
           }
@@ -413,7 +445,6 @@ const Calendar = (() => {
 
   function switchDay(idx) {
     _selectedDay = idx;
-    renderDayTabs();
     // Re-render main event list for selected day
     const config = HOMEBOARD_CONFIG.calendar;
     const dayData = _multiDayCache[idx];
@@ -422,44 +453,40 @@ const Calendar = (() => {
       // Update card header title
       const headerLabel = document.querySelector('.card-calendar .card-header span[data-i18n="calendar_title"]');
       if (headerLabel) headerLabel.textContent = dayData.label;
+      // Fetch commute for events with locations
+      if (config.showCommute) {
+        fetchCommuteForEvents(dayData.events.slice(0, config.maxEvents));
+      }
     }
+    // Update strip selection highlight
+    renderWeekStrip();
   }
 
   function renderDayTabs() {
-    const previewEl = document.getElementById('calendar-tomorrow');
-    if (!previewEl) return;
-
-    // Show tabs for first 3 days
-    const tabs = _multiDayCache.slice(0, 3).map((day, i) => {
-      const active = i === _selectedDay ? ' cal-tab-active' : '';
-      const count = day.events.length;
-      const badge = count > 0 ? `<span class="cal-tab-count">${count}</span>` : '';
-      return `<button class="cal-tab${active}" onclick="Calendar.switchDay(${i})">${day.label} ${badge}</button>`;
-    }).join('');
-
-    previewEl.innerHTML = `<div class="cal-tabs">${tabs}</div>`;
+    // No tabs — week strip handles day switching
   }
 
   function renderWeekStrip() {
-    const previewEl = document.getElementById('calendar-tomorrow');
-    if (!previewEl) return;
+    // Week strip is rendered once in a persistent container
+    let stripContainer = document.getElementById('calendar-week-strip');
+    if (!stripContainer) {
+      const previewEl = document.getElementById('calendar-tomorrow');
+      if (!previewEl) return;
+      previewEl.innerHTML = '<div id="calendar-week-strip"></div>';
+      stripContainer = document.getElementById('calendar-week-strip');
+    }
 
-    // Mini week overview: 7 days with dots
-    const stripHtml = _multiDayCache.map((day, i) => {
+    // Mini week overview: single dot if day has events
+    stripContainer.innerHTML = `<div class="cal-week-strip">${_multiDayCache.map((day, i) => {
       const isToday = i === 0;
       const isSelected = i === _selectedDay;
-      const dots = Math.min(day.events.length, 4);
-      const dotHtml = dots > 0
-        ? Array(dots).fill('<span class="cal-week-dot"></span>').join('')
-        : '<span class="cal-week-dot cal-week-dot-empty"></span>';
+      const hasEvents = day.events.length > 0;
       return `<div class="cal-week-day ${isToday ? 'cal-week-today' : ''} ${isSelected ? 'cal-week-selected' : ''}" onclick="Calendar.switchDay(${i})">
         <span class="cal-week-name">${day.dayName}</span>
         <span class="cal-week-date">${day.date.getDate()}</span>
-        <div class="cal-week-dots">${dotHtml}</div>
+        ${hasEvents ? '<span class="cal-week-dot"></span>' : '<span class="cal-week-dot-spacer"></span>'}
       </div>`;
-    }).join('');
-
-    previewEl.innerHTML += `<div class="cal-week-strip">${stripHtml}</div>`;
+    }).join('')}</div>`;
   }
 
   function render(events) {
