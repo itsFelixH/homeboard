@@ -77,9 +77,15 @@ const Calendar = (() => {
         } else if (line.startsWith('DTEND')) {
           event.end = parseDT(line).date;
         } else if (line.startsWith('SUMMARY')) {
-          event.summary = line.split(':').slice(1).join(':');
+          event.summary = line.split(':').slice(1).join(':').replace(/\\,/g, ',').replace(/\\\\/g, '\\');
         } else if (line.startsWith('LOCATION')) {
           event.location = line.split(':').slice(1).join(':').replace(/\\,/g, ',').replace(/\\\\/g, '\\');
+        } else if (line.startsWith('DESCRIPTION')) {
+          event.description = line.split(':').slice(1).join(':').replace(/\\,/g, ',').replace(/\\\\/g, '\\').replace(/\\n/g, '\n');
+        } else if (line.startsWith('ATTENDEE')) {
+          if (!event.attendees) event.attendees = [];
+          const cn = line.match(/CN=([^;:]+)/i);
+          if (cn) event.attendees.push(cn[1].replace(/"/g, ''));
         } else if (line.startsWith('RRULE')) {
           event.rrule = parseRRULE(line);
         } else if (line.startsWith('EXDATE')) {
@@ -193,6 +199,24 @@ const Calendar = (() => {
     return true;
   }
 
+  function isHomeAddress(location) {
+    if (!location) return false;
+    const homeAddr = HOMEBOARD_CONFIG.location.address;
+    if (!homeAddr) return false;
+    const normalize = s => s.toLowerCase().replace(/[.,\-\/\\]/g, ' ').replace(/\s+/g, ' ').trim();
+    const loc = normalize(location);
+    const home = normalize(homeAddr);
+    return loc.includes(home) || home.includes(loc);
+  }
+
+  function isEventEnded(ev) {
+    const now = new Date();
+    if (ev.end) return ev.end <= now;
+    // No end time: treat as ended if start is in the past (for timed events)
+    if (!ev.allDay && ev.start) return ev.start <= now;
+    return false;
+  }
+
   async function fetchCommuteForEvents(events) {
     const origin = HOMEBOARD_CONFIG.location;
     if (!origin.latitude || !origin.longitude) return;
@@ -200,49 +224,70 @@ const Calendar = (() => {
     for (let i = 0; i < events.length; i++) {
       const ev = events[i];
       if (!ev.location || !isBerlinLocation(ev.location)) continue;
+      if (isHomeAddress(ev.location)) continue;
+      if (isEventEnded(ev)) continue;
 
       try {
-        // Geocode the location — try Nominatim first, then Photon as fallback
+        // Geocode the location — check cache first, then Nominatim, then Photon
         let destLat = null, destLon = null;
         const locStr = ev.location;
-        const queries = [locStr];
-        // Extract street address: try after first comma, or just last parts
-        const parts = locStr.split(',').map(s => s.trim());
-        if (parts.length >= 2) {
-          queries.push(parts.slice(1).join(', ')); // skip business name
-        }
-        if (parts.length >= 3) {
-          queries.push(parts.slice(-2).join(', ')); // just city + zip
-        }
+        const cacheKey = `geo_${locStr}`;
 
-        // Try Nominatim
-        for (const q of queries) {
-          const geoUrl = `/proxy?url=${encodeURIComponent(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}`)}`;
-          const geoRes = await fetch(geoUrl);
-          if (!geoRes.ok) continue;
-          const geoData = await geoRes.json();
-          if (geoData.length) {
-            destLat = parseFloat(geoData[0].lat);
-            destLon = parseFloat(geoData[0].lon);
-            break;
+        // Check sessionStorage cache
+        try {
+          const cached = sessionStorage.getItem(cacheKey);
+          if (cached) {
+            const coords = JSON.parse(cached);
+            destLat = coords.lat;
+            destLon = coords.lon;
           }
-        }
+        } catch (e) { /* ignore */ }
 
-        // Fallback: Photon (Komoot) geocoder
-        if (!destLat) {
+        if (!destLat || !destLon) {
+          const queries = [locStr];
+          // Extract street address: try after first comma, or just last parts
+          const parts = locStr.split(',').map(s => s.trim());
+          if (parts.length >= 2) {
+            queries.push(parts.slice(1).join(', ')); // skip business name
+          }
+          if (parts.length >= 3) {
+            queries.push(parts.slice(-2).join(', ')); // just city + zip
+          }
+
+          // Try Nominatim
           for (const q of queries) {
-            try {
-              const photonUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=1&lang=de`;
-              const photonRes = await fetch(photonUrl);
-              if (!photonRes.ok) continue;
-              const photonData = await photonRes.json();
-              if (photonData.features && photonData.features.length) {
-                const [lon, lat] = photonData.features[0].geometry.coordinates;
-                destLat = lat;
-                destLon = lon;
-                break;
-              }
-            } catch (e) { /* skip */ }
+            const geoUrl = `/proxy?url=${encodeURIComponent(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}`)}`;
+            const geoRes = await fetch(geoUrl);
+            if (!geoRes.ok) continue;
+            const geoData = await geoRes.json();
+            if (geoData.length) {
+              destLat = parseFloat(geoData[0].lat);
+              destLon = parseFloat(geoData[0].lon);
+              break;
+            }
+          }
+
+          // Fallback: Photon (Komoot) geocoder
+          if (!destLat) {
+            for (const q of queries) {
+              try {
+                const photonUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=1&lang=de`;
+                const photonRes = await fetch(photonUrl);
+                if (!photonRes.ok) continue;
+                const photonData = await photonRes.json();
+                if (photonData.features && photonData.features.length) {
+                  const [lon, lat] = photonData.features[0].geometry.coordinates;
+                  destLat = lat;
+                  destLon = lon;
+                  break;
+                }
+              } catch (e) { /* skip */ }
+            }
+          }
+
+          // Cache result
+          if (destLat && destLon) {
+            try { sessionStorage.setItem(cacheKey, JSON.stringify({ lat: destLat, lon: destLon })); } catch (e) { /* full */ }
           }
         }
 
@@ -282,9 +327,10 @@ const Calendar = (() => {
           }
         } catch (e) { /* skip */ }
 
-    // Fetch transit via HAFAS
+    // Fetch transit via HAFAS (with real-time delays)
         let transitMin = null;
         let transitLegs = [];
+        let transitDelayMin = 0;
         const hafasKey = HOMEBOARD_CONFIG.departures?.hafasAccessId;
         if (hafasKey) {
           try {
@@ -292,23 +338,47 @@ const Calendar = (() => {
               `accessId=${hafasKey}` +
               `&originCoordLat=${origin.latitude}&originCoordLong=${origin.longitude}` +
               `&destCoordLat=${destLat}&destCoordLong=${destLon}` +
-              `&format=json&numF=1`;
+              `&format=json&numF=1&rtMode=FULL`;
             const hafasRes = await fetch(hafasUrl);
             if (hafasRes.ok) {
               const hData = await hafasRes.json();
               const trips = hData.Trip || [];
               if (trips.length > 0) {
-                transitMin = parsePTDuration(trips[0].duration);
-                let legs = trips[0].LegList?.Leg || [];
+                const trip = trips[0];
+                const plannedMin = parsePTDuration(trip.duration);
+                transitMin = plannedMin;
+
+                // Calculate real-time duration from actual departure/arrival
+                const originDep = trip.Origin?.rtTime || trip.Origin?.time;
+                const originDate = trip.Origin?.rtDate || trip.Origin?.date;
+                const destArr = trip.Destination?.rtTime || trip.Destination?.time;
+                const destDate = trip.Destination?.rtDate || trip.Destination?.date;
+                if (originDep && destArr && originDate && destDate) {
+                  const depDt = parseHafasDateTime(originDate, originDep);
+                  const arrDt = parseHafasDateTime(destDate, destArr);
+                  if (depDt && arrDt) {
+                    const realMin = Math.round((arrDt - depDt) / 60000);
+                    if (realMin > 0) {
+                      transitDelayMin = realMin - plannedMin;
+                      transitMin = realMin;
+                    }
+                  }
+                }
+
+                let legs = trip.LegList?.Leg || [];
                 if (!Array.isArray(legs)) legs = [legs];
                 transitLegs = legs.map(leg => {
                   const name = (leg.name || '').trim();
                   const dur = parsePTDuration(leg.duration);
                   const to = (leg.Destination?.name || '').replace(' (Berlin)', '').replace(' Bhf', '');
+                  // Check for per-leg delay
+                  const legDelay = leg.Destination?.rtTime && leg.Destination?.time
+                    ? parseHafasTimeDiff(leg.Destination.date, leg.Destination.time, leg.Destination.rtDate || leg.Destination.date, leg.Destination.rtTime)
+                    : 0;
                   if (!name || name === 'Fußweg' || leg.type === 'WALK') {
                     return { type: 'walk', duration: dur };
                   }
-                  return { type: 'transit', line: name, to, duration: dur };
+                  return { type: 'transit', line: name, to, duration: dur, delay: legDelay };
                 });
               }
             }
@@ -355,20 +425,21 @@ const Calendar = (() => {
             const evStart = events[i].start;
             if (evStart && !events[i].allDay) {
               let bestTime;
-              if (walkMin && walkMin <= 15) bestTime = walkMin;
-              else if (bikeMin && bikeMin <= 30) bestTime = bikeMin;
-              else bestTime = transitMin || bikeMin || walkMin;
+              let bestMode;
+              if (walkMin && walkMin <= 15) { bestTime = walkMin; bestMode = '🚶'; }
+              else if (bikeMin && bikeMin <= 30) { bestTime = bikeMin; bestMode = '🚲'; }
+              else { bestTime = transitMin || bikeMin || walkMin; bestMode = transitMin ? '🚋' : bikeMin ? '🚲' : '🚶'; }
               const leaveAt = new Date(evStart.getTime() - bestTime * 60000);
               if (leaveAt > now) {
                 const leaveInMin = Math.round((leaveAt - now) / 60000);
                 let leaveBadge = '';
-                if (leaveInMin <= 60) {
-                  // Less than 1h: show "leave in X min"
-                  leaveBadge = lang === 'de' ? `🚪 los in ${leaveInMin} min` : lang === 'es' ? `🚪 salir en ${leaveInMin} min` : `🚪 leave in ${leaveInMin} min`;
+                if (leaveInMin <= 30) {
+                  // Close: show countdown
+                  leaveBadge = lang === 'de' ? `${bestMode} los in ${leaveInMin} min` : lang === 'es' ? `${bestMode} salir en ${leaveInMin} min` : `${bestMode} leave in ${leaveInMin} min`;
                 } else {
-                  // More than 1h: show "leave at HH:MM"
+                  // Further out: show time
                   const leaveStr = `${leaveAt.getHours().toString().padStart(2,'0')}:${leaveAt.getMinutes().toString().padStart(2,'0')}`;
-                  leaveBadge = lang === 'de' ? `🚪 los um ${leaveStr}` : lang === 'es' ? `🚪 salir a las ${leaveStr}` : `🚪 leave at ${leaveStr}`;
+                  leaveBadge = lang === 'de' ? `${bestMode} los um ${leaveStr}` : lang === 'es' ? `${bestMode} salir a las ${leaveStr}` : `${bestMode} leave at ${leaveStr}`;
                 }
                 const untilEl = eventEl.querySelector('.event-until');
                 if (untilEl) {
@@ -377,6 +448,10 @@ const Calendar = (() => {
                   const row = eventEl.querySelector('.event-row');
                   if (row) row.insertAdjacentHTML('beforeend', `<span class="event-until">${leaveBadge}</span>`);
                 }
+              } else {
+                // Past: remove leave badge if present
+                const untilEl = eventEl.querySelector('.event-until');
+                if (untilEl) untilEl.remove();
               }
             }
 
@@ -402,13 +477,16 @@ const Calendar = (() => {
                   return `<span class="event-route-walk">🚶${leg.duration} min</span>`;
                 }
                 const toLabel = leg.to ? ` → ${leg.to}` : '';
-                return `<span class="event-route-leg">${leg.line}</span><span class="event-route-to">${toLabel}</span>`;
+                const delayBadge = leg.delay > 0 ? `<span class="event-route-delay">+${leg.delay}</span>` : '';
+                return `<span class="event-route-leg">${leg.line}${delayBadge}</span><span class="event-route-to">${toLabel}</span>`;
               }).join('');
               const pref = preferred === 'transit' ? ' event-route-preferred' : '';
-              routeHtml += `<div class="event-route-line${pref}">🚋 ${transitMin} min · ${legParts}</div>`;
+              const delayNote = transitDelayMin > 0 ? ` <span class="event-route-delay">+${transitDelayMin} min</span>` : '';
+              routeHtml += `<div class="event-route-line${pref}">🚋 ${transitMin} min${delayNote} · ${legParts}</div>`;
             } else if (transitMin) {
               const pref = preferred === 'transit' ? ' event-route-preferred' : '';
-              routeHtml += `<div class="event-route-line${pref}">🚋 ${transitMin} min</div>`;
+              const delayNote = transitDelayMin > 0 ? ` <span class="event-route-delay">+${transitDelayMin} min</span>` : '';
+              routeHtml += `<div class="event-route-line${pref}">🚋 ${transitMin} min${delayNote}</div>`;
             }
             commuteEl.innerHTML = routeHtml;
           }
@@ -460,8 +538,10 @@ const Calendar = (() => {
         } else if (event) {
           if (line.startsWith('DTSTART')) { const p = parseDT(line); event.start = p.date; event.allDay = p.allDay; }
           else if (line.startsWith('DTEND')) { event.end = parseDT(line).date; }
-          else if (line.startsWith('SUMMARY')) { event.summary = line.split(':').slice(1).join(':'); }
+          else if (line.startsWith('SUMMARY')) { event.summary = line.split(':').slice(1).join(':').replace(/\\,/g, ',').replace(/\\\\/g, '\\'); }
           else if (line.startsWith('LOCATION')) { event.location = line.split(':').slice(1).join(':').replace(/\\,/g, ',').replace(/\\\\/g, '\\'); }
+          else if (line.startsWith('DESCRIPTION')) { event.description = line.split(':').slice(1).join(':').replace(/\\,/g, ',').replace(/\\\\/g, '\\').replace(/\\n/g, '\n'); }
+          else if (line.startsWith('ATTENDEE')) { if (!event.attendees) event.attendees = []; const cn = line.match(/CN=([^;:]+)/i); if (cn) event.attendees.push(cn[1].replace(/"/g, '')); }
           else if (line.startsWith('RRULE')) { event.rrule = parseRRULE(line); }
           else if (line.startsWith('EXDATE')) { event.exdates.push(line.split(':').pop().slice(0, 8)); }
         }
@@ -526,7 +606,6 @@ const Calendar = (() => {
       return `<div class="cal-week-day ${isToday ? 'cal-week-today' : ''} ${isSelected ? 'cal-week-selected' : ''}" onclick="Calendar.switchDay(${i})">
         <span class="cal-week-name">${day.dayName}</span>
         <span class="cal-week-date">${day.date.getDate()}</span>
-        ${hasEvents ? '<span class="cal-week-dot"></span>' : '<span class="cal-week-dot-spacer"></span>'}
       </div>`;
     }).join('')}</div>`;
   }
@@ -557,33 +636,119 @@ const Calendar = (() => {
       const idx = allDay.length + i; // preserve data-event-idx across full list
       const actualIdx = events.indexOf(ev);
 
+      // Determine if event has ended
+      const eventEnd = ev.end || new Date(ev.start.getTime() + 60 * 60000); // default 1h if no end
+      const isPast = eventEnd <= now;
+
       const timeStr = `${ev.start.getHours().toString().padStart(2,'0')}:${ev.start.getMinutes().toString().padStart(2,'0')}`;
       const timeHtml = `<span class="event-time">${timeStr}</span>`;
+
+      // Duration badge
+      let durationHtml = '';
+      if (ev.end && !ev.allDay) {
+        const durMin = Math.round((ev.end - ev.start) / 60000);
+        if (durMin > 0) {
+          const durStr = durMin >= 60
+            ? `${Math.floor(durMin / 60)}h${durMin % 60 > 0 ? ` ${durMin % 60}m` : ''}`
+            : `${durMin} min`;
+          durationHtml = `<span class="event-duration">${durStr}</span>`;
+        }
+      }
 
       // Time-until badge
       const diffMin = Math.round((ev.start - now) / 60000);
       let untilHtml = '';
-      if (diffMin > 0 && diffMin <= 90) {
+      if (!isPast && diffMin > 0 && diffMin <= 90) {
         untilHtml = `<span class="event-until">in ${diffMin} min</span>`;
-      } else if (diffMin > 0 && diffMin <= 180) {
+      } else if (!isPast && diffMin > 0 && diffMin <= 180) {
         const hrs = Math.floor(diffMin / 60);
         const mins = diffMin % 60;
         untilHtml = `<span class="event-until">in ${hrs}h${mins > 0 ? ` ${mins}m` : ''}</span>`;
       }
 
+      const locationLabel = ev.location
+        ? isHomeAddress(ev.location)
+          ? `<div class="event-location event-location-home">🏠 ${i18n('home')}</div>`
+          : `<a href="https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(HOMEBOARD_CONFIG.location.address || '')}&destination=${encodeURIComponent(ev.location)}" target="_blank" class="event-location">📍 ${ev.location}</a>`
+        : '';
       const locationHtml = ev.location && isBerlinLocation(ev.location)
         ? `<div class="event-commute" title="${ev.location}"></div>`
         : '';
 
-      const mapsUrl = ev.location ? `https://maps.google.com/?q=${encodeURIComponent(ev.location)}` : '';
-      const summaryHtml = mapsUrl
-        ? `<a href="${mapsUrl}" target="_blank" class="event-summary event-summary-link" title="${ev.location}">${ev.summary || 'Untitled'}</a>`
-        : `<span class="event-summary">${ev.summary || 'Untitled'}</span>`;
+      const summaryHtml = `<span class="event-summary event-clickable" data-detail-idx="${actualIdx}">${ev.summary || 'Untitled'}</span>`;
 
-      return `<li data-event-idx="${actualIdx}"><div class="event-row">${timeHtml}${summaryHtml}${untilHtml}</div>${locationHtml}</li>`;
+      return `<li data-event-idx="${actualIdx}"${isPast ? ' class="event-past"' : ''}><div class="event-row">${timeHtml}${durationHtml}${summaryHtml}${untilHtml}</div>${locationLabel}${locationHtml}</li>`;
     }).join('');
 
     list.innerHTML = allDayHtml + timedHtml;
+
+    // Store events for detail overlay and attach click handlers
+    _renderedEvents = events;
+    list.querySelectorAll('.event-clickable').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.preventDefault();
+        const idx = parseInt(el.getAttribute('data-detail-idx'));
+        showEventDetail(_renderedEvents[idx]);
+      });
+    });
+  }
+
+  let _renderedEvents = [];
+
+  function showEventDetail(ev) {
+    if (!ev) return;
+    // Remove existing overlay
+    const existing = document.getElementById('event-detail-overlay');
+    if (existing) existing.remove();
+
+    const timeStr = ev.allDay
+      ? (Lang.get() === 'de' ? 'Ganztägig' : Lang.get() === 'es' ? 'Todo el día' : 'All day')
+      : `${ev.start.getHours().toString().padStart(2,'0')}:${ev.start.getMinutes().toString().padStart(2,'0')}` +
+        (ev.end ? ` – ${ev.end.getHours().toString().padStart(2,'0')}:${ev.end.getMinutes().toString().padStart(2,'0')}` : '');
+
+    let durationStr = '';
+    if (ev.end && !ev.allDay) {
+      const durMin = Math.round((ev.end - ev.start) / 60000);
+      if (durMin > 0) {
+        durationStr = durMin >= 60
+          ? `${Math.floor(durMin / 60)}h${durMin % 60 > 0 ? ` ${durMin % 60}m` : ''}`
+          : `${durMin} min`;
+      }
+    }
+
+    const locationHtml = ev.location
+      ? `<div class="detail-row"><span class="detail-icon">📍</span><a href="https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(HOMEBOARD_CONFIG.location.address || '')}&destination=${encodeURIComponent(ev.location)}" target="_blank" class="detail-link">${ev.location}</a></div>`
+      : '';
+
+    const descHtml = ev.description
+      ? `<div class="detail-row detail-desc">${ev.description.replace(/\n/g, '<br>')}</div>`
+      : '';
+
+    const attendeesHtml = ev.attendees && ev.attendees.length > 0
+      ? `<div class="detail-row"><span class="detail-icon">👥</span>${ev.attendees.join(', ')}</div>`
+      : '';
+
+    const overlay = document.createElement('div');
+    overlay.id = 'event-detail-overlay';
+    overlay.innerHTML = `
+      <div class="event-detail-card">
+        <div class="detail-header">
+          <span class="detail-summary">${ev.summary || 'Untitled'}</span>
+          <button class="detail-close" aria-label="Close">✕</button>
+        </div>
+        <div class="detail-time">${timeStr}${durationStr ? ` · ${durationStr}` : ''}</div>
+        ${locationHtml}
+        ${attendeesHtml}
+        ${descHtml}
+      </div>`;
+
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay || e.target.classList.contains('detail-close')) {
+        overlay.remove();
+      }
+    });
+
+    document.body.appendChild(overlay);
   }
 
   function parsePTDuration(str) {
@@ -591,6 +756,22 @@ const Calendar = (() => {
     const h = str.match(/(\d+)H/);
     const m = str.match(/(\d+)M/);
     return (h ? parseInt(h[1]) * 60 : 0) + (m ? parseInt(m[1]) : 0);
+  }
+
+  function parseHafasDateTime(dateStr, timeStr) {
+    // HAFAS format: date=YYYY-MM-DD, time=HH:MM:SS
+    if (!dateStr || !timeStr) return null;
+    const [y, mo, d] = dateStr.split('-').map(Number);
+    const [h, m] = timeStr.split(':').map(Number);
+    return new Date(y, mo - 1, d, h, m);
+  }
+
+  function parseHafasTimeDiff(date1, time1, date2, time2) {
+    // Returns delay in minutes (positive = late)
+    const dt1 = parseHafasDateTime(date1, time1);
+    const dt2 = parseHafasDateTime(date2, time2);
+    if (!dt1 || !dt2) return 0;
+    return Math.round((dt2 - dt1) / 60000);
   }
 
   return { init, switchDay };
