@@ -119,7 +119,8 @@ const ConfigLoader = (() => {
     });
 
     // --- Location ---
-    config.location = raw.location || { latitude: 0, longitude: 0 };
+    config.location = raw.location || { latitude: 0, longitude: 0, address: '' };
+    if (!config.location.address) config.location.address = '';
 
     // --- Greeting ---
     config.greeting = raw.greeting || {};
