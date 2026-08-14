@@ -13,6 +13,7 @@
 location:
   latitude: 0
   longitude: 0
+  # address: 'Your Street 1, 12345 City'  # home address (used to filter commute, shown in calendar)
 
 # Your name (shown in greeting)
 greeting:
