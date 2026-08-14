@@ -32,7 +32,8 @@ const I18N_STRINGS = {
     birthdays_error: 'Fehler beim Laden',
     plants: 'Pflanzen',
     email: 'E-Mail',
-    github: 'GitHub'
+    github: 'GitHub',
+    home: 'Zuhause'
   },
   en: {
     weather: 'Weather',
@@ -62,7 +63,8 @@ const I18N_STRINGS = {
     birthdays_error: 'Error loading',
     plants: 'Plants',
     email: 'Email',
-    github: 'GitHub'
+    github: 'GitHub',
+    home: 'Home'
   },
   es: {
     weather: 'Clima',
@@ -92,7 +94,8 @@ const I18N_STRINGS = {
     birthdays_error: 'Error',
     plants: 'Plantas',
     email: 'Correo',
-    github: 'GitHub'
+    github: 'GitHub',
+    home: 'Casa'
   }
 };
 
