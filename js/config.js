@@ -293,3 +293,52 @@ const ConfigLoader = (() => {
 
   return { load, invalidateCache };
 })();
+
+window.getTransitLineStyle = function(line) {
+  if (!line) return { bg: '#6366f1', fg: '#ffffff' };
+  const clean = line.trim().toUpperCase();
+  
+  // S-Bahn
+  if (clean.startsWith('S') && (clean === 'S' || /^[S]\d+/.test(clean))) {
+    return { bg: '#00965e', fg: '#ffffff' };
+  }
+  
+  // U-Bahn
+  if (clean.startsWith('U') && (clean === 'U' || /^[U]\d+/.test(clean))) {
+    switch (clean) {
+      case 'U1': return { bg: '#7aab55', fg: '#ffffff' };
+      case 'U2': return { bg: '#da421e', fg: '#ffffff' };
+      case 'U3': return { bg: '#009f65', fg: '#ffffff' };
+      case 'U4': return { bg: '#fcd227', fg: '#000000' };
+      case 'U5': return { bg: '#a06540', fg: '#ffffff' };
+      case 'U6': return { bg: '#69829b', fg: '#ffffff' };
+      case 'U7': return { bg: '#528dba', fg: '#ffffff' };
+      case 'U8': return { bg: '#224f8a', fg: '#ffffff' };
+      case 'U9': return { bg: '#ffa812', fg: '#ffffff' };
+      default: return { bg: '#005a9c', fg: '#ffffff' };
+    }
+  }
+  
+  // MetroTram or MetroBus (starts with M)
+  if (clean.startsWith('M') && (clean === 'M' || /^[M]\d+/.test(clean))) {
+    const num = parseInt(clean.slice(1));
+    const metroTrams = [1, 2, 4, 5, 6, 8, 10, 13, 17];
+    if (metroTrams.includes(num)) {
+      return { bg: '#d8201b', fg: '#ffffff' }; // MetroTram Red
+    } else {
+      return { bg: '#963f94', fg: '#ffffff' }; // MetroBus Purple
+    }
+  }
+  
+  // Express Bus
+  if (clean.startsWith('X')) {
+    return { bg: '#963f94', fg: '#ffffff' }; // Bus purple
+  }
+  
+  // Regional Train
+  if (clean.startsWith('RE') || clean.startsWith('RB')) {
+    return { bg: '#b02c26', fg: '#ffffff' }; // Regional red
+  }
+  
+  return { bg: '#6366f1', fg: '#ffffff' };
+};

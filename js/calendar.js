@@ -133,6 +133,29 @@ const Calendar = (() => {
   }
 
   function occursToday(event, todayStr, todayDow, today, dowMap) {
+    const matches = checkOccursToday(event, todayStr, todayDow, today, dowMap);
+    if (matches) {
+      const targetYear = today.getFullYear();
+      const targetMonth = today.getMonth();
+      const targetDate = today.getDate();
+
+      const startHrs = event.start.getHours();
+      const startMins = event.start.getMinutes();
+      const startSecs = event.start.getSeconds();
+      const startMs = event.start.getMilliseconds();
+      const originalStart = event.start;
+
+      event.start = new Date(targetYear, targetMonth, targetDate, startHrs, startMins, startSecs, startMs);
+
+      if (event.end) {
+        const durationMs = event.end - originalStart;
+        event.end = new Date(event.start.getTime() + durationMs);
+      }
+    }
+    return matches;
+  }
+
+  function checkOccursToday(event, todayStr, todayDow, today, dowMap) {
     const startStr = dateToStr(event.start);
     if (event.exdates.includes(todayStr)) return false;
     if (startStr === todayStr) return true;
@@ -463,30 +486,31 @@ const Calendar = (() => {
             // Walk (only show if ≤30min)
             if (walkMin && walkMin <= 30) {
               const pref = preferred === 'walk' ? ' event-route-preferred' : '';
-              routeHtml += `<div class="event-route-line${pref}">🚶 ${walkMin} min · ${walkKm} km</div>`;
+              routeHtml += `<div class="event-route-line${pref}"><span class="transit-badge-walk">🚶 ${walkMin} min</span> <span class="transit-badge-walk">${walkKm} km</span></div>`;
             }
             // Bike
             if (bikeMin) {
               const pref = preferred === 'bike' ? ' event-route-preferred' : '';
-              routeHtml += `<div class="event-route-line${pref}">🚲 ${bikeMin} min · ${bikeKm} km</div>`;
+              routeHtml += `<div class="event-route-line${pref}"><span class="transit-badge-bike">🚲 ${bikeMin} min</span> <span class="transit-badge-bike">${bikeKm} km</span></div>`;
             }
             // Transit
             if (transitMin && transitLegs.length > 0) {
               const legParts = transitLegs.map(leg => {
                 if (leg.type === 'walk') {
-                  return `<span class="event-route-walk">🚶${leg.duration} min</span>`;
+                  return `<span class="transit-badge-walk">🚶 ${leg.duration} min</span>`;
                 }
-                const toLabel = leg.to ? ` → ${leg.to}` : '';
+                const toLabel = leg.to ? ` <span class="event-route-to">→ ${leg.to}</span>` : '';
                 const delayBadge = leg.delay > 0 ? `<span class="event-route-delay">+${leg.delay}</span>` : '';
-                return `<span class="event-route-leg">${leg.line}${delayBadge}</span><span class="event-route-to">${toLabel}</span>`;
-              }).join('');
+                const style = window.getTransitLineStyle ? window.getTransitLineStyle(leg.line) : { bg: 'var(--surface-hover)', fg: 'var(--text)' };
+                return `<span class="transit-badge" style="background:${style.bg};color:${style.fg};border-color:${style.bg}">${leg.line}${delayBadge}</span>${toLabel}`;
+              }).join('<span class="transit-separator">→</span>');
               const pref = preferred === 'transit' ? ' event-route-preferred' : '';
               const delayNote = transitDelayMin > 0 ? ` <span class="event-route-delay">+${transitDelayMin} min</span>` : '';
-              routeHtml += `<div class="event-route-line${pref}">🚋 ${transitMin} min${delayNote} · ${legParts}</div>`;
+              routeHtml += `<div class="event-route-line${pref}"><span class="transit-badge" style="background:#005a9c;color:#ffffff">🚋 ${transitMin} min${delayNote}</span> <span class="transit-separator">·</span> ${legParts}</div>`;
             } else if (transitMin) {
               const pref = preferred === 'transit' ? ' event-route-preferred' : '';
               const delayNote = transitDelayMin > 0 ? ` <span class="event-route-delay">+${transitDelayMin} min</span>` : '';
-              routeHtml += `<div class="event-route-line${pref}">🚋 ${transitMin} min${delayNote}</div>`;
+              routeHtml += `<div class="event-route-line${pref}"><span class="transit-badge" style="background:#005a9c;color:#ffffff">🚋 ${transitMin} min${delayNote}</span></div>`;
             }
             commuteEl.innerHTML = routeHtml;
           }

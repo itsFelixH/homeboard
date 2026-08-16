@@ -166,10 +166,12 @@ const Commute = (() => {
     let legsHtml = '';
     if (r.transitLegs && r.transitLegs.length > 0) {
       const parts = r.transitLegs.map(leg => {
-        if (leg.mode === 'WALK') return `<span class="commute-leg-walk">🚶${leg.duration} min</span>`;
-        return `<span class="commute-leg-line">${leg.icon} ${leg.line}</span><span class="commute-leg-to">→ ${leg.to}</span>`;
-      });
-      legsHtml = `<div class="commute-route">${parts.join('<span class="commute-leg-sep">·</span>')}</div>`;
+        if (leg.mode === 'WALK') return `<span class="transit-badge-walk">🚶 ${leg.duration} min</span>`;
+        const toLabel = leg.to ? ` <span class="commute-leg-to">→ ${leg.to}</span>` : '';
+        const style = window.getTransitLineStyle ? window.getTransitLineStyle(leg.line) : { bg: 'var(--surface-hover)', fg: 'var(--text)' };
+        return `<span class="transit-badge" style="background:${style.bg};color:${style.fg};border-color:${style.bg}">${leg.icon ? leg.icon + ' ' : ''}${leg.line}</span>${toLabel}`;
+      }).join('<span class="transit-separator">→</span>');
+      legsHtml = `<div class="commute-route">${parts}</div>`;
     }
 
     // Transit section

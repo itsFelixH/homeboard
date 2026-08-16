@@ -72,13 +72,18 @@ const Departures = (() => {
       const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      cachedData[index].departures = (data.Departure || []).map(dep => ({
-        line: dep.name ? dep.name.trim() : '--',
-        direction: (dep.direction || '').replace(' (Berlin)', '').replace(' Bhf', ''),
-        time: dep.rtTime || dep.time || '',
-        delay: calculateDelay(dep.time, dep.rtTime),
-        lineColor: dep.ProductAtStop?.icon?.backgroundColor?.hex || '#6366f1'
-      }));
+      cachedData[index].departures = (data.Departure || []).map(dep => {
+        const lineName = dep.name ? dep.name.trim() : '--';
+        const style = window.getTransitLineStyle ? window.getTransitLineStyle(lineName) : { bg: '#6366f1', fg: '#ffffff' };
+        return {
+          line: lineName,
+          direction: (dep.direction || '').replace(' (Berlin)', '').replace(' Bhf', ''),
+          time: dep.rtTime || dep.time || '',
+          delay: calculateDelay(dep.time, dep.rtTime),
+          lineColor: style.bg,
+          lineTextColor: style.fg
+        };
+      });
     } catch (err) {
       console.error(`HAFAS departures fetch failed for ${stop.label}:`, err);
       await fetchTransportRest(stop, index, config);
@@ -105,13 +110,18 @@ const Departures = (() => {
       const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      cachedData[index].departures = (data.departures || []).map(dep => ({
-        line: dep.line ? dep.line.name : '--',
-        direction: (dep.direction || '').replace(' (Berlin)', '').replace(' Bhf', ''),
-        time: formatTimeISO(dep.when || dep.plannedWhen),
-        delay: dep.delay ? Math.round(dep.delay / 60) : 0,
-        lineColor: dep.line?.color?.bg || '#6366f1'
-      }));
+      cachedData[index].departures = (data.departures || []).map(dep => {
+        const lineName = dep.line ? dep.line.name : '--';
+        const style = window.getTransitLineStyle ? window.getTransitLineStyle(lineName) : { bg: '#6366f1', fg: '#ffffff' };
+        return {
+          line: lineName,
+          direction: (dep.direction || '').replace(' (Berlin)', '').replace(' Bhf', ''),
+          time: formatTimeISO(dep.when || dep.plannedWhen),
+          delay: dep.delay ? Math.round(dep.delay / 60) : 0,
+          lineColor: style.bg,
+          lineTextColor: style.fg
+        };
+      });
     } catch (err) {
       console.error(`Departures fetch failed for ${stop.label}:`, err);
       cachedData[index].departures = [];
@@ -282,7 +292,7 @@ const Departures = (() => {
       const mins = getRelativeMinutes(dep.time);
       const dimClass = (walkMin > 0 && mins <= walkMin + 2) ? ' dep-dim' : '';
       return `<tr class="${dimClass}">
-        <td><span class="dep-line" style="background:${dep.lineColor}">${dep.line}</span></td>
+        <td><span class="transit-badge" style="background:${dep.lineColor};color:${dep.lineTextColor || '#ffffff'}">${dep.line}</span></td>
         <td class="dep-direction">${dep.direction}</td>
         <td class="dep-time">${relTime}</td>
         <td>${delay}</td>
@@ -306,7 +316,7 @@ const Departures = (() => {
       const mins = getRelativeMinutes(dep.time);
       const dimClass = (walkMin > 0 && mins <= walkMin + 2) ? ' dep-dim' : '';
       return `<tr class="${dimClass}">
-        <td><span class="dep-line" style="background:${dep.lineColor}">${dep.line}</span></td>
+        <td><span class="transit-badge" style="background:${dep.lineColor};color:${dep.lineTextColor || '#ffffff'}">${dep.line}</span></td>
         <td class="dep-direction">${dep.direction}</td>
         <td class="dep-time">${relTime}</td>
         <td>${delay}</td>
