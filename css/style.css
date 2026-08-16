@@ -375,7 +375,7 @@ body {
 .event-allday-pill:hover { background: var(--accent); color: var(--bg); }
 .event-until { font-size: 0.6rem; color: var(--text-3); margin-left: 6px; white-space: nowrap; font-weight: 500; }
 .event-past { opacity: 0.4; }
-.event-duration { font-size: 0.58rem; color: var(--text-3); margin-right: 6px; white-space: nowrap; }
+.event-duration { display: inline-block; padding: 1px 5px; border-radius: 3px; background: var(--surface-hover); border: 1px solid var(--border); color: var(--text-2); font-size: 0.58rem; font-weight: 600; text-align: center; vertical-align: middle; margin-left: 6px; white-space: nowrap; }
 .event-clickable { cursor: pointer; }
 .event-clickable:hover { color: var(--accent); }
 

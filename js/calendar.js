@@ -704,7 +704,7 @@ const Calendar = (() => {
 
       const summaryHtml = `<span class="event-summary event-clickable" data-detail-idx="${actualIdx}">${ev.summary || 'Untitled'}</span>`;
 
-      return `<li data-event-idx="${actualIdx}"${isPast ? ' class="event-past"' : ''}><div class="event-row">${timeHtml}${durationHtml}${summaryHtml}${untilHtml}</div>${locationLabel}${locationHtml}</li>`;
+      return `<li data-event-idx="${actualIdx}"${isPast ? ' class="event-past"' : ''}><div class="event-row">${timeHtml}${summaryHtml}${durationHtml}${untilHtml}</div>${locationLabel}${locationHtml}</li>`;
     }).join('');
 
     list.innerHTML = allDayHtml + timedHtml;
