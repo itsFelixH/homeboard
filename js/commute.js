@@ -169,7 +169,7 @@ const Commute = (() => {
     if (r.transitLegs && r.transitLegs.length > 0) {
       const parts = r.transitLegs.map(leg => {
         if (leg.mode === 'WALK') return `<span class="commute-leg-walk">🚶${leg.duration} min</span>`;
-        const fromLabel = leg.from ? `<span class="commute-leg-to">${leg.from}: </span>` : '';
+        const fromLabel = leg.from ? `<span class="station-badge">${leg.from}</span>` : '';
         const toLabel = leg.to ? ` <span class="commute-leg-to">→ ${leg.to}</span>` : '';
         const style = window.getTransitLineStyle ? window.getTransitLineStyle(leg.line) : { bg: 'var(--surface-hover)', fg: 'var(--text)' };
         return `${fromLabel}<span class="transit-badge" style="background:${style.bg};color:${style.fg};border-color:${style.bg}">${leg.line}</span>${toLabel}`;

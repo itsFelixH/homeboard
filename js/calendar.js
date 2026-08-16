@@ -501,7 +501,7 @@ const Calendar = (() => {
                 if (leg.type === 'walk') {
                   return `<span class="event-route-walk">🚶${leg.duration} min</span>`;
                 }
-                const fromLabel = leg.from ? `<span class="event-route-to">${leg.from}: </span>` : '';
+                const fromLabel = leg.from ? `<span class="station-badge">${leg.from}</span>` : '';
                 const toLabel = leg.to ? ` <span class="event-route-to">→ ${leg.to}</span>` : '';
                 const delayBadge = leg.delay > 0 ? `<span class="event-route-delay">+${leg.delay}</span>` : '';
                 const style = window.getTransitLineStyle ? window.getTransitLineStyle(leg.line) : { bg: 'var(--surface-hover)', fg: 'var(--text)' };

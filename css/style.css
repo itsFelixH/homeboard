@@ -322,6 +322,7 @@ body {
 .departures-table tbody tr:last-child { border-bottom: none; }
 .dep-line { display: inline-block; padding: 2px 6px; border-radius: 4px; color: #fff; font-size: 0.62rem; font-weight: 700; text-align: center; min-width: 28px; }
 .transit-badge { display: inline-block; padding: 2px 6px; border-radius: 4px; color: #fff; font-size: 0.62rem; font-weight: 700; text-align: center; min-width: 28px; line-height: 1.2; border: 1px solid transparent; vertical-align: middle; }
+.station-badge { display: inline-block; padding: 1px 5px; border-radius: 3px; background: var(--surface-hover); border: 1px solid var(--border); color: var(--text-2); font-size: 0.95em; font-weight: 600; text-align: center; vertical-align: middle; margin-right: 3px; }
 .dep-direction { max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-2); }
 .dep-time { font-size: 0.7rem; color: var(--cyan); font-weight: 500; }
 .dep-delay { color: var(--red); font-size: 0.65rem; font-weight: 600; }
