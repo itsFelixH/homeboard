@@ -168,13 +168,13 @@ const Commute = (() => {
           });
           legsHtml = ` · ${parts.join('<span class="commute-leg-sep">·</span>')}`;
         }
-        transitHtml = `<div class="commute-route-line">🚋 ${r.transit} min (→ ${transitETA})${legsHtml}</div>`;
+        transitHtml = `<div class="commute-route-line"><span class="commute-route-left">🚋 ${r.transit} min${legsHtml}</span><span class="commute-route-right">→ ${transitETA}</span></div>`;
       }
 
       let bikeHtml = '';
       if (!isDigitalCampus && r.bike) {
         const bikeETA = formatETA(now, r.bike);
-        bikeHtml = `<div class="commute-route-line">🚲 ${r.bike} min (→ ${bikeETA}) · ${r.bikeKm || '--'} km</div>`;
+        bikeHtml = `<div class="commute-route-line"><span class="commute-route-left">🚲 ${r.bike} min · ${r.bikeKm || '--'} km</span><span class="commute-route-right">→ ${bikeETA}</span></div>`;
       }
 
       html += `<div class="commute-dest">

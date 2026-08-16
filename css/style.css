@@ -338,7 +338,9 @@ body {
 .commute-list { display: flex; flex-direction: column; gap: 14px; min-height: 100px; }
 .commute-dest { display: flex; flex-direction: column; gap: 0; border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 12px; }
 .commute-dest:last-child { border-bottom: none; padding-bottom: 0; margin-bottom: 0; }
-.commute-route-line { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; font-size: 0.72rem; color: var(--text-2); margin-top: 4px; }
+.commute-route-line { display: flex; align-items: center; justify-content: space-between; font-size: 0.72rem; color: var(--text-2); margin-top: 4px; width: 100%; }
+.commute-route-left { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.commute-route-right { font-weight: 600; color: var(--accent); white-space: nowrap; margin-left: auto; }
 .commute-section { padding: 10px 0; border-bottom: 1px solid var(--border); }
 .commute-section:last-child { border-bottom: none; padding-bottom: 0; }
 .commute-section:first-child { padding-top: 0; }
