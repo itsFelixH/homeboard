@@ -393,6 +393,7 @@ const Calendar = (() => {
                 transitLegs = legs.map(leg => {
                   const name = (leg.name || '').trim();
                   const dur = parsePTDuration(leg.duration);
+                  const from = (leg.Origin?.name || '').replace(' (Berlin)', '').replace(' Bhf', '');
                   const to = (leg.Destination?.name || '').replace(' (Berlin)', '').replace(' Bhf', '');
                   // Check for per-leg delay
                   const legDelay = leg.Destination?.rtTime && leg.Destination?.time
@@ -401,7 +402,7 @@ const Calendar = (() => {
                   if (!name || name === 'Fußweg' || leg.type === 'WALK') {
                     return { type: 'walk', duration: dur };
                   }
-                  return { type: 'transit', line: name, to, duration: dur, delay: legDelay };
+                  return { type: 'transit', line: name, from, to, duration: dur, delay: legDelay };
                 });
               }
             }
@@ -427,8 +428,9 @@ const Calendar = (() => {
                     return { type: 'walk', duration: dur };
                   }
                   const line = leg.route || leg.routeShortName || leg.mode;
+                  const from = (leg.from?.name || '').replace(' (Berlin)', '');
                   const to = (leg.to?.name || '').replace(' (Berlin)', '');
-                  return { type: 'transit', line, to, duration: dur };
+                  return { type: 'transit', line, from, to, duration: dur };
                 });
               }
             }
@@ -499,10 +501,11 @@ const Calendar = (() => {
                 if (leg.type === 'walk') {
                   return `<span class="event-route-walk">🚶${leg.duration} min</span>`;
                 }
+                const fromLabel = leg.from ? `<span class="event-route-to">${leg.from}: </span>` : '';
                 const toLabel = leg.to ? ` <span class="event-route-to">→ ${leg.to}</span>` : '';
                 const delayBadge = leg.delay > 0 ? `<span class="event-route-delay">+${leg.delay}</span>` : '';
                 const style = window.getTransitLineStyle ? window.getTransitLineStyle(leg.line) : { bg: 'var(--surface-hover)', fg: 'var(--text)' };
-                return `<span class="transit-badge" style="background:${style.bg};color:${style.fg};border-color:${style.bg}">${leg.line}${delayBadge}</span>${toLabel}`;
+                return `${fromLabel}<span class="transit-badge" style="background:${style.bg};color:${style.fg};border-color:${style.bg}">${leg.line}${delayBadge}</span>${toLabel}`;
               }).join(' · ');
               const pref = preferred === 'transit' ? ' event-route-preferred' : '';
               const delayNote = transitDelayMin > 0 ? ` <span class="event-route-delay">+${transitDelayMin} min</span>` : '';

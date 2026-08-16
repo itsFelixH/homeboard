@@ -51,13 +51,14 @@ const Commute = (() => {
             if (!Array.isArray(legs)) legs = [legs];
             result.transitLegs = legs.map(leg => {
               const name = (leg.name || '').trim();
+              const from = (leg.Origin?.name || '').replace(' (Berlin)', '').replace(' Bhf', '');
               const to = (leg.Destination?.name || '').replace(' (Berlin)', '').replace(' Bhf', '');
               const dur = parsePTDuration(leg.duration);
               if (!name || name === 'Fußweg' || leg.type === 'WALK') {
                 return { mode: 'WALK', duration: dur };
               }
               const icon = name.startsWith('U') ? '🚇' : name.startsWith('Bus') ? '🚌' : '🚋';
-              return { mode: 'TRANSIT', line: name, to, duration: dur, icon };
+              return { mode: 'TRANSIT', line: name, from, to, duration: dur, icon };
             });
           }
         }
@@ -83,9 +84,10 @@ const Commute = (() => {
               const dur = Math.round((leg.duration || 0) / 60);
               if (leg.mode === 'WALK') return { mode: 'WALK', duration: dur };
               const line = leg.route || leg.routeShortName || leg.mode;
+              const from = (leg.from?.name || '').replace(' (Berlin)', '');
               const to = (leg.to?.name || '').replace(' (Berlin)', '');
               const icon = leg.mode === 'SUBWAY' ? '🚇' : leg.mode === 'BUS' ? '🚌' : '🚋';
-              return { mode: 'TRANSIT', line, to, duration: dur, icon };
+              return { mode: 'TRANSIT', line, from, to, duration: dur, icon };
             });
           }
         }
@@ -167,9 +169,10 @@ const Commute = (() => {
     if (r.transitLegs && r.transitLegs.length > 0) {
       const parts = r.transitLegs.map(leg => {
         if (leg.mode === 'WALK') return `<span class="commute-leg-walk">🚶${leg.duration} min</span>`;
+        const fromLabel = leg.from ? `<span class="commute-leg-to">${leg.from}: </span>` : '';
         const toLabel = leg.to ? ` <span class="commute-leg-to">→ ${leg.to}</span>` : '';
         const style = window.getTransitLineStyle ? window.getTransitLineStyle(leg.line) : { bg: 'var(--surface-hover)', fg: 'var(--text)' };
-        return `<span class="transit-badge" style="background:${style.bg};color:${style.fg};border-color:${style.bg}">${leg.line}</span>${toLabel}`;
+        return `${fromLabel}<span class="transit-badge" style="background:${style.bg};color:${style.fg};border-color:${style.bg}">${leg.line}</span>${toLabel}`;
       });
       legsHtml = `<div class="commute-route">${parts.join('<span class="commute-leg-sep">·</span>')}</div>`;
     }
