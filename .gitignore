@@ -22,3 +22,6 @@ Thumbs.db
 
 # Node (if you add tooling later)
 node_modules/
+
+# Agent skills
+.github/skills/
