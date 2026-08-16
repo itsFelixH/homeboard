@@ -486,31 +486,31 @@ const Calendar = (() => {
             // Walk (only show if ≤30min)
             if (walkMin && walkMin <= 30) {
               const pref = preferred === 'walk' ? ' event-route-preferred' : '';
-              routeHtml += `<div class="event-route-line${pref}"><span class="transit-badge-walk">🚶 ${walkMin} min</span> <span class="transit-badge-walk">${walkKm} km</span></div>`;
+              routeHtml += `<div class="event-route-line${pref}">🚶 ${walkMin} min · ${walkKm} km</div>`;
             }
             // Bike
             if (bikeMin) {
               const pref = preferred === 'bike' ? ' event-route-preferred' : '';
-              routeHtml += `<div class="event-route-line${pref}"><span class="transit-badge-bike">🚲 ${bikeMin} min</span> <span class="transit-badge-bike">${bikeKm} km</span></div>`;
+              routeHtml += `<div class="event-route-line${pref}">🚲 ${bikeMin} min · ${bikeKm} km</div>`;
             }
             // Transit
             if (transitMin && transitLegs.length > 0) {
               const legParts = transitLegs.map(leg => {
                 if (leg.type === 'walk') {
-                  return `<span class="transit-badge-walk">🚶 ${leg.duration} min</span>`;
+                  return `<span class="event-route-walk">🚶${leg.duration} min</span>`;
                 }
                 const toLabel = leg.to ? ` <span class="event-route-to">→ ${leg.to}</span>` : '';
                 const delayBadge = leg.delay > 0 ? `<span class="event-route-delay">+${leg.delay}</span>` : '';
                 const style = window.getTransitLineStyle ? window.getTransitLineStyle(leg.line) : { bg: 'var(--surface-hover)', fg: 'var(--text)' };
                 return `<span class="transit-badge" style="background:${style.bg};color:${style.fg};border-color:${style.bg}">${leg.line}${delayBadge}</span>${toLabel}`;
-              }).join('<span class="transit-separator">→</span>');
+              }).join(' · ');
               const pref = preferred === 'transit' ? ' event-route-preferred' : '';
               const delayNote = transitDelayMin > 0 ? ` <span class="event-route-delay">+${transitDelayMin} min</span>` : '';
-              routeHtml += `<div class="event-route-line${pref}"><span class="transit-badge" style="background:#005a9c;color:#ffffff">🚋 ${transitMin} min${delayNote}</span> <span class="transit-separator">·</span> ${legParts}</div>`;
+              routeHtml += `<div class="event-route-line${pref}">🚋 ${transitMin} min${delayNote} · ${legParts}</div>`;
             } else if (transitMin) {
               const pref = preferred === 'transit' ? ' event-route-preferred' : '';
               const delayNote = transitDelayMin > 0 ? ` <span class="event-route-delay">+${transitDelayMin} min</span>` : '';
-              routeHtml += `<div class="event-route-line${pref}"><span class="transit-badge" style="background:#005a9c;color:#ffffff">🚋 ${transitMin} min${delayNote}</span></div>`;
+              routeHtml += `<div class="event-route-line${pref}">🚋 ${transitMin} min${delayNote}</div>`;
             }
             commuteEl.innerHTML = routeHtml;
           }

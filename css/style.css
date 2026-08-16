@@ -322,9 +322,6 @@ body {
 .departures-table tbody tr:last-child { border-bottom: none; }
 .dep-line { display: inline-block; padding: 2px 6px; border-radius: 4px; color: #fff; font-size: 0.62rem; font-weight: 700; text-align: center; min-width: 28px; }
 .transit-badge { display: inline-block; padding: 2px 6px; border-radius: 4px; color: #fff; font-size: 0.62rem; font-weight: 700; text-align: center; min-width: 28px; line-height: 1.2; border: 1px solid transparent; vertical-align: middle; }
-.transit-badge-walk { display: inline-block; padding: 2px 6px; border-radius: 4px; background: var(--surface-hover); border: 1px solid var(--border); color: var(--text-2); font-size: 0.62rem; font-weight: 700; text-align: center; line-height: 1.2; vertical-align: middle; }
-.transit-badge-bike { display: inline-block; padding: 2px 6px; border-radius: 4px; background: var(--surface-hover); border: 1px solid var(--border); color: var(--text-2); font-size: 0.62rem; font-weight: 700; text-align: center; line-height: 1.2; vertical-align: middle; }
-.transit-separator { display: inline-block; color: var(--text-3); font-size: 0.65rem; margin: 0 4px; font-weight: 600; vertical-align: middle; }
 .dep-direction { max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-2); }
 .dep-time { font-size: 0.7rem; color: var(--cyan); font-weight: 500; }
 .dep-delay { color: var(--red); font-size: 0.65rem; font-weight: 600; }
