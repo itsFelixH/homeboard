@@ -33,7 +33,8 @@ const I18N_STRINGS = {
     plants: 'Pflanzen',
     email: 'E-Mail',
     github: 'GitHub',
-    home: 'Zuhause'
+    home: 'Zuhause',
+    arrival: 'Ankunft'
   },
   en: {
     weather: 'Weather',
@@ -64,7 +65,8 @@ const I18N_STRINGS = {
     plants: 'Plants',
     email: 'Email',
     github: 'GitHub',
-    home: 'Home'
+    home: 'Home',
+    arrival: 'Arrival'
   },
   es: {
     weather: 'Clima',
@@ -95,7 +97,8 @@ const I18N_STRINGS = {
     plants: 'Plantas',
     email: 'Correo',
     github: 'GitHub',
-    home: 'Casa'
+    home: 'Casa',
+    arrival: 'Llegada'
   }
 };
 
