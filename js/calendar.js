@@ -696,7 +696,7 @@ const Calendar = (() => {
       const locationLabel = ev.location
         ? isHomeAddress(ev.location)
           ? `<div class="event-location event-location-home">🏠 ${i18n('home')}</div>`
-          : `<a href="https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(HOMEBOARD_CONFIG.location.address || '')}&destination=${encodeURIComponent(ev.location)}" target="_blank" class="event-location">📍 ${ev.location}</a>`
+          : `<a href="https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(HOMEBOARD_CONFIG.location.address || '')}&destination=${encodeURIComponent(ev.location)}" target="_blank" class="event-location">📍 ${ev.location.split(',')[0]}</a>`
         : '';
       const locationHtml = ev.location && isBerlinLocation(ev.location)
         ? `<div class="event-commute" title="${ev.location}"></div>`

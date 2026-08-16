@@ -133,93 +133,58 @@ const Commute = (() => {
   function render() {
     if (cachedResults.length === 0) return;
     const container = document.getElementById('commute-list');
-    const r = cachedResults[currentIndex];
+    
+    // Hide navigation container since we list all destinations
+    const navContainer = document.querySelector('.card-commute .commute-nav');
+    if (navContainer) {
+      navContainer.style.display = 'none';
+    }
 
-    // Update card header title
+    // Set card title back to static commute label
     const headerLabel = document.querySelector('.card-commute .card-header span[data-i18n="commute"]');
-    if (headerLabel) headerLabel.textContent = r.label;
-
-    // Arrow navigation in card header (same pattern as departures)
-    let navContainer = document.querySelector('.card-commute .commute-nav');
-    if (!navContainer) {
-      navContainer = document.createElement('div');
-      navContainer.className = 'commute-nav';
-      const header = document.querySelector('.card-commute .card-header');
-      if (header) header.appendChild(navContainer);
-    }
-    if (cachedResults.length > 1) {
-      const prevIdx = (currentIndex - 1 + cachedResults.length) % cachedResults.length;
-      const nextIdx = (currentIndex + 1) % cachedResults.length;
-      navContainer.innerHTML = `<div class="card-nav">
-        <button class="card-nav-btn" onclick="Commute.switchTo(${prevIdx})" aria-label="Previous">‹</button>
-        <span class="card-nav-label">${currentIndex + 1}/${cachedResults.length}</span>
-        <button class="card-nav-btn" onclick="Commute.switchTo(${nextIdx})" aria-label="Next">›</button>
-      </div>`;
-    } else {
-      navContainer.innerHTML = '';
+    if (headerLabel) {
+      headerLabel.textContent = i18n('commute');
     }
 
-    // Calculate ETAs
     const now = new Date();
-    const transitETA = r.transit ? formatETA(now, r.transit) : null;
-    const bikeETA = r.bike ? formatETA(now, r.bike) : null;
+    let html = '';
 
-    // Build route legs inline
-    let legsHtml = '';
-    if (r.transitLegs && r.transitLegs.length > 0) {
-      const parts = r.transitLegs.map(leg => {
-        if (leg.mode === 'WALK') return `<span class="commute-leg-walk">🚶${leg.duration} min</span>`;
-        const fromLabel = leg.from ? `<span class="station-badge">${leg.from}</span>` : '';
-        const toLabel = leg.to ? ` <span class="commute-leg-to">→ <span class="station-badge">${leg.to}</span></span>` : '';
-        const style = window.getTransitLineStyle ? window.getTransitLineStyle(leg.line) : { bg: 'var(--surface-hover)', fg: 'var(--text)' };
-        return `${fromLabel}<span class="transit-badge" style="background:${style.bg};color:${style.fg};border-color:${style.bg}">${leg.line}</span>${toLabel}`;
-      });
-      legsHtml = `<div class="commute-route">${parts.join('<span class="commute-leg-sep">·</span>')}</div>`;
+    for (const r of cachedResults) {
+      const labelLower = r.label.toLowerCase();
+      const isDigitalCampus = labelLower.includes('digitalcampus');
+      const isEuref = labelLower.includes('euref');
+
+      let transitHtml = '';
+      if (!isEuref && r.transit) {
+        const transitETA = formatETA(now, r.transit);
+        let legsHtml = '';
+        if (r.transitLegs && r.transitLegs.length > 0) {
+          const parts = r.transitLegs.map(leg => {
+            if (leg.mode === 'WALK') return `<span class="commute-leg-walk">🚶${leg.duration} min</span>`;
+            const fromLabel = leg.from ? `<span class="station-badge">${leg.from}</span>` : '';
+            const toLabel = leg.to ? ` <span class="commute-leg-to">→ <span class="station-badge">${leg.to}</span></span>` : '';
+            const style = window.getTransitLineStyle ? window.getTransitLineStyle(leg.line) : { bg: 'var(--surface-hover)', fg: 'var(--text)' };
+            return `${fromLabel}<span class="transit-badge" style="background:${style.bg};color:${style.fg};border-color:${style.bg}">${leg.line}</span>${toLabel}`;
+          });
+          legsHtml = ` · ${parts.join('<span class="commute-leg-sep">·</span>')}`;
+        }
+        transitHtml = `<div class="commute-route-line">🚋 ${r.transit} min (→ ${transitETA})${legsHtml}</div>`;
+      }
+
+      let bikeHtml = '';
+      if (!isDigitalCampus && r.bike) {
+        const bikeETA = formatETA(now, r.bike);
+        bikeHtml = `<div class="commute-route-line">🚲 ${r.bike} min (→ ${bikeETA}) · ${r.bikeKm || '--'} km</div>`;
+      }
+
+      html += `<div class="commute-dest">
+        <div style="font-size: 0.75rem; font-weight: 600; color: var(--text-2); margin-bottom: 4px;">${r.label}</div>
+        ${transitHtml}
+        ${bikeHtml}
+      </div>`;
     }
 
-    // Transit section
-    const showTransit = HOMEBOARD_CONFIG.commute.showTransit !== false;
-    const transitSection = (showTransit && r.transit)
-      ? `<div class="commute-section">
-          <div class="commute-row">
-            <span class="commute-mode">🚋 ÖPNV</span>
-            <span class="commute-eta">→ ${transitETA}</span>
-          </div>
-          <span class="commute-duration">${r.transit} min</span>
-          ${legsHtml}
-        </div>`
-      : showTransit
-        ? `<div class="commute-section commute-section-empty">
-          <div class="commute-row">
-            <span class="commute-mode">🚋 ÖPNV</span>
-            <span class="commute-eta">--</span>
-          </div>
-        </div>`
-        : '';
-
-    // Bike section
-    const showBike = HOMEBOARD_CONFIG.commute.showBike !== false;
-    const bikeSection = (showBike && r.bike)
-      ? `<div class="commute-section">
-          <div class="commute-row">
-            <span class="commute-mode">🚲 Rad</span>
-            <span class="commute-eta">→ ${bikeETA}</span>
-          </div>
-          <span class="commute-duration">${r.bike} min · ${r.bikeKm || '--'} km</span>
-        </div>`
-      : showBike
-        ? `<div class="commute-section commute-section-empty">
-          <div class="commute-row">
-            <span class="commute-mode">🚲 Rad</span>
-            <span class="commute-eta">--</span>
-          </div>
-        </div>`
-        : '';
-
-    container.innerHTML = `<div class="commute-dest">
-      ${transitSection}
-      ${bikeSection}
-    </div>`;
+    container.innerHTML = html;
   }
 
   function formatETA(now, minutes) {

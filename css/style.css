@@ -336,7 +336,9 @@ body {
 
 /* === COMMUTE === */
 .commute-list { display: flex; flex-direction: column; gap: 14px; min-height: 100px; }
-.commute-dest { display: flex; flex-direction: column; gap: 0; }
+.commute-dest { display: flex; flex-direction: column; gap: 0; border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 12px; }
+.commute-dest:last-child { border-bottom: none; padding-bottom: 0; margin-bottom: 0; }
+.commute-route-line { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; font-size: 0.72rem; color: var(--text-2); margin-top: 4px; }
 .commute-section { padding: 10px 0; border-bottom: 1px solid var(--border); }
 .commute-section:last-child { border-bottom: none; padding-bottom: 0; }
 .commute-section:first-child { padding-top: 0; }
@@ -394,7 +396,7 @@ body {
 .event-time { color: var(--accent); font-weight: 600; margin-right: 6px; font-size: 0.7rem; }
 .event-commute { font-size: 0.62rem; color: var(--text-3); padding-left: 2px; margin-top: 2px; }
 .event-commute:empty { display: none; }
-.event-location { font-size: 0.62rem; color: var(--text-3); padding-left: 2px; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; text-decoration: none; }
+.event-location { font-size: 0.62rem; color: var(--text-2); padding-left: 2px; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; text-decoration: none; }
 .event-location:hover { color: var(--accent); }
 .event-route-line { display: flex; align-items: center; gap: 3px; flex-wrap: wrap; padding: 1px 0; }
 .event-route-preferred { color: var(--text-2); }
