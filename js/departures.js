@@ -292,9 +292,9 @@ const Departures = (() => {
       const mins = getRelativeMinutes(dep.time);
       const dimClass = (walkMin > 0 && mins <= walkMin + 2) ? ' dep-dim' : '';
       return `<tr class="${dimClass}">
-        <td><span class="transit-badge" style="background:${dep.lineColor};color:${dep.lineTextColor || '#ffffff'}">${dep.line}</span></td>
+        <td><span class="transit-badge" style="background:${dep.lineColor};color:${dep.lineTextColor || '#ffffff'}" title="${dep.line} → ${dep.direction}">${dep.line}</span></td>
         <td class="dep-direction">${dep.direction}</td>
-        <td class="dep-time">${relTime}</td>
+        <td class="dep-time" title="${dep.delay > 0 ? 'Planned: ' + dep.time.slice(0,5) + ', +' + dep.delay + ' min delay' : 'On time'}">${relTime}</td>
         <td>${delay}</td>
       </tr>`;
     }).join('');
@@ -316,9 +316,9 @@ const Departures = (() => {
       const mins = getRelativeMinutes(dep.time);
       const dimClass = (walkMin > 0 && mins <= walkMin + 2) ? ' dep-dim' : '';
       return `<tr class="${dimClass}">
-        <td><span class="transit-badge" style="background:${dep.lineColor};color:${dep.lineTextColor || '#ffffff'}">${dep.line}</span></td>
+        <td><span class="transit-badge" style="background:${dep.lineColor};color:${dep.lineTextColor || '#ffffff'}" title="${dep.line} → ${dep.direction}">${dep.line}</span></td>
         <td class="dep-direction">${dep.direction}</td>
-        <td class="dep-time">${relTime}</td>
+        <td class="dep-time" title="${dep.delay > 0 ? 'Planned: ' + dep.time.slice(0,5) + ', +' + dep.delay + ' min delay' : 'On time'}">${relTime}</td>
         <td>${delay}</td>
       </tr>`;
     }).join('')}</tbody></table>`;
