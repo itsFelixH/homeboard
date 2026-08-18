@@ -488,12 +488,16 @@ const Calendar = (() => {
             // Walk (only show if ≤30min)
             if (walkMin && walkMin <= 30) {
               const pref = preferred === 'walk' ? ' event-route-preferred' : '';
-              routeHtml += `<div class="event-route-line${pref}">🚶 ${walkMin} min · ${walkKm} km</div>`;
+              const walkEta = new Date(now.getTime() + walkMin * 60000);
+              const walkEtaStr = `${walkEta.getHours().toString().padStart(2,'0')}:${walkEta.getMinutes().toString().padStart(2,'0')}`;
+              routeHtml += `<div class="event-route-line${pref}" title="Walk: ${walkKm} km, arrive ~${walkEtaStr}">🚶 ${walkMin} min · ${walkKm} km</div>`;
             }
             // Bike
             if (bikeMin) {
               const pref = preferred === 'bike' ? ' event-route-preferred' : '';
-              routeHtml += `<div class="event-route-line${pref}">🚲 ${bikeMin} min · ${bikeKm} km</div>`;
+              const bikeEta = new Date(now.getTime() + bikeMin * 60000);
+              const bikeEtaStr = `${bikeEta.getHours().toString().padStart(2,'0')}:${bikeEta.getMinutes().toString().padStart(2,'0')}`;
+              routeHtml += `<div class="event-route-line${pref}" title="Bike: ${bikeKm} km, arrive ~${bikeEtaStr}">🚲 ${bikeMin} min · ${bikeKm} km</div>`;
             }
             // Transit
             if (transitMin && transitLegs.length > 0) {
@@ -503,17 +507,15 @@ const Calendar = (() => {
                 }
                 const fromLabel = leg.from ? `<span class="station-badge">${leg.from}</span>` : '';
                 const toLabel = leg.to ? ` <span class="event-route-to">→</span> <span class="station-badge">${leg.to}</span>` : '';
-                const delayBadge = leg.delay > 0 ? `<span class="event-route-delay">+${leg.delay}</span>` : '';
+                const delayBadge = '';
                 const style = window.getTransitLineStyle ? window.getTransitLineStyle(leg.line) : { bg: 'var(--surface-hover)', fg: 'var(--text)' };
                 return `${fromLabel}<span class="transit-badge" style="background:${style.bg};color:${style.fg};border-color:${style.bg}">${leg.line}${delayBadge}</span>${toLabel}`;
               }).join(' · ');
               const pref = preferred === 'transit' ? ' event-route-preferred' : '';
-              const delayNote = transitDelayMin > 0 ? ` <span class="event-route-delay">+${transitDelayMin} min</span>` : '';
-              routeHtml += `<div class="event-route-line${pref}">🚋 ${transitMin} min${delayNote} · ${legParts}</div>`;
+              routeHtml += `<div class="event-route-line${pref}">🚋 ${transitMin} min · ${legParts}</div>`;
             } else if (transitMin) {
               const pref = preferred === 'transit' ? ' event-route-preferred' : '';
-              const delayNote = transitDelayMin > 0 ? ` <span class="event-route-delay">+${transitDelayMin} min</span>` : '';
-              routeHtml += `<div class="event-route-line${pref}">🚋 ${transitMin} min${delayNote}</div>`;
+              routeHtml += `<div class="event-route-line${pref}">🚋 ${transitMin} min</div>`;
             }
             commuteEl.innerHTML = routeHtml;
           }
@@ -672,13 +674,15 @@ const Calendar = (() => {
 
       // Duration badge
       let durationHtml = '';
+      let endTimeStr = '';
       if (ev.end && !ev.allDay) {
         const durMin = Math.round((ev.end - ev.start) / 60000);
+        endTimeStr = `${ev.end.getHours().toString().padStart(2,'0')}:${ev.end.getMinutes().toString().padStart(2,'0')}`;
         if (durMin > 0) {
           const durStr = durMin >= 60
             ? `${Math.floor(durMin / 60)}h${durMin % 60 > 0 ? ` ${durMin % 60}m` : ''}`
             : `${durMin} min`;
-          durationHtml = `<span class="event-duration">${durStr}</span>`;
+          durationHtml = `<span class="event-duration" title="${timeStr} – ${endTimeStr}">${durStr}</span>`;
         }
       }
 
@@ -686,17 +690,17 @@ const Calendar = (() => {
       const diffMin = Math.round((ev.start - now) / 60000);
       let untilHtml = '';
       if (!isPast && diffMin > 0 && diffMin <= 90) {
-        untilHtml = `<span class="event-until">in ${diffMin} min</span>`;
+        untilHtml = `<span class="event-until" title="Starts at ${timeStr}">in ${diffMin} min</span>`;
       } else if (!isPast && diffMin > 0 && diffMin <= 180) {
         const hrs = Math.floor(diffMin / 60);
         const mins = diffMin % 60;
-        untilHtml = `<span class="event-until">in ${hrs}h${mins > 0 ? ` ${mins}m` : ''}</span>`;
+        untilHtml = `<span class="event-until" title="Starts at ${timeStr}">in ${hrs}h${mins > 0 ? ` ${mins}m` : ''}</span>`;
       }
 
       const locationLabel = ev.location
         ? isHomeAddress(ev.location)
-          ? `<div class="event-location event-location-home">🏠 ${i18n('home')}</div>`
-          : `<a href="https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(HOMEBOARD_CONFIG.location.address || '')}&destination=${encodeURIComponent(ev.location)}" target="_blank" class="event-location">📍 ${ev.location.split(',')[0]}</a>`
+          ? `<div class="event-location event-location-home" title="${ev.location}">🏠 ${i18n('home')}</div>`
+          : `<a href="https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(HOMEBOARD_CONFIG.location.address || '')}&destination=${encodeURIComponent(ev.location)}" target="_blank" class="event-location" title="${ev.location}">📍 ${ev.location.split(',')[0]}</a>`
         : '';
       const locationHtml = ev.location && isBerlinLocation(ev.location)
         ? `<div class="event-commute" title="${ev.location}"></div>`
