@@ -125,8 +125,8 @@ const Rain = (() => {
       const opacity = precip[i] > 0 ? 1 : 0.4;
       const isCurrent = i === 0;
 
-      return `<div class="rain-bar-col ${isCurrent ? 'rain-bar-current' : ''}" onclick="Rain.showDetail(this, '${h}:00', ${precip[i]}, ${prob[i]})">
-        <div class="rain-bar" style="height:${height}%;opacity:${opacity}"></div>
+      return `<div class="rain-bar-col ${isCurrent ? 'rain-bar-current' : ''}" title="${h}:00 · ${precip[i].toFixed(1)} mm · ${prob[i]}%" onclick="Rain.showDetail(this, '${h}:00', ${precip[i]}, ${prob[i]})">
+        <div class="rain-bar" style="height:${height}%;opacity:${precip[i] > 0 ? 0.6 + (precip[i] / maxPrecip) * 0.4 : 0.35}"></div>
         <span class="rain-hour">${h}</span>
       </div>`;
     }).join('');
