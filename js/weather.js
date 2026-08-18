@@ -115,14 +115,35 @@ const Weather = (() => {
     const descriptions = WMO_DESCRIPTIONS[lang] || WMO_DESCRIPTIONS.en;
 
     document.getElementById('weather-icon').textContent = WMO_ICONS[code] || '\u2600\uFE0F';
+    // Set animation class based on weather type
+    const iconEl = document.getElementById('weather-icon');
+    iconEl.className = 'weather-icon';
+    if (code === 0 || code === 1) iconEl.classList.add('weather-anim-sun');
+    else if ([2, 3, 45, 48].includes(code)) iconEl.classList.add('weather-anim-cloud');
+    else if ([51,53,55,61,63,65,80,81,82].includes(code)) iconEl.classList.add('weather-anim-rain');
+    else if ([71,73,75,77,85,86].includes(code)) iconEl.classList.add('weather-anim-snow');
+    else if ([95,96,99].includes(code)) iconEl.classList.add('weather-anim-storm');
+
     document.getElementById('weather-temp').textContent = `${Math.round(current.temperature_2m)}\u00B0${unitSymbol}`;
+    // Set temp glow color based on value
+    const tempEl = document.getElementById('weather-temp');
+    const tempVal = current.temperature_2m;
+    if (tempVal <= 0) tempEl.className = 'weather-temp temp-glow-freezing';
+    else if (tempVal <= 10) tempEl.className = 'weather-temp temp-glow-cold';
+    else if (tempVal <= 20) tempEl.className = 'weather-temp temp-glow-mild';
+    else if (tempVal <= 28) tempEl.className = 'weather-temp temp-glow-warm';
+    else tempEl.className = 'weather-temp temp-glow-hot';
+
+    document.getElementById('weather-temp').title = `Feels like ${Math.round(current.apparent_temperature)}°${unitSymbol} · Humidity ${current.relative_humidity_2m}%`;
     document.getElementById('weather-desc').textContent = descriptions[code] || 'Unknown';
     document.getElementById('weather-humidity').textContent = `${current.relative_humidity_2m}%`;
 
     // Wind with direction arrow
     const windDir = current.wind_direction_10m || 0;
     const windArrow = getWindArrow(windDir);
-    document.getElementById('weather-wind').textContent = `${Math.round(current.wind_speed_10m)} km/h ${windArrow}`;
+    const windEl = document.getElementById('weather-wind');
+    windEl.textContent = `${Math.round(current.wind_speed_10m)} km/h ${windArrow}`;
+    windEl.title = `Wind from ${Math.round(windDir)}° at ${Math.round(current.wind_speed_10m)} km/h`;
 
     // Feels like
     const feelsLike = Math.round(current.apparent_temperature);
@@ -219,6 +240,8 @@ const Weather = (() => {
       const high = Math.round(daily.temperature_2m_max[idx]);
       const low = Math.round(daily.temperature_2m_min[idx]);
       const icon = WMO_ICONS[code] || '\u2600\uFE0F';
+      const descriptions = WMO_DESCRIPTIONS[lang] || WMO_DESCRIPTIONS.en;
+      const desc = descriptions[code] || '';
 
       // Warmer/colder than today indicator
       const diff = high - todayHigh;
@@ -226,7 +249,10 @@ const Weather = (() => {
       if (diff >= 3) trend = '<span class="forecast-trend forecast-warmer">↑</span>';
       else if (diff <= -3) trend = '<span class="forecast-trend forecast-colder">↓</span>';
 
-      return `<div class="forecast-day">
+      const diffLabel = diff > 0 ? `+${diff}°` : diff < 0 ? `${diff}°` : '±0°';
+      const tooltip = `${date.toLocaleDateString(lang === 'de' ? 'de-DE' : lang === 'es' ? 'es-ES' : 'en-GB', { weekday: 'long', day: 'numeric', month: 'short' })}\n${desc}\nHigh: ${high}°${unitSymbol} / Low: ${low}°${unitSymbol}\nvs. today: ${diffLabel}`;
+
+      return `<div class="forecast-day" title="${tooltip}">
         <span class="forecast-name">${day}</span>
         <span class="forecast-icon">${icon}</span>
         <span class="forecast-temps">${high}\u00B0 <small>${low}\u00B0</small>${trend}</span>
