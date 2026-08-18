@@ -300,7 +300,25 @@ window.getTransitLineStyle = function(line) {
   
   // S-Bahn
   if (clean.startsWith('S') && (clean === 'S' || /^[S]\d+/.test(clean))) {
-    return { bg: '#00965e', fg: '#ffffff' };
+    switch (clean) {
+      case 'S1': return { bg: '#de4da5', fg: '#ffffff' };
+      case 'S2': return { bg: '#005f27', fg: '#ffffff' };
+      case 'S25': return { bg: '#005f27', fg: '#ffffff' };
+      case 'S26': return { bg: '#005f27', fg: '#ffffff' };
+      case 'S3': return { bg: '#0a4c8b', fg: '#ffffff' };
+      case 'S41': return { bg: '#a23b1e', fg: '#ffffff' };
+      case 'S42': return { bg: '#c26e30', fg: '#ffffff' };
+      case 'S45': return { bg: '#c38736', fg: '#ffffff' };
+      case 'S46': return { bg: '#c38736', fg: '#ffffff' };
+      case 'S47': return { bg: '#c38736', fg: '#ffffff' };
+      case 'S5': return { bg: '#ff5900', fg: '#ffffff' };
+      case 'S7': return { bg: '#6f4e9c', fg: '#ffffff' };
+      case 'S75': return { bg: '#6f4e9c', fg: '#ffffff' };
+      case 'S8': return { bg: '#55a822', fg: '#ffffff' };
+      case 'S85': return { bg: '#55a822', fg: '#ffffff' };
+      case 'S9': return { bg: '#8b1c52', fg: '#ffffff' };
+      default: return { bg: '#00965e', fg: '#ffffff' };
+    }
   }
   
   // U-Bahn
