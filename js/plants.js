@@ -28,7 +28,7 @@ const Plants = (() => {
     if (!last) {
       container.innerHTML = `<div class="plants-display">
         <span class="plants-status plants-status-overdue">🌱 ${lang === 'de' ? 'Noch nie gegossen' : lang === 'es' ? 'Nunca regado' : 'Never watered'}</span>
-        <button class="plants-water-btn-main" onclick="Plants.waterNow()">💧</button>
+        <button class="plants-water-btn-main" onclick="Plants.waterNow()" title="${lang === 'de' ? 'Jetzt als gegossen markieren' : lang === 'es' ? 'Marcar como regado' : 'Mark as watered now'}">💧</button>
       </div>`;
       return;
     }
@@ -51,7 +51,7 @@ const Plants = (() => {
       statusClass = 'plants-status-ok';
     } else {
       statusText = lang === 'de' ? `Vor ${daysSince} Tagen gegossen` : lang === 'es' ? `Hace ${daysSince} días` : `${daysSince} days ago`;
-      statusClass = daysSince >= warningDays ? 'plants-status-overdue' : daysSince >= soonDays ? 'plants-status-soon' : 'plants-status-ok';
+      statusClass = daysSince >= warningDays ? 'plants-status-overdue' : daysSince >= soonDays ? 'plants-status-soon' : 'plants-status-neutral';
       if (daysSince >= warningDays) {
         rec = lang === 'de' ? '💧 Jetzt gießen!' : lang === 'es' ? '💧 ¡Regar ahora!' : '💧 Water them now!';
       } else if (daysSince >= soonDays) {
@@ -59,12 +59,15 @@ const Plants = (() => {
       }
     }
 
+    const lastStr = `${last.getDate().toString().padStart(2,'0')}.${(last.getMonth()+1).toString().padStart(2,'0')}.${last.getFullYear()} ${last.getHours().toString().padStart(2,'0')}:${last.getMinutes().toString().padStart(2,'0')}`;
+    const btnTooltip = lang === 'de' ? 'Jetzt als gegossen markieren' : lang === 'es' ? 'Marcar como regado' : 'Mark as watered now';
+
     container.innerHTML = `<div class="plants-display">
       <div class="plants-info">
-        <span class="plants-status ${statusClass}">${daysSince >= warningDays ? '⚠️' : '🌱'} ${statusText}</span>
+        <span class="plants-status ${statusClass}" title="${lang === 'de' ? 'Zuletzt' : lang === 'es' ? 'Última vez' : 'Last watered'}: ${lastStr}">${daysSince >= warningDays ? '⚠️' : '🌱'} ${statusText}</span>
         ${rec ? `<span class="metric-rec">${rec}</span>` : ''}
       </div>
-      <button class="plants-water-btn-main" onclick="Plants.waterNow()">💧</button>
+      <button class="plants-water-btn-main" onclick="Plants.waterNow()" title="${btnTooltip}">💧</button>
     </div>`;
   }
 
