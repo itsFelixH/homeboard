@@ -471,5 +471,5 @@ class HomeboardHandler(http.server.SimpleHTTPRequestHandler):
 
 if __name__ == '__main__':
     print(f'✦ Homeboard running at http://localhost:{PORT}')
-    server = http.server.HTTPServer(('0.0.0.0', PORT), HomeboardHandler)
+    server = http.server.ThreadingHTTPServer(('0.0.0.0', PORT), HomeboardHandler)
     server.serve_forever()
