@@ -17,11 +17,5 @@ Thumbs.db
 *.swp
 *.swo
 
-# Kiro
-.kiro/
-
 # Node (if you add tooling later)
 node_modules/
-
-# Agent skills
-.github/skills/
