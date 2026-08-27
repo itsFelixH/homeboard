@@ -135,7 +135,34 @@ ALLOWED_DOMAINS = [
 
 # Simple in-memory cache (url -> (data, content_type, timestamp))
 _cache = {}
+_cache_lock = threading.Lock()
 CACHE_MAX_ENTRIES = 50
+
+# Proxy rate limiting (per-IP token bucket)
+_rate_lock = threading.Lock()
+_rate_buckets = {}  # ip -> [tokens, last_refill_time]
+RATE_LIMIT = 30     # max requests per window
+RATE_WINDOW = 60    # window in seconds
+
+
+def _check_rate_limit(ip):
+    """Return True if the request is allowed, False if rate-limited."""
+    import time
+    now = time.time()
+    with _rate_lock:
+        if ip not in _rate_buckets:
+            _rate_buckets[ip] = [RATE_LIMIT - 1, now]
+            return True
+        tokens, last = _rate_buckets[ip]
+        # Refill tokens based on elapsed time
+        elapsed = now - last
+        tokens = min(RATE_LIMIT, tokens + (elapsed * RATE_LIMIT / RATE_WINDOW))
+        if tokens >= 1:
+            _rate_buckets[ip] = [tokens - 1, now]
+            return True
+        else:
+            _rate_buckets[ip] = [tokens, last]
+            return False
 
 # Per-domain cache TTL (seconds)
 CACHE_TTL_MAP = {
@@ -389,6 +416,12 @@ class HomeboardHandler(http.server.SimpleHTTPRequestHandler):
         self.wfile.write(data)
 
     def handle_proxy(self):
+        # Rate limit by client IP
+        client_ip = self.client_address[0]
+        if not _check_rate_limit(client_ip):
+            self.send_error(429, 'Too many requests')
+            return
+
         query = urllib.parse.urlparse(self.path).query
         params = urllib.parse.parse_qs(query)
         url = params.get('url', [None])[0]
@@ -407,18 +440,19 @@ class HomeboardHandler(http.server.SimpleHTTPRequestHandler):
             now = time.time()
 
             # Check cache
-            if url in _cache:
-                data, ctype, ts = _cache[url]
-                if now - ts < _get_ttl(url):
-                    self.send_response(200)
-                    self.send_header('Content-Type', ctype)
-                    self.send_header('Access-Control-Allow-Origin', '*')
-                    self.send_header('Cache-Control', 'public, max-age=300')
-                    self.send_header('Content-Length', str(len(data)))
-                    self.send_header('X-Cache', 'HIT')
-                    self.end_headers()
-                    self.wfile.write(data)
-                    return
+            with _cache_lock:
+                if url in _cache:
+                    data, ctype, ts = _cache[url]
+                    if now - ts < _get_ttl(url):
+                        self.send_response(200)
+                        self.send_header('Content-Type', ctype)
+                        self.send_header('Access-Control-Allow-Origin', '*')
+                        self.send_header('Cache-Control', 'public, max-age=300')
+                        self.send_header('Content-Length', str(len(data)))
+                        self.send_header('X-Cache', 'HIT')
+                        self.end_headers()
+                        self.wfile.write(data)
+                        return
 
             ctx = ssl.create_default_context()
             # Ensure URL is properly quoted (spaces etc.) without double-encoding existing %XX
@@ -440,8 +474,9 @@ class HomeboardHandler(http.server.SimpleHTTPRequestHandler):
                 ctype = resp.headers.get('Content-Type', 'text/plain')
 
             # Store in cache
-            _cache[url] = (data, ctype, now)
-            _evict_cache()
+            with _cache_lock:
+                _cache[url] = (data, ctype, now)
+                _evict_cache()
 
             self.send_response(200)
             self.send_header('Content-Type', ctype)
@@ -470,6 +505,9 @@ class HomeboardHandler(http.server.SimpleHTTPRequestHandler):
 
 
 if __name__ == '__main__':
-    print(f'✦ Homeboard running at http://localhost:{PORT}')
+    import sys
+    print(f'✦ Homeboard running at http://localhost:{PORT}', flush=True)
+    sys.stdout.reconfigure(line_buffering=True)
+    sys.stderr.reconfigure(line_buffering=True)
     server = http.server.ThreadingHTTPServer(('0.0.0.0', PORT), HomeboardHandler)
     server.serve_forever()
