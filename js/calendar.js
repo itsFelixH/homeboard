@@ -740,39 +740,41 @@ const Calendar = (() => {
     let routeHtml = '';
     const rainTag = isRainExpected ? `<span class="event-route-rain" title="Rain forecast at start">🌧️</span>` : '';
 
-    // Walk (only show if <=30min or preferred)
-    if (walk.min && (walk.min <= 30 || preferred === 'walk')) {
+    // Walk (only show if allowed by placeConfig and <=30min or preferred)
+    if (walk.min && (walk.min <= 30 || preferred === 'walk') && isModeAllowed(placeConfig, 'walk')) {
       const pref = preferred === 'walk' ? ' event-route-preferred' : '';
       const walkEta = new Date(now.getTime() + walk.min * 60000);
       const walkEtaStr = `${walkEta.getHours().toString().padStart(2,'0')}:${walkEta.getMinutes().toString().padStart(2,'0')}`;
       routeHtml += `<div class="event-route-line${pref}" onclick="Calendar.selectMode(${idx}, 'walk', event)" title="Walk: ${walk.km} km, arrive ~${walkEtaStr}">🚶 ${walk.min} min · ${walk.km} km</div>`;
     }
 
-    // Bike
-    if (bike.min) {
+    // Bike (only show if allowed by placeConfig)
+    if (bike.min && isModeAllowed(placeConfig, 'bike')) {
       const pref = preferred === 'bike' ? ' event-route-preferred' : '';
       const bikeEta = new Date(now.getTime() + bike.min * 60000);
       const bikeEtaStr = `${bikeEta.getHours().toString().padStart(2,'0')}:${bikeEta.getMinutes().toString().padStart(2,'0')}`;
       routeHtml += `<div class="event-route-line${pref}" onclick="Calendar.selectMode(${idx}, 'bike', event)" title="Bike: ${bike.km} km, arrive ~${bikeEtaStr}">🚲 ${bike.min} min · ${bike.km} km${rainTag}</div>`;
     }
 
-    // Transit
-    if (transit.min && transit.legs.length > 0) {
-      const pref = preferred === 'transit' ? ' event-route-preferred' : '';
-      const legParts = transit.legs.map(leg => {
-        if (leg.type === 'walk') {
-          return `<span class="event-route-walk">🚶${leg.duration} min</span>`;
-        }
-        const fromLabel = leg.from ? `<span class="station-badge">${leg.from}</span>` : '';
-        const toLabel = leg.to ? ` <span class="event-route-to">→</span> <span class="station-badge">${leg.to}</span>` : '';
-        const delayBadge = '';
-        const style = window.getTransitLineStyle ? window.getTransitLineStyle(leg.line) : { bg: 'var(--surface-hover)', fg: 'var(--text)' };
-        return `${fromLabel}<span class="transit-badge" style="background:${style.bg};color:${style.fg};border-color:${style.bg}">${leg.line}${delayBadge}</span>${toLabel}`;
-      }).join(' · ');
-      routeHtml += `<div class="event-route-line${pref}" onclick="Calendar.selectMode(${idx}, 'transit', event)" title="Transit: ${transit.min} min">🚇 ${transit.min} min · ${legParts}</div>`;
-    } else if (transit.min) {
-      const pref = preferred === 'transit' ? ' event-route-preferred' : '';
-      routeHtml += `<div class="event-route-line${pref}" onclick="Calendar.selectMode(${idx}, 'transit', event)" title="Transit: ${transit.min} min">🚇 ${transit.min} min</div>`;
+    // Transit (only show if allowed by placeConfig)
+    if (isModeAllowed(placeConfig, 'transit')) {
+      if (transit.min && transit.legs.length > 0) {
+        const pref = preferred === 'transit' ? ' event-route-preferred' : '';
+        const legParts = transit.legs.map(leg => {
+          if (leg.type === 'walk') {
+            return `<span class="event-route-walk">🚶${leg.duration} min</span>`;
+          }
+          const fromLabel = leg.from ? `<span class="station-badge">${leg.from}</span>` : '';
+          const toLabel = leg.to ? ` <span class="event-route-to">→</span> <span class="station-badge">${leg.to}</span>` : '';
+          const delayBadge = '';
+          const style = window.getTransitLineStyle ? window.getTransitLineStyle(leg.line) : { bg: 'var(--surface-hover)', fg: 'var(--text)' };
+          return `${fromLabel}<span class="transit-badge" style="background:${style.bg};color:${style.fg};border-color:${style.bg}">${leg.line}${delayBadge}</span>${toLabel}`;
+        }).join(' · ');
+        routeHtml += `<div class="event-route-line${pref}" onclick="Calendar.selectMode(${idx}, 'transit', event)" title="Transit: ${transit.min} min">🚇 ${transit.min} min · ${legParts}</div>`;
+      } else if (transit.min) {
+        const pref = preferred === 'transit' ? ' event-route-preferred' : '';
+        routeHtml += `<div class="event-route-line${pref}" onclick="Calendar.selectMode(${idx}, 'transit', event)" title="Transit: ${transit.min} min">🚇 ${transit.min} min</div>`;
+      }
     }
 
     commuteEl.innerHTML = routeHtml;
@@ -1286,13 +1288,16 @@ const Calendar = (() => {
       ? `<div class="detail-row"><span class="detail-icon">👥</span>${ev.attendees.join(', ')}</div>`
       : '';
 
-    // Interactive Mode Selector inside Modal
+    // Interactive Mode Selector inside Modal (respecting placeConfig allowed modes)
     let modeTabsHtml = '';
-    if (commuteData && (commuteData.walk.min || commuteData.bike.min || commuteData.transit.min)) {
+    const allowWalk = isModeAllowed(placeConfig, 'walk');
+    const allowBike = isModeAllowed(placeConfig, 'bike');
+    const allowTransit = isModeAllowed(placeConfig, 'transit');
+    if (commuteData && ((allowWalk && commuteData.walk.min) || (allowBike && commuteData.bike.min) || (allowTransit && commuteData.transit.min))) {
       modeTabsHtml = `<div class="detail-mode-tabs">
-        ${commuteData.walk.min ? `<button class="detail-mode-tab ${activeMode === 'walk' ? 'active' : ''}" onclick="Calendar.selectModeAndRefreshDetail(${actualIdx}, 'walk')">🚶 ${commuteData.walk.min}m</button>` : ''}
-        ${commuteData.bike.min ? `<button class="detail-mode-tab ${activeMode === 'bike' ? 'active' : ''}" onclick="Calendar.selectModeAndRefreshDetail(${actualIdx}, 'bike')">🚲 ${commuteData.bike.min}m</button>` : ''}
-        ${commuteData.transit.min ? `<button class="detail-mode-tab ${activeMode === 'transit' ? 'active' : ''}" onclick="Calendar.selectModeAndRefreshDetail(${actualIdx}, 'transit')">🚇 ${commuteData.transit.min}m</button>` : ''}
+        ${allowWalk && commuteData.walk.min ? `<button class="detail-mode-tab ${activeMode === 'walk' ? 'active' : ''}" onclick="Calendar.selectModeAndRefreshDetail(${actualIdx}, 'walk')">🚶 ${commuteData.walk.min}m</button>` : ''}
+        ${allowBike && commuteData.bike.min ? `<button class="detail-mode-tab ${activeMode === 'bike' ? 'active' : ''}" onclick="Calendar.selectModeAndRefreshDetail(${actualIdx}, 'bike')">🚲 ${commuteData.bike.min}m</button>` : ''}
+        ${allowTransit && commuteData.transit.min ? `<button class="detail-mode-tab ${activeMode === 'transit' ? 'active' : ''}" onclick="Calendar.selectModeAndRefreshDetail(${actualIdx}, 'transit')">🚇 ${commuteData.transit.min}m</button>` : ''}
       </div>`;
     }
 
