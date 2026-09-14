@@ -390,33 +390,39 @@ const Calendar = (() => {
   function getEventCategoryAndColor(ev) {
     if (!ev) return { category: null, icon: '', color: 'var(--accent)', dimBg: 'var(--accent-dim)' };
 
+    if (HOMEBOARD_CONFIG.calendar?.showCategories === false) {
+      return { category: null, icon: '', color: 'var(--accent)', dimBg: 'var(--accent-dim)' };
+    }
+
     const placeConfig = getPlaceConfig(ev);
+    const userCategories = HOMEBOARD_CONFIG.calendar?.categories || {};
 
     // 1. Direct Place Config
     if (placeConfig?.category || placeConfig?.color || placeConfig?.icon) {
-      const colorRaw = placeConfig.color || (placeConfig.category ? DEFAULT_CATEGORIES[placeConfig.category.toLowerCase()]?.color : null) || 'var(--accent)';
+      const catKey = (placeConfig.category || '').toLowerCase();
+      const matchedCat = userCategories[catKey] || DEFAULT_CATEGORIES[catKey];
+      const colorRaw = placeConfig.color || matchedCat?.color || 'var(--accent)';
       const colorHex = GOOGLE_COLORS[colorRaw.toLowerCase()] || colorRaw;
       return {
-        category: placeConfig.category || null,
-        icon: placeConfig.icon || (placeConfig.category ? DEFAULT_CATEGORIES[placeConfig.category.toLowerCase()]?.icon : ''),
+        category: placeConfig.category || matchedCat?.label || null,
+        icon: placeConfig.icon || matchedCat?.icon || '',
         color: colorHex,
         dimBg: colorHex.startsWith('#') ? `${colorHex}22` : 'var(--accent-dim)'
       };
     }
 
-    // 2. Custom User Defined Categories from config
-    const userCategories = HOMEBOARD_CONFIG.calendar?.categories || {};
     const text = `${ev.summary || ''} ${ev.location || ''}`.toLowerCase();
 
+    // 2. User-defined customizable categories (highest priority)
     for (const [key, catObj] of Object.entries(userCategories)) {
-      if (!catObj) continue;
-      const patterns = Array.isArray(catObj.match) ? catObj.match : [catObj.match || key];
+      if (!catObj || catObj.enabled === false) continue;
+      const patterns = Array.isArray(catObj.match) ? catObj.match : (catObj.match ? [catObj.match] : [key]);
       const match = patterns.some(p => text.includes(String(p).toLowerCase()));
       if (match) {
         const colorRaw = catObj.color || 'var(--accent)';
         const colorHex = GOOGLE_COLORS[colorRaw.toLowerCase()] || colorRaw;
         return {
-          category: catObj.label || key,
+          category: catObj.label || (key.charAt(0).toUpperCase() + key.slice(1)),
           icon: catObj.icon || '',
           color: colorHex,
           dimBg: colorHex.startsWith('#') ? `${colorHex}22` : 'var(--accent-dim)'
@@ -424,8 +430,9 @@ const Calendar = (() => {
       }
     }
 
-    // 3. Built-in Smart Categories
+    // 3. Built-in Smart Categories (if not disabled by user)
     for (const [key, def] of Object.entries(DEFAULT_CATEGORIES)) {
+      if (userCategories[key] && userCategories[key].enabled === false) continue;
       const match = def.match.some(p => text.includes(p));
       if (match) {
         return {
@@ -437,13 +444,13 @@ const Calendar = (() => {
       }
     }
 
-    // 4. Fallback: Check categoryColors map
+    // 4. Fallback: categoryColors map
     const categoryColors = HOMEBOARD_CONFIG.calendar?.categoryColors || {};
     for (const [key, col] of Object.entries(categoryColors)) {
       if (text.includes(key.toLowerCase())) {
         const colorHex = GOOGLE_COLORS[col.toLowerCase()] || col;
         return {
-          category: key,
+          category: key.charAt(0).toUpperCase() + key.slice(1),
           icon: '',
           color: colorHex,
           dimBg: colorHex.startsWith('#') ? `${colorHex}22` : 'var(--accent-dim)'
@@ -1320,6 +1327,14 @@ const Calendar = (() => {
 
       if (!destLat || !destLon) {
         returnContainer.innerHTML = 'Could not resolve location coordinates';
+        return;
+      }
+
+      // Strictly only calculate return commute for Berlin / VBB metro zone (<= 60 km)
+      const distFromHome = getDistanceKm(home.latitude, home.longitude, destLat, destLon);
+      if (distFromHome > 60) {
+        const returnBox = document.querySelector('.detail-return-box');
+        if (returnBox) returnBox.remove();
         return;
       }
 
