@@ -1106,7 +1106,7 @@ const Calendar = (() => {
     if (dayData) {
       const config = HOMEBOARD_CONFIG.calendar;
       render(dayData.events);
-      const headerLabel = document.getElementById('calendar-header-day');
+      const headerLabel = document.querySelector('.card-calendar .card-header span[data-i18n="calendar_title"]') || document.getElementById('calendar-header-day');
       if (headerLabel) headerLabel.textContent = dayData.label;
       if (config.showCommute) {
         fetchCommuteForEvents(dayData.events.slice(0, config.maxEvents));
@@ -1118,7 +1118,7 @@ const Calendar = (() => {
   function renderWeekStrip() {
     let stripContainer = document.getElementById('calendar-week-strip');
     if (!stripContainer) {
-      const previewEl = document.getElementById('calendar-preview');
+      const previewEl = document.getElementById('calendar-tomorrow') || document.getElementById('calendar-preview');
       if (!previewEl) return;
       previewEl.innerHTML = '<div id="calendar-week-strip"></div>';
       stripContainer = document.getElementById('calendar-week-strip');
