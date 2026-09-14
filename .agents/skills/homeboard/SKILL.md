@@ -43,7 +43,7 @@ Homeboard is a lightweight, zero-framework single-page dashboard designed for wa
 | `uv.js` / `pollen.js` | UV index and pollen levels (grass, birch, alder, ragweed) | Open-Meteo Pollen & Solar APIs |
 | `departures.js` | Real-time transit departures with split direction columns | VBB HAFAS API (S-Bahn, U-Bahn, Bus, Tram) |
 | `commute.js` | Live transit and bike commute ETAs to work destinations | BVG Routing / OpenRouteService |
-| `calendar.js` | Daily agenda from iCal feeds with location commute geocoding | ICS feeds + Nominatim / Photon geocoder |
+| `calendar.js` | Multi-day agenda with place rules, smart categories, interactive mode switching, 1-tap Google Maps route & Return Home | RFC 5545 ICS feeds + Nominatim / Photon / OSRM / HAFAS |
 | `birthdays.js` | Upcoming birthdays with one-tap social chat links | ICS feed (WhatsApp, Telegram, Signal, LinkedIn) |
 | `holiday.js` | Vacation countdown detector and event linking | ICS calendar feed |
 | `news.js` | Live news ticker with category filters and thumbnails | Tagesschau API |
@@ -63,12 +63,17 @@ Homeboard is a lightweight, zero-framework single-page dashboard designed for wa
 ## Configuration Schema (`config.template.yaml`)
 
 Configuration is split into sections:
-- `location`: Coordinates (lat/lon) for Berlin weather, air quality, and transit.
-- `transit`: Station IDs, line filters, and split-column directional rules.
-- `destinations`: Commute targets with transport mode preferences (e.g. transit vs. bike).
-- `calendars`: List of ICS URLs (work, personal, holidays, birthdays, trash).
-- `modules`: Boolean toggle flags to enable or disable specific dashboard cards.
-- `theme`: Default theme name (`dark`, `light`, `nord`, `pixel`).
+- `location`: Coordinates (lat/lon) and address for Berlin weather, air quality, transit, and commute routing.
+- `cards.calendar`:
+  - `icsUrl`: Main agenda calendar stream (Google / Apple / Nextcloud).
+  - `showCommute`: Automatic walk/bike/transit duration calculation to event locations.
+  - `showCategories`: Smart category detection and colored vertical left stripes.
+  - `bufferMinutes`: Default pre-event arrival buffer.
+  - `categories`: Customizable category tags (`icon`, `color`, `match` keywords/regex with whole-word safety).
+  - `places`: Granular per-venue rules with paired venue name and street address matching, `modes` filtering, `preferredMode`, `preferredLines`, `rainFallbackMode`, and `bufferMinutes`.
+- `cards.departures`: Station IDs, line filters, and split-column directional rules.
+- `cards.commute`: Commute targets with transport mode preferences (e.g. transit vs. bike).
+- `theme`: Dynamic theme selection (`dark`, `light`, `nord`, `pixel`).
 
 ## Local Development & Deployment Runbook
 
@@ -82,7 +87,7 @@ python server.py 7070
 ### 2. Git Deployment Workflow
 1. Commit changes locally following Conventional Commits format:
    ```bash
-   git commit -m "feat(transit): add custom line badge filter"
+   git commit -m "feat(calendar): add place rules and customizable smart categories"
    git push origin main
    ```
 2. Pull on `bundepi` and rebuild container:
