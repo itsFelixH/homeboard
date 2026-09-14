@@ -761,3 +761,102 @@ body {
 .detail-return-line { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
 .detail-return-eta { color: var(--text-3); font-size: 0.65rem; margin-left: 2px; }
 .detail-loading { color: var(--text-3); font-style: italic; font-size: 0.68rem; }
+
+
+/* Interactive Commute Selection & Action Buttons */
+.event-route-line {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  padding: 3px 6px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+  border: 1px solid transparent;
+  margin: 1px 0;
+  font-size: 0.62rem;
+}
+.event-route-line:hover {
+  background: var(--surface-hover);
+  border-color: var(--border);
+  color: var(--text-1);
+}
+.event-route-active {
+  color: var(--text-1) !important;
+  font-weight: 600;
+  background: var(--surface-hover);
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 6px var(--accent-dim);
+}
+.event-route-check {
+  color: var(--accent);
+  font-size: 0.65rem;
+  font-weight: 800;
+  margin-right: 2px;
+}
+.detail-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 1rem;
+}
+.detail-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 7px 12px;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.15s ease;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+.detail-btn-primary {
+  background: var(--accent);
+  color: var(--bg, #0f172a);
+}
+.detail-btn-primary:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+.detail-btn-secondary {
+  background: var(--surface-hover);
+  color: var(--text-1);
+  border-color: var(--border);
+}
+.detail-btn-secondary:hover {
+  background: var(--border);
+  transform: translateY(-1px);
+}
+.detail-mode-tabs {
+  display: flex;
+  gap: 6px;
+  margin: 0.75rem 0 0.5rem 0;
+}
+.detail-mode-tab {
+  flex: 1;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  color: var(--text-2);
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: center;
+}
+.detail-mode-tab:hover {
+  color: var(--text-1);
+  border-color: var(--accent-dim);
+}
+.detail-mode-tab.active {
+  background: var(--accent-dim);
+  color: var(--accent);
+  border-color: var(--accent);
+}
