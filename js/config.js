@@ -166,7 +166,10 @@ const ConfigLoader = (() => {
       refreshMinutes: calCard.refreshMinutes || 30,
       showTomorrow: calCard.showTomorrow !== false,
       showCommute: calCard.showCommute !== false,
-      hidePatterns: calCard.hidePatterns || []
+      hidePatterns: calCard.hidePatterns || [],
+      bufferMinutes: calCard.bufferMinutes !== undefined ? calCard.bufferMinutes : 5,
+      categoryColors: calCard.categoryColors || {},
+      places: calCard.places || calCard.locations || []
     };
 
     // --- Birthdays ---
