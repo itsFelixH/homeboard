@@ -166,9 +166,11 @@ const ConfigLoader = (() => {
       refreshMinutes: calCard.refreshMinutes || 30,
       showTomorrow: calCard.showTomorrow !== false,
       showCommute: calCard.showCommute !== false,
+      showCategories: calCard.showCategories !== false,
       hidePatterns: calCard.hidePatterns || [],
       bufferMinutes: calCard.bufferMinutes !== undefined ? calCard.bufferMinutes : 5,
       categoryColors: calCard.categoryColors || {},
+      categories: calCard.categories || {},
       places: calCard.places || calCard.locations || []
     };
 
