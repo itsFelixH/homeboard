@@ -188,7 +188,7 @@ See `config.template.yaml` for the full list of options with comments.
 | uv | `refreshMinutes` |
 | pollen | `refreshMinutes`, `types` |
 | plants | `warningDays` |
-| calendar | `maxEvents`, `refreshMinutes`, `showTomorrow`, `showCommute`, `hidePatterns` |
+| calendar | `maxEvents`, `refreshMinutes`, `showTomorrow`, `showCommute`, `showCategories`, `bufferMinutes`, `categories`, `places`, `hidePatterns` |
 | birthdays | `refreshMinutes`, `lookaheadDays` |
 | countdown | `maxVacations`, `keyword` |
 | news | `refreshMinutes`, `perPage`, `cycleSeconds`, `defaultCategory` |
@@ -250,6 +250,7 @@ docker compose up -d --build
 ## Interactive Features
 
 - **Departures** — arrows to switch between stops (S-Bahn, U-Bahn, Bus)
+- **Calendar** — interactive commute mode toggle (Walk / Bike / Transit), 1-tap Google Maps route & Return Home navigation, customizable smart category tags & subtle accent stripes, per-venue transport rules (`places:`), and arrival buffer timers
 - **Commute** — arrows to switch between destinations, shows live ETA
 - **Vacation** — click entry to open week in Google Calendar, click pencil to rename
 - **Birthdays** — click name to open Google Contacts, click social icons for messaging
