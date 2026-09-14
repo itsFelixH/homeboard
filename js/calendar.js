@@ -90,6 +90,10 @@ const Calendar = (() => {
           event.rrule = parseRRULE(line);
         } else if (line.startsWith('EXDATE')) {
           event.exdates.push(line.split(':').pop().slice(0, 8));
+        } else if (line.startsWith('COLOR:') || line.startsWith('X-COLOR:') || line.startsWith('X-APPLE-CALENDAR-COLOR:')) {
+          event.color = line.split(':').pop().trim();
+        } else if (line.startsWith('CATEGORIES:')) {
+          event.category = line.split(':').slice(1).join(':').trim();
         }
       }
     }
@@ -216,10 +220,68 @@ const Calendar = (() => {
     return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
   }
 
+  function isVirtualLocation(loc) {
+    if (!loc) return false;
+    const l = loc.toLowerCase().trim();
+    if (l.startsWith('http://') || l.startsWith('https://') || l.includes('zoom.us') || l.includes('meet.google.com') || l.includes('teams.microsoft.com') || l.includes('webex.com')) {
+      return true;
+    }
+    const virtualWords = ['online', 'virtuell', 'remote', 'zoom', 'teams', 'google meet', 'skype', 'discord', 'telefon', 'phone call', 'webinar'];
+    return virtualWords.some(w => l === w || l.startsWith(w + ' ') || l.endsWith(' ' + w));
+  }
+
   function isBerlinLocation(loc) {
     if (!loc) return false;
-    // Show commute for any event with a location (assume local if no city specified)
+    if (isVirtualLocation(loc)) return false;
+
+    const l = loc.toLowerCase();
+
+    // Check for explicit foreign / other German cities
+    const nonBerlinCities = [
+      'münchen', 'munich', 'hamburg', 'köln', 'cologne', 'frankfurt', 'stuttgart',
+      'düsseldorf', 'dortmund', 'essen', 'leipzig', 'dresden', 'hannover', 'nürnberg',
+      'bremen', 'bochum', 'wuppertal', 'bielefeld', 'bonn', 'münster', 'karlsruhe',
+      'mannheim', 'augsburg', 'wiesbaden', 'gelsenkirchen', 'aachen', 'braunschweig',
+      'kiel', 'chemnitz', 'halle', 'magdeburg', 'freiburg', 'krefeld', 'mainz', 'lübeck',
+      'erfurt', 'oberhausen', 'rostock', 'kassel', 'hagen', 'saarbrücken',
+      'wien', 'vienna', 'zürich', 'zurich', 'london', 'paris', 'madrid', 'barcelona',
+      'amsterdam', 'rom', 'rome', 'milan', 'mailand', 'lisbon', 'lissabon', 'new york'
+    ];
+
+    const allowedVbb = ['berlin', 'potsdam', 'schönefeld', 'ber', 'teltow', 'kleinmachnow', 'stahnsdorf', 'falkensee', 'oranienburg', 'bernau', 'strausberg', 'königs wusterhausen', 'erkner'];
+
+    for (const city of nonBerlinCities) {
+      const regex = new RegExp(`\\b${city}\\b`, 'i');
+      if (regex.test(l)) {
+        if (allowedVbb.some(local => l.includes(local))) {
+          continue;
+        }
+        return false;
+      }
+    }
+
+    // Check 5-digit German postal code
+    const zipMatch = loc.match(/\b(\d{5})\b/);
+    if (zipMatch) {
+      const zip = parseInt(zipMatch[1], 10);
+      // Berlin: 10000-14199. VBB Brandenburg: 14400-16999.
+      if (zip < 10000 || (zip > 16999 && zip < 99999) || (zip >= 17000 && zip <= 19999)) {
+        return false;
+      }
+    }
+
     return true;
+  }
+
+  function getDistanceKm(lat1, lon1, lat2, lon2) {
+    const R = 6371; // Earth radius in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
   }
 
   function isHomeAddress(location) {
@@ -240,41 +302,389 @@ const Calendar = (() => {
     return false;
   }
 
+  let _eventCommuteData = {};
+  let _eventModeOverrides = {};
+  let _currentCommuteGen = 0;
+
+  function getPlaceConfig(ev) {
+    const places = HOMEBOARD_CONFIG.calendar?.places || [];
+    if (!places.length || (!ev.location && !ev.summary)) return null;
+
+    const locText = (ev.location || '').toLowerCase();
+    const sumText = (ev.summary || '').toLowerCase();
+
+    for (const place of places) {
+      if (!place) continue;
+      const matchCriteria = place.match ?? place.pattern ?? place.name ?? place.label;
+      if (!matchCriteria) continue;
+
+      if (Array.isArray(matchCriteria)) {
+        const matches = matchCriteria.some(pattern => {
+          const p = String(pattern).toLowerCase();
+          return locText.includes(p) || sumText.includes(p);
+        });
+        if (matches) return place;
+      } else if (typeof matchCriteria === 'string') {
+        const p = matchCriteria.toLowerCase();
+        let isRegex = false;
+        try {
+          if (p.startsWith('/') && p.endsWith('/')) {
+            const re = new RegExp(p.slice(1, -1), 'i');
+            if (re.test(ev.location || '') || re.test(ev.summary || '')) return place;
+            isRegex = true;
+          }
+        } catch (e) {}
+        if (!isRegex && (locText.includes(p) || sumText.includes(p))) {
+          return place;
+        }
+      }
+    }
+    return null;
+  }
+
+  function isModeAllowed(placeConfig, mode) {
+    if (!placeConfig) return true;
+    if (Array.isArray(placeConfig.modes)) {
+      const normalizedModes = placeConfig.modes.map(m => String(m).toLowerCase());
+      if (mode === 'transit') {
+        return normalizedModes.includes('transit') || normalizedModes.includes('öpnv') || normalizedModes.includes('oepnv') || normalizedModes.includes('public');
+      }
+      return normalizedModes.includes(mode);
+    }
+    if (Array.isArray(placeConfig.excludeModes)) {
+      const normalizedEx = placeConfig.excludeModes.map(m => String(m).toLowerCase());
+      if (mode === 'transit' && (normalizedEx.includes('transit') || normalizedEx.includes('öpnv') || normalizedEx.includes('oepnv'))) {
+        return false;
+      }
+      if (normalizedEx.includes(mode)) return false;
+    }
+    if (mode === 'transit' && (placeConfig.transit === false || placeConfig.oepnv === false || placeConfig.öpnv === false)) return false;
+    if (mode === 'bike' && placeConfig.bike === false) return false;
+    if (mode === 'walk' && placeConfig.walk === false) return false;
+    return true;
+  }
+
+  function selectBestTransitTrip(trips, placeConfig) {
+    if (!trips || trips.length === 0) return null;
+    if (!placeConfig) return trips[0];
+
+    let prefLines = [];
+    if (Array.isArray(placeConfig.preferredLines)) {
+      prefLines = placeConfig.preferredLines.map(l => String(l).toLowerCase().trim());
+    } else if (typeof placeConfig.preferredLines === 'string') {
+      prefLines = [placeConfig.preferredLines.toLowerCase().trim()];
+    } else if (Array.isArray(placeConfig.preferredTransit)) {
+      prefLines = placeConfig.preferredTransit.map(l => String(l).toLowerCase().trim());
+    } else if (typeof placeConfig.preferredTransit === 'string') {
+      prefLines = [placeConfig.preferredTransit.toLowerCase().trim()];
+    } else if (placeConfig.preferredTransit && typeof placeConfig.preferredTransit === 'object') {
+      if (Array.isArray(placeConfig.preferredTransit.lines)) {
+        prefLines = placeConfig.preferredTransit.lines.map(l => String(l).toLowerCase().trim());
+      } else if (typeof placeConfig.preferredTransit.lines === 'string') {
+        prefLines = [placeConfig.preferredTransit.lines.toLowerCase().trim()];
+      }
+    }
+
+    const prefVia = (placeConfig.preferredTransitVia || placeConfig.transitVia || placeConfig.via || (placeConfig.preferredTransit && placeConfig.preferredTransit.via) || '').toLowerCase().trim();
+
+    if (prefLines.length === 0 && !prefVia) {
+      return trips[0];
+    }
+
+    let bestTrip = trips[0];
+    let bestScore = -1;
+
+    for (const trip of trips) {
+      let score = 0;
+      let legs = trip.LegList?.Leg || [];
+      if (!Array.isArray(legs)) legs = [legs];
+
+      for (const leg of legs) {
+        const legName = (leg.name || '').toLowerCase();
+        const fromName = (leg.Origin?.name || '').toLowerCase();
+        const toName = (leg.Destination?.name || '').toLowerCase();
+
+        for (const pl of prefLines) {
+          if (legName.includes(pl) || legName.replace(/\s+/g, '').includes(pl.replace(/\s+/g, ''))) {
+            score += 10;
+          }
+        }
+
+        if (prefVia && (fromName.includes(prefVia) || toName.includes(prefVia))) {
+          score += 10;
+        }
+      }
+
+      if (score > bestScore) {
+        bestScore = score;
+        bestTrip = trip;
+      }
+    }
+
+    return bestTrip;
+  }
+
+  function selectBestTransitousItinerary(itineraries, placeConfig) {
+    if (!itineraries || itineraries.length === 0) return null;
+    if (!placeConfig) return itineraries[0];
+
+    let prefLines = [];
+    if (Array.isArray(placeConfig.preferredLines)) {
+      prefLines = placeConfig.preferredLines.map(l => String(l).toLowerCase().trim());
+    } else if (typeof placeConfig.preferredLines === 'string') {
+      prefLines = [placeConfig.preferredLines.toLowerCase().trim()];
+    } else if (Array.isArray(placeConfig.preferredTransit)) {
+      prefLines = placeConfig.preferredTransit.map(l => String(l).toLowerCase().trim());
+    } else if (typeof placeConfig.preferredTransit === 'string') {
+      prefLines = [placeConfig.preferredTransit.toLowerCase().trim()];
+    } else if (placeConfig.preferredTransit && typeof placeConfig.preferredTransit === 'object') {
+      if (Array.isArray(placeConfig.preferredTransit.lines)) {
+        prefLines = placeConfig.preferredTransit.lines.map(l => String(l).toLowerCase().trim());
+      } else if (typeof placeConfig.preferredTransit.lines === 'string') {
+        prefLines = [placeConfig.preferredTransit.lines.toLowerCase().trim()];
+      }
+    }
+
+    const prefVia = (placeConfig.preferredTransitVia || placeConfig.transitVia || placeConfig.via || (placeConfig.preferredTransit && placeConfig.preferredTransit.via) || '').toLowerCase().trim();
+
+    if (prefLines.length === 0 && !prefVia) {
+      return itineraries[0];
+    }
+
+    let bestIt = itineraries[0];
+    let bestScore = -1;
+
+    for (const it of itineraries) {
+      let score = 0;
+      const legs = it.legs || [];
+      for (const leg of legs) {
+        const lineName = (leg.route || leg.routeShortName || leg.mode || '').toLowerCase();
+        const fromName = (leg.from?.name || '').toLowerCase();
+        const toName = (leg.to?.name || '').toLowerCase();
+
+        for (const pl of prefLines) {
+          if (lineName.includes(pl) || lineName.replace(/\s+/g, '').includes(pl.replace(/\s+/g, ''))) {
+            score += 10;
+          }
+        }
+
+        if (prefVia && (fromName.includes(prefVia) || toName.includes(prefVia))) {
+          score += 10;
+        }
+      }
+
+      if (score > bestScore) {
+        bestScore = score;
+        bestIt = it;
+      }
+    }
+
+    return bestIt;
+  }
+
+  function selectMode(eventIdx, mode, evt) {
+    if (evt) {
+      evt.preventDefault();
+      evt.stopPropagation();
+    }
+    _eventModeOverrides[eventIdx] = mode;
+    renderCommuteForEvent(eventIdx);
+  }
+
+  function renderCommuteForEvent(idx) {
+    const data = _eventCommuteData[idx];
+    if (!data) return;
+
+    const eventEl = document.querySelector(`[data-event-idx="${idx}"]`);
+    if (!eventEl) return;
+
+    const commuteEl = eventEl.querySelector('.event-commute');
+    if (!commuteEl) return;
+
+    const { evStart, isAllDay, placeConfig, bufferMin, isRainExpected, walk, bike, transit } = data;
+    const now = new Date();
+    const lang = Lang.get();
+
+    // Determine active mode: check user override first, then placeConfig, then rain fallback / default hierarchy
+    const userMode = _eventModeOverrides[idx];
+    const prefModeConfig = (placeConfig?.preferredMode || '').toLowerCase();
+    let preferred = null;
+
+    if (userMode) {
+      if (userMode === 'walk' && walk.min) preferred = 'walk';
+      else if (userMode === 'bike' && bike.min) preferred = 'bike';
+      else if (userMode === 'transit' && transit.min) preferred = 'transit';
+    }
+
+    if (!preferred) {
+      if (prefModeConfig === 'walk' && walk.min) {
+        preferred = 'walk';
+      } else if (prefModeConfig === 'bike' && bike.min) {
+        if (isRainExpected && (transit.min || walk.min)) {
+          const fallback = (placeConfig?.rainFallbackMode || '').toLowerCase();
+          if (fallback === 'walk' && walk.min) preferred = 'walk';
+          else if (fallback === 'transit' && transit.min) preferred = 'transit';
+          else if (transit.min) preferred = 'transit';
+          else if (walk.min) preferred = 'walk';
+          else preferred = 'bike';
+        } else {
+          preferred = 'bike';
+        }
+      } else if ((prefModeConfig === 'transit' || prefModeConfig === 'öpnv' || prefModeConfig === 'oepnv') && transit.min) {
+        preferred = 'transit';
+      } else {
+        if (isRainExpected) {
+          if (walk.min && walk.min <= 10) preferred = 'walk';
+          else if (transit.min) preferred = 'transit';
+          else if (walk.min && walk.min <= 20) preferred = 'walk';
+          else if (bike.min) preferred = 'bike';
+          else if (walk.min) preferred = 'walk';
+        } else {
+          if (walk.min && walk.min <= 15) preferred = 'walk';
+          else if (bike.min && bike.min <= 30) preferred = 'bike';
+          else if (transit.min) preferred = 'transit';
+          else if (bike.min) preferred = 'bike';
+          else if (walk.min) preferred = 'walk';
+        }
+      }
+    }
+
+    let bestTime = null;
+    let bestMode = null;
+    if (preferred === 'walk' && walk.min) { bestTime = walk.min; bestMode = '🚶'; }
+    else if (preferred === 'bike' && bike.min) { bestTime = bike.min; bestMode = '🚲'; }
+    else if (preferred === 'transit' && transit.min) { bestTime = transit.min; bestMode = '🚇'; }
+    else if (bike.min) { bestTime = bike.min; bestMode = '🚲'; }
+    else if (transit.min) { bestTime = transit.min; bestMode = '🚇'; }
+    else if (walk.min) { bestTime = walk.min; bestMode = '🚶'; }
+
+    // Update Leave badge including buffer time
+    if (evStart && !isAllDay && bestTime && bestMode) {
+      const totalNeedMin = bestTime + (bufferMin || 0);
+      const leaveAt = new Date(evStart.getTime() - totalNeedMin * 60000);
+      const tooltip = bufferMin > 0
+        ? `${bestMode} Travel: ${bestTime}m + ${bufferMin}m buffer`
+        : `${bestMode} Travel: ${bestTime}m`;
+
+      if (leaveAt > now) {
+        const leaveInMin = Math.round((leaveAt - now) / 60000);
+        let leaveBadge = '';
+        if (leaveInMin <= 30) {
+          leaveBadge = lang === 'de' ? `${bestMode} los in ${leaveInMin} min` : lang === 'es' ? `${bestMode} salir en ${leaveInMin} min` : `${bestMode} leave in ${leaveInMin} min`;
+        } else {
+          const leaveStr = `${leaveAt.getHours().toString().padStart(2,'0')}:${leaveAt.getMinutes().toString().padStart(2,'0')}`;
+          leaveBadge = lang === 'de' ? `${bestMode} los um ${leaveStr}` : lang === 'es' ? `${bestMode} salir a las ${leaveStr}` : `${bestMode} leave at ${leaveStr}`;
+        }
+        if (isRainExpected) {
+          leaveBadge += ' 🌧️';
+        }
+
+        const untilEl = eventEl.querySelector('.event-until');
+        if (untilEl) {
+          untilEl.textContent = leaveBadge;
+          untilEl.title = tooltip;
+        } else {
+          const row = eventEl.querySelector('.event-row');
+          if (row) row.insertAdjacentHTML('beforeend', `<span class="event-until" title="${tooltip}">${leaveBadge}</span>`);
+        }
+      } else {
+        const untilEl = eventEl.querySelector('.event-until');
+        if (untilEl) untilEl.remove();
+      }
+    }
+
+    // Full route display with interactive click/tap selection
+    let routeHtml = '';
+    const rainTag = isRainExpected ? `<span class="event-route-rain" title="Rain forecast at start">🌧️</span>` : '';
+
+    // Walk (only show if <=30min or preferred)
+    if (walk.min && (walk.min <= 30 || preferred === 'walk')) {
+      const pref = preferred === 'walk' ? ' event-route-preferred' : '';
+      const walkEta = new Date(now.getTime() + walk.min * 60000);
+      const walkEtaStr = `${walkEta.getHours().toString().padStart(2,'0')}:${walkEta.getMinutes().toString().padStart(2,'0')}`;
+      routeHtml += `<div class="event-route-line${pref}" onclick="Calendar.selectMode(${idx}, 'walk', event)" title="Walk: ${walk.km} km, arrive ~${walkEtaStr} (click/tap to select)">🚶 ${walk.min} min · ${walk.km} km</div>`;
+    }
+
+    // Bike
+    if (bike.min) {
+      const pref = preferred === 'bike' ? ' event-route-preferred' : '';
+      const bikeEta = new Date(now.getTime() + bike.min * 60000);
+      const bikeEtaStr = `${bikeEta.getHours().toString().padStart(2,'0')}:${bikeEta.getMinutes().toString().padStart(2,'0')}`;
+      routeHtml += `<div class="event-route-line${pref}" onclick="Calendar.selectMode(${idx}, 'bike', event)" title="Bike: ${bike.km} km, arrive ~${bikeEtaStr} (click/tap to select)">🚲 ${bike.min} min · ${bike.km} km${rainTag}</div>`;
+    }
+
+    // Transit
+    if (transit.min && transit.legs.length > 0) {
+      const legParts = transit.legs.map(leg => {
+        if (leg.type === 'walk') {
+          return `<span class="event-route-walk">🚶${leg.duration} min</span>`;
+        }
+        const fromLabel = leg.from ? `<span class="station-badge">${leg.from}</span>` : '';
+        const toLabel = leg.to ? ` <span class="event-route-to">→</span> <span class="station-badge">${leg.to}</span>` : '';
+        const delayBadge = '';
+        const style = window.getTransitLineStyle ? window.getTransitLineStyle(leg.line) : { bg: 'var(--surface-hover)', fg: 'var(--text)' };
+        return `${fromLabel}<span class="transit-badge" style="background:${style.bg};color:${style.fg};border-color:${style.bg}">${leg.line}${delayBadge}</span>${toLabel}`;
+      }).join(' · ');
+      const pref = preferred === 'transit' ? ' event-route-preferred' : '';
+      routeHtml += `<div class="event-route-line${pref}" onclick="Calendar.selectMode(${idx}, 'transit', event)" title="Transit: ${transit.min} min (click/tap to select)">🚇 ${transit.min} min · ${legParts}</div>`;
+    } else if (transit.min) {
+      const pref = preferred === 'transit' ? ' event-route-preferred' : '';
+      routeHtml += `<div class="event-route-line${pref}" onclick="Calendar.selectMode(${idx}, 'transit', event)" title="Transit: ${transit.min} min (click/tap to select)">🚇 ${transit.min} min</div>`;
+    }
+
+    commuteEl.innerHTML = routeHtml;
+  }
+
   async function fetchCommuteForEvents(events) {
     const origin = HOMEBOARD_CONFIG.location;
     if (!origin.latitude || !origin.longitude) return;
 
+    const thisGen = ++_currentCommuteGen;
+
     for (let i = 0; i < events.length; i++) {
+      if (thisGen !== _currentCommuteGen) return; // cancel if generation changed (e.g. day switch)
+
       const ev = events[i];
       if (!ev.location || !isBerlinLocation(ev.location)) continue;
       if (isHomeAddress(ev.location)) continue;
       if (isEventEnded(ev)) continue;
 
+      const placeConfig = getPlaceConfig(ev);
+      const allowWalk = isModeAllowed(placeConfig, 'walk');
+      const allowBike = isModeAllowed(placeConfig, 'bike');
+      const allowTransit = isModeAllowed(placeConfig, 'transit');
+
+      if (!allowWalk && !allowBike && !allowTransit) continue;
+
       try {
-        // Geocode the location — check cache first, then Nominatim, then Photon
         let destLat = null, destLon = null;
+        if (placeConfig && (placeConfig.latitude || placeConfig.lat) && (placeConfig.longitude || placeConfig.lon)) {
+          destLat = parseFloat(placeConfig.latitude || placeConfig.lat);
+          destLon = parseFloat(placeConfig.longitude || placeConfig.lon);
+        }
+
         const locStr = ev.location;
         const cacheKey = `geo_${locStr}`;
 
-        // Check sessionStorage cache
-        try {
-          const cached = sessionStorage.getItem(cacheKey);
-          if (cached) {
-            const coords = JSON.parse(cached);
-            destLat = coords.lat;
-            destLon = coords.lon;
-          }
-        } catch (e) { /* ignore */ }
+        if (!destLat || !destLon) {
+          try {
+            const cached = sessionStorage.getItem(cacheKey);
+            if (cached) {
+              const coords = JSON.parse(cached);
+              destLat = coords.lat;
+              destLon = coords.lon;
+            }
+          } catch (e) { /* ignore */ }
+        }
 
         if (!destLat || !destLon) {
           const queries = [locStr];
-          // Extract street address: try after first comma, or just last parts
           const parts = locStr.split(',').map(s => s.trim());
           if (parts.length >= 2) {
-            queries.push(parts.slice(1).join(', ')); // skip business name
+            queries.push(parts.slice(1).join(', '));
           }
           if (parts.length >= 3) {
-            queries.push(parts.slice(-2).join(', ')); // just city + zip
+            queries.push(parts.slice(-2).join(', '));
           }
 
           // Try Nominatim
@@ -290,7 +700,7 @@ const Calendar = (() => {
             }
           }
 
-          // Fallback: Photon (Komoot) geocoder
+          // Fallback: Photon geocoder
           if (!destLat) {
             for (const q of queries) {
               try {
@@ -308,220 +718,176 @@ const Calendar = (() => {
             }
           }
 
-          // Cache result
           if (destLat && destLon) {
             try { sessionStorage.setItem(cacheKey, JSON.stringify({ lat: destLat, lon: destLon })); } catch (e) { /* full */ }
           }
         }
 
-        if (!destLat || !destLon) continue;
+        if (!destLat || !destLon || thisGen !== _currentCommuteGen) continue;
 
-        // Bike time via OSRM
-        const bikeUrl = `https://router.project-osrm.org/route/v1/cycling/${origin.longitude},${origin.latitude};${destLon},${destLat}?overview=false`;
-        const bikeRes = await fetch(bikeUrl);
-        let bikeMin = null;
-        let bikeKm = null;
-        if (bikeRes.ok) {
-          const bikeData = await bikeRes.json();
-          if (bikeData.code === 'Ok' && bikeData.routes.length) {
-            const distM = bikeData.routes[0].distance;
-            bikeKm = (distM / 1000).toFixed(1);
-            // Calculate from distance at configured bike speed
-            const bikeSpeedMpm = ((HOMEBOARD_CONFIG.commute && HOMEBOARD_CONFIG.commute.bikeSpeed) || 13) * 1000 / 60;
-            bikeMin = Math.round(distM / bikeSpeedMpm);
-          }
+        // Skip events located outside Berlin/VBB metro commute zone (> 60km away)
+        const distFromHome = getDistanceKm(origin.latitude, origin.longitude, destLat, destLon);
+        if (distFromHome > 60 && !placeConfig) {
+          continue;
         }
 
-        // Fetch walking route via OSRM
+        // Bike time via OSRM
+        let bikeMin = null;
+        let bikeKm = null;
+        if (allowBike) {
+          try {
+            const bikeUrl = `https://router.project-osrm.org/route/v1/cycling/${origin.longitude},${origin.latitude};${destLon},${destLat}?overview=false`;
+            const bikeRes = await fetch(bikeUrl);
+            if (bikeRes.ok) {
+              const bikeData = await bikeRes.json();
+              if (bikeData.code === 'Ok' && bikeData.routes.length) {
+                const distM = bikeData.routes[0].distance;
+                bikeKm = (distM / 1000).toFixed(1);
+                const bikeSpeedMpm = ((HOMEBOARD_CONFIG.commute && HOMEBOARD_CONFIG.commute.bikeSpeed) || 13) * 1000 / 60;
+                bikeMin = Math.round(distM / bikeSpeedMpm);
+              }
+            }
+          } catch (e) { /* skip */ }
+        }
+
+        // Walk time via OSRM
         let walkMin = null;
         let walkKm = null;
-        try {
-          const walkUrl = `https://router.project-osrm.org/route/v1/foot/${origin.longitude},${origin.latitude};${destLon},${destLat}?overview=false`;
-          const walkRes = await fetch(walkUrl);
-          if (walkRes.ok) {
-            const walkData = await walkRes.json();
-            if (walkData.code === 'Ok' && walkData.routes.length) {
-              const distM = walkData.routes[0].distance;
-              walkKm = (distM / 1000).toFixed(1);
-              // Calculate from distance at configured walk speed
-              const walkSpeedMpm = ((HOMEBOARD_CONFIG.commute && HOMEBOARD_CONFIG.commute.walkSpeed) || 5) * 1000 / 60;
-              walkMin = Math.round(distM / walkSpeedMpm);
+        if (allowWalk) {
+          try {
+            const walkUrl = `https://router.project-osrm.org/route/v1/foot/${origin.longitude},${origin.latitude};${destLon},${destLat}?overview=false`;
+            const walkRes = await fetch(walkUrl);
+            if (walkRes.ok) {
+              const walkData = await walkRes.json();
+              if (walkData.code === 'Ok' && walkData.routes.length) {
+                const distM = walkData.routes[0].distance;
+                walkKm = (distM / 1000).toFixed(1);
+                const walkSpeedMpm = ((HOMEBOARD_CONFIG.commute && HOMEBOARD_CONFIG.commute.walkSpeed) || 5) * 1000 / 60;
+                walkMin = Math.round(distM / walkSpeedMpm);
+              }
             }
-          }
-        } catch (e) { /* skip */ }
+          } catch (e) { /* skip */ }
+        }
 
-    // Fetch transit via HAFAS (with real-time delays)
+        // Transit via HAFAS
         let transitMin = null;
         let transitLegs = [];
         let transitDelayMin = 0;
-        const hafasKey = HOMEBOARD_CONFIG.departures?.hafasAccessId;
-        if (hafasKey) {
-          try {
-            const hafasUrl = `https://vbb.demo.hafas.cloud/api/fahrinfo/latest/trip?` +
-              `accessId=${hafasKey}` +
-              `&originCoordLat=${origin.latitude}&originCoordLong=${origin.longitude}` +
-              `&destCoordLat=${destLat}&destCoordLong=${destLon}` +
-              `&format=json&numF=1&rtMode=FULL`;
-            const hafasRes = await fetch(hafasUrl);
-            if (hafasRes.ok) {
-              const hData = await hafasRes.json();
-              const trips = hData.Trip || [];
-              if (trips.length > 0) {
-                const trip = trips[0];
-                const plannedMin = parsePTDuration(trip.duration);
-                transitMin = plannedMin;
+        if (allowTransit) {
+          const hafasKey = HOMEBOARD_CONFIG.departures?.hafasAccessId;
+          if (hafasKey) {
+            try {
+              const hafasUrl = `https://vbb.demo.hafas.cloud/api/fahrinfo/latest/trip?` +
+                `accessId=${hafasKey}` +
+                `&originCoordLat=${origin.latitude}&originCoordLong=${origin.longitude}` +
+                `&destCoordLat=${destLat}&destCoordLong=${destLon}` +
+                `&format=json&numF=4&rtMode=FULL`;
+              const hafasRes = await fetch(hafasUrl);
+              if (hafasRes.ok) {
+                const hData = await hafasRes.json();
+                const trips = hData.Trip || [];
+                if (trips.length > 0) {
+                  const trip = selectBestTransitTrip(trips, placeConfig);
+                  const plannedMin = parsePTDuration(trip.duration);
+                  transitMin = plannedMin;
 
-                // Calculate real-time duration from actual departure/arrival
-                const originDep = trip.Origin?.rtTime || trip.Origin?.time;
-                const originDate = trip.Origin?.rtDate || trip.Origin?.date;
-                const destArr = trip.Destination?.rtTime || trip.Destination?.time;
-                const destDate = trip.Destination?.rtDate || trip.Destination?.date;
-                if (originDep && destArr && originDate && destDate) {
-                  const depDt = parseHafasDateTime(originDate, originDep);
-                  const arrDt = parseHafasDateTime(destDate, destArr);
-                  if (depDt && arrDt) {
-                    const realMin = Math.round((arrDt - depDt) / 60000);
-                    if (realMin > 0) {
-                      transitDelayMin = realMin - plannedMin;
-                      transitMin = realMin;
+                  const originDep = trip.Origin?.rtTime || trip.Origin?.time;
+                  const originDate = trip.Origin?.rtDate || trip.Origin?.date;
+                  const destArr = trip.Destination?.rtTime || trip.Destination?.time;
+                  const destDate = trip.Destination?.rtDate || trip.Destination?.date;
+                  if (originDep && destArr && originDate && destDate) {
+                    const depDt = parseHafasDateTime(originDate, originDep);
+                    const arrDt = parseHafasDateTime(destDate, destArr);
+                    if (depDt && arrDt) {
+                      const realMin = Math.round((arrDt - depDt) / 60000);
+                      if (realMin > 0) {
+                        transitDelayMin = realMin - plannedMin;
+                        transitMin = realMin;
+                      }
                     }
                   }
-                }
 
-                let legs = trip.LegList?.Leg || [];
-                if (!Array.isArray(legs)) legs = [legs];
-                transitLegs = legs.map(leg => {
-                  const name = (leg.name || '').trim();
-                  const dur = parsePTDuration(leg.duration);
-                  const from = (leg.Origin?.name || '').replace(' (Berlin)', '').replace(' Bhf', '');
-                  const to = (leg.Destination?.name || '').replace(' (Berlin)', '').replace(' Bhf', '');
-                  // Check for per-leg delay
-                  const legDelay = leg.Destination?.rtTime && leg.Destination?.time
-                    ? parseHafasTimeDiff(leg.Destination.date, leg.Destination.time, leg.Destination.rtDate || leg.Destination.date, leg.Destination.rtTime)
-                    : 0;
-                  if (!name || name === 'Fußweg' || leg.type === 'WALK') {
-                    return { type: 'walk', duration: dur };
-                  }
-                  return { type: 'transit', line: name, from, to, duration: dur, delay: legDelay };
-                });
+                  let legs = trip.LegList?.Leg || [];
+                  if (!Array.isArray(legs)) legs = [legs];
+                  transitLegs = legs.map(leg => {
+                    const name = (leg.name || '').trim();
+                    const dur = parsePTDuration(leg.duration);
+                    const from = (leg.Origin?.name || '').replace(' (Berlin)', '').replace(' Bhf', '');
+                    const to = (leg.Destination?.name || '').replace(' (Berlin)', '').replace(' Bhf', '');
+                    const legDelay = leg.Destination?.rtTime && leg.Destination?.time
+                      ? parseHafasTimeDiff(leg.Destination.date, leg.Destination.time, leg.Destination.rtDate || leg.Destination.date, leg.Destination.rtTime)
+                      : 0;
+                    if (!name || name === 'Fußweg' || leg.type === 'WALK') {
+                      return { type: 'walk', duration: dur };
+                    }
+                    return { type: 'transit', line: name, from, to, duration: dur, delay: legDelay };
+                  });
+                }
               }
-            }
-          } catch (e) { /* skip */ }
-        }
+            } catch (e) { /* skip */ }
+          }
 
-        // Fallback to Transitous
-        if (!transitMin) {
-          try {
-            const transitUrl = `https://api.transitous.org/api/v1/plan?` +
-              `fromPlace=${origin.latitude},${origin.longitude}` +
-              `&toPlace=${destLat},${destLon}` +
-              `&mode=TRANSIT,WALK&numItineraries=1`;
-            const transitRes = await fetch(transitUrl);
-            if (transitRes.ok) {
-              const tData = await transitRes.json();
-              if (tData.itineraries?.length > 0) {
-                const it = tData.itineraries[0];
-                transitMin = Math.round(it.duration / 60);
-                transitLegs = (it.legs || []).map(leg => {
-                  const dur = Math.round((leg.duration || 0) / 60);
-                  if (leg.mode === 'WALK') {
-                    return { type: 'walk', duration: dur };
-                  }
-                  const line = leg.route || leg.routeShortName || leg.mode;
-                  const from = (leg.from?.name || '').replace(' (Berlin)', '');
-                  const to = (leg.to?.name || '').replace(' (Berlin)', '');
-                  return { type: 'transit', line, from, to, duration: dur };
-                });
+          // Fallback to Transitous
+          if (!transitMin) {
+            try {
+              const transitUrl = `https://api.transitous.org/api/v1/plan?` +
+                `fromPlace=${origin.latitude},${origin.longitude}` +
+                `&toPlace=${destLat},${destLon}` +
+                `&mode=TRANSIT,WALK&numItineraries=4`;
+              const transitRes = await fetch(transitUrl);
+              if (transitRes.ok) {
+                const tData = await transitRes.json();
+                if (tData.itineraries?.length > 0) {
+                  const it = selectBestTransitousItinerary(tData.itineraries, placeConfig);
+                  transitMin = Math.round(it.duration / 60);
+                  transitLegs = (it.legs || []).map(leg => {
+                    const dur = Math.round((leg.duration || 0) / 60);
+                    if (leg.mode === 'WALK') {
+                      return { type: 'walk', duration: dur };
+                    }
+                    const line = leg.route || leg.routeShortName || leg.mode;
+                    const from = (leg.from?.name || '').replace(' (Berlin)', '');
+                    const to = (leg.to?.name || '').replace(' (Berlin)', '');
+                    return { type: 'transit', line, from, to, duration: dur };
+                  });
+                }
               }
-            }
-          } catch (e) { /* skip */ }
-        }
-
-        // Update the rendered event with full commute info
-        const eventEl = document.querySelector(`[data-event-idx="${i}"]`);
-        if (eventEl && (bikeMin || transitMin || walkMin)) {
-          const commuteEl = eventEl.querySelector('.event-commute');
-          if (commuteEl) {
-            const now = new Date();
-            const lang = Lang.get();
-
-            // "Leave" badge next to event name
-            // Preference: walk if <15min, bike if <30min, otherwise transit
-            const evStart = events[i].start;
-            if (evStart && !events[i].allDay) {
-              let bestTime;
-              let bestMode;
-              if (walkMin && walkMin <= 15) { bestTime = walkMin; bestMode = '🚶'; }
-              else if (bikeMin && bikeMin <= 30) { bestTime = bikeMin; bestMode = '🚲'; }
-              else { bestTime = transitMin || bikeMin || walkMin; bestMode = transitMin ? '🚋' : bikeMin ? '🚲' : '🚶'; }
-              const leaveAt = new Date(evStart.getTime() - bestTime * 60000);
-              if (leaveAt > now) {
-                const leaveInMin = Math.round((leaveAt - now) / 60000);
-                let leaveBadge = '';
-                if (leaveInMin <= 30) {
-                  // Close: show countdown
-                  leaveBadge = lang === 'de' ? `${bestMode} los in ${leaveInMin} min` : lang === 'es' ? `${bestMode} salir en ${leaveInMin} min` : `${bestMode} leave in ${leaveInMin} min`;
-                } else {
-                  // Further out: show time
-                  const leaveStr = `${leaveAt.getHours().toString().padStart(2,'0')}:${leaveAt.getMinutes().toString().padStart(2,'0')}`;
-                  leaveBadge = lang === 'de' ? `${bestMode} los um ${leaveStr}` : lang === 'es' ? `${bestMode} salir a las ${leaveStr}` : `${bestMode} leave at ${leaveStr}`;
-                }
-                const untilEl = eventEl.querySelector('.event-until');
-                if (untilEl) {
-                  untilEl.textContent = leaveBadge;
-                } else {
-                  const row = eventEl.querySelector('.event-row');
-                  if (row) row.insertAdjacentHTML('beforeend', `<span class="event-until">${leaveBadge}</span>`);
-                }
-              } else {
-                // Past: remove leave badge if present
-                const untilEl = eventEl.querySelector('.event-until');
-                if (untilEl) untilEl.remove();
-              }
-            }
-
-            // Full route display — preferred mode first
-            // Preference: walk if <15min, bike if <30min, otherwise transit
-            let routeHtml = '';
-            const preferred = (walkMin && walkMin <= 15) ? 'walk' : (bikeMin && bikeMin <= 30) ? 'bike' : 'transit';
-
-            // Walk (only show if ≤30min)
-            if (walkMin && walkMin <= 30) {
-              const pref = preferred === 'walk' ? ' event-route-preferred' : '';
-              const walkEta = new Date(now.getTime() + walkMin * 60000);
-              const walkEtaStr = `${walkEta.getHours().toString().padStart(2,'0')}:${walkEta.getMinutes().toString().padStart(2,'0')}`;
-              routeHtml += `<div class="event-route-line${pref}" title="Walk: ${walkKm} km, arrive ~${walkEtaStr}">🚶 ${walkMin} min · ${walkKm} km</div>`;
-            }
-            // Bike
-            if (bikeMin) {
-              const pref = preferred === 'bike' ? ' event-route-preferred' : '';
-              const bikeEta = new Date(now.getTime() + bikeMin * 60000);
-              const bikeEtaStr = `${bikeEta.getHours().toString().padStart(2,'0')}:${bikeEta.getMinutes().toString().padStart(2,'0')}`;
-              routeHtml += `<div class="event-route-line${pref}" title="Bike: ${bikeKm} km, arrive ~${bikeEtaStr}">🚲 ${bikeMin} min · ${bikeKm} km</div>`;
-            }
-            // Transit
-            if (transitMin && transitLegs.length > 0) {
-              const legParts = transitLegs.map(leg => {
-                if (leg.type === 'walk') {
-                  return `<span class="event-route-walk">🚶${leg.duration} min</span>`;
-                }
-                const fromLabel = leg.from ? `<span class="station-badge">${leg.from}</span>` : '';
-                const toLabel = leg.to ? ` <span class="event-route-to">→</span> <span class="station-badge">${leg.to}</span>` : '';
-                const delayBadge = '';
-                const style = window.getTransitLineStyle ? window.getTransitLineStyle(leg.line) : { bg: 'var(--surface-hover)', fg: 'var(--text)' };
-                return `${fromLabel}<span class="transit-badge" style="background:${style.bg};color:${style.fg};border-color:${style.bg}">${leg.line}${delayBadge}</span>${toLabel}`;
-              }).join(' · ');
-              const pref = preferred === 'transit' ? ' event-route-preferred' : '';
-              routeHtml += `<div class="event-route-line${pref}">🚋 ${transitMin} min · ${legParts}</div>`;
-            } else if (transitMin) {
-              const pref = preferred === 'transit' ? ' event-route-preferred' : '';
-              routeHtml += `<div class="event-route-line${pref}">🚋 ${transitMin} min</div>`;
-            }
-            commuteEl.innerHTML = routeHtml;
+            } catch (e) { /* skip */ }
           }
         }
+
+        if (thisGen !== _currentCommuteGen) return;
+
+        // Check rain forecast for event time
+        const evStart = events[i].start;
+        let isRainExpected = false;
+        if (window.Rain?.getRainAt && evStart) {
+          const rainInfo = window.Rain.getRainAt(evStart);
+          const rainThreshold = placeConfig?.rainThreshold || 50;
+          if (rainInfo && (rainInfo.probability >= rainThreshold || rainInfo.precipitation >= 0.5)) {
+            isRainExpected = true;
+          }
+        }
+
+        const defaultBuffer = HOMEBOARD_CONFIG.calendar?.bufferMinutes !== undefined ? HOMEBOARD_CONFIG.calendar.bufferMinutes : 5;
+        const bufferMin = placeConfig?.bufferMinutes !== undefined ? placeConfig.bufferMinutes : defaultBuffer;
+
+        // Store data for interactive switching
+        _eventCommuteData[i] = {
+          evStart,
+          isAllDay: events[i].allDay,
+          placeConfig,
+          bufferMin,
+          isRainExpected,
+          walk: { min: walkMin, km: walkKm },
+          bike: { min: bikeMin, km: bikeKm },
+          transit: { min: transitMin, legs: transitLegs }
+        };
+
+        renderCommuteForEvent(i);
+
       } catch (err) {
-        // Silently skip failed geocoding
+        // Silently skip failed commute
       }
     }
   }
@@ -573,6 +939,8 @@ const Calendar = (() => {
           else if (line.startsWith('ATTENDEE')) { if (!event.attendees) event.attendees = []; const cn = line.match(/CN=([^;:]+)/i); if (cn) event.attendees.push(cn[1].replace(/"/g, '')); }
           else if (line.startsWith('RRULE')) { event.rrule = parseRRULE(line); }
           else if (line.startsWith('EXDATE')) { event.exdates.push(line.split(':').pop().slice(0, 8)); }
+          else if (line.startsWith('COLOR:') || line.startsWith('X-COLOR:') || line.startsWith('X-APPLE-CALENDAR-COLOR:')) { event.color = line.split(':').pop().trim(); }
+          else if (line.startsWith('CATEGORIES:')) { event.category = line.split(':').slice(1).join(':').trim(); }
         }
       }
 
@@ -639,6 +1007,49 @@ const Calendar = (() => {
     }).join('')}</div>`;
   }
 
+  const GOOGLE_COLORS = {
+    '1': '#7986cb', 'lavender': '#7986cb',
+    '2': '#33b679', 'sage': '#33b679',
+    '3': '#8e24aa', 'grape': '#8e24aa',
+    '4': '#e67c73', 'flamingo': '#e67c73',
+    '5': '#f6bf26', 'banana': '#f6bf26',
+    '6': '#f4511e', 'tangerine': '#f4511e',
+    '7': '#039be5', 'peacock': '#039be5',
+    '8': '#616161', 'graphite': '#616161',
+    '9': '#3f51b5', 'blueberry': '#3f51b5',
+    '10': '#0b8043', 'basil': '#0b8043',
+    '11': '#d50000', 'tomato': '#d50000',
+    'red': '#d50000', 'orange': '#f4511e', 'yellow': '#f6bf26',
+    'green': '#0b8043', 'blue': '#039be5', 'purple': '#8e24aa'
+  };
+
+  function getEventColor(ev) {
+    if (!ev) return null;
+    if (ev.color) {
+      const c = ev.color.toLowerCase();
+      return GOOGLE_COLORS[c] || ev.color;
+    }
+    if (ev.category) {
+      const c = ev.category.toLowerCase();
+      if (GOOGLE_COLORS[c]) return GOOGLE_COLORS[c];
+    }
+    const placeConfig = getPlaceConfig(ev);
+    if (placeConfig?.color) {
+      const c = placeConfig.color.toLowerCase();
+      return GOOGLE_COLORS[c] || placeConfig.color;
+    }
+    // Check keyword/category color patterns from config
+    const categoryColors = HOMEBOARD_CONFIG.calendar?.categoryColors || {};
+    const text = `${ev.summary || ''} ${ev.location || ''}`.toLowerCase();
+    for (const [key, col] of Object.entries(categoryColors)) {
+      if (text.includes(key.toLowerCase())) {
+        const c = col.toLowerCase();
+        return GOOGLE_COLORS[c] || col;
+      }
+    }
+    return null;
+  }
+
   function render(events) {
     const list = document.getElementById('event-list');
     if (events.length === 0) {
@@ -702,50 +1113,8 @@ const Calendar = (() => {
           ? `<div class="event-location event-location-home" title="${ev.location}">🏠 ${i18n('home')}</div>`
           : `<a href="https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(HOMEBOARD_CONFIG.location.address || '')}&destination=${encodeURIComponent(ev.location)}" target="_blank" class="event-location" title="${ev.location}">📍 ${ev.location.split(',')[0]}</a>`
         : '';
-      const locationHtml = ev.location && isBerlinLocation(ev.location)
-        ? `<div class="event-commute" title="${ev.location}"></div>`
-        : '';
-
-      const summaryHtml = `<span class="event-summary event-clickable" data-detail-idx="${actualIdx}">${ev.summary || 'Untitled'}${durationHtml}</span>`;
-
-      return `<li data-event-idx="${actualIdx}"${isPast ? ' class="event-past"' : ''}><div class="event-row">${timeHtml}${summaryHtml}${untilHtml}</div>${locationLabel}${locationHtml}</li>`;
-    }).join('');
-
-    list.innerHTML = allDayHtml + timedHtml;
-
-    // Store events for detail overlay and attach click handlers
-    _renderedEvents = events;
-    list.querySelectorAll('.event-clickable').forEach(el => {
-      el.addEventListener('click', (e) => {
-        e.preventDefault();
-        const idx = parseInt(el.getAttribute('data-detail-idx'));
-        showEventDetail(_renderedEvents[idx]);
-      });
-    });
-  }
-
-  let _renderedEvents = [];
-
-  function showEventDetail(ev) {
-    if (!ev) return;
-    // Remove existing overlay
-    const existing = document.getElementById('event-detail-overlay');
-    if (existing) existing.remove();
-
-    const timeStr = ev.allDay
-      ? (Lang.get() === 'de' ? 'Ganztägig' : Lang.get() === 'es' ? 'Todo el día' : 'All day')
-      : `${ev.start.getHours().toString().padStart(2,'0')}:${ev.start.getMinutes().toString().padStart(2,'0')}` +
-        (ev.end ? ` – ${ev.end.getHours().toString().padStart(2,'0')}:${ev.end.getMinutes().toString().padStart(2,'0')}` : '');
-
-    let durationStr = '';
-    if (ev.end && !ev.allDay) {
-      const durMin = Math.round((ev.end - ev.start) / 60000);
-      if (durMin > 0) {
-        durationStr = durMin >= 60
-          ? `${Math.floor(durMin / 60)}h${durMin % 60 > 0 ? ` ${durMin % 60}m` : ''}`
-          : `${durMin} min`;
-      }
-    }
+      const evColor = getEventColor(ev);
+    const colorStrip = evColor ? `<div class="detail-color-strip" style="background:${evColor}"></div>` : '';
 
     const locationHtml = ev.location
       ? `<div class="detail-row"><span class="detail-icon">📍</span><a href="https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(HOMEBOARD_CONFIG.location.address || '')}&destination=${encodeURIComponent(ev.location)}" target="_blank" class="detail-link">${ev.location}</a></div>`
@@ -759,25 +1128,33 @@ const Calendar = (() => {
       ? `<div class="detail-row"><span class="detail-icon">👥</span>${ev.attendees.join(', ')}</div>`
       : '';
 
+    const showReturn = ev.location && isBerlinLocation(ev.location) && !isHomeAddress(ev.location);
+    const returnSectionHtml = showReturn
+      ? `<div class="detail-return-box">
+          <div class="detail-return-title">🏠 ${Lang.get() === 'de' ? 'Rückweg nach Hause' : Lang.get() === 'es' ? 'Regreso a casa' : 'Return Home'}</div>
+          <div class="detail-return-content" id="detail-return-content"><span class="detail-loading">Calculating route...</span></div>
+        </div>`
+      : '';
+
     const overlay = document.createElement('div');
     overlay.id = 'event-detail-overlay';
     overlay.innerHTML = `
       <div class="event-detail-card">
+        ${colorStrip}
         <div class="detail-header">
           <span class="detail-summary">${ev.summary || 'Untitled'}</span>
           <button class="detail-close" aria-label="Close">✕</button>
         </div>
         <div class="detail-time">${timeStr}${durationStr ? ` · ${durationStr}` : ''}</div>
         ${locationHtml}
+        ${returnSectionHtml}
         ${attendeesHtml}
         ${descHtml}
       </div>`;
 
-    overlay.addEventListener('click', (e) => {
-      if (e.target === overlay || e.target.classList.contains('detail-close')) {
-        overlay.remove();
-      }
-    });
+    if (showReturn) {
+      setTimeout(() => fetchReturnCommute(ev), 10);
+    }
 
     document.body.appendChild(overlay);
   }
@@ -805,5 +1182,145 @@ const Calendar = (() => {
     return Math.round((dt2 - dt1) / 60000);
   }
 
-  return { init, switchDay };
+  return { init, switchDay, selectMode };
 })();
+
+
+  async function fetchReturnCommute(ev) {
+    const returnContainer = document.getElementById('detail-return-content');
+    if (!returnContainer) return;
+
+    const home = HOMEBOARD_CONFIG.location;
+    if (!home.latitude || !home.longitude) {
+      returnContainer.innerHTML = 'Home coordinates not set';
+      return;
+    }
+
+    const placeConfig = getPlaceConfig(ev);
+    const allowWalk = isModeAllowed(placeConfig, 'walk');
+    const allowBike = isModeAllowed(placeConfig, 'bike');
+    const allowTransit = isModeAllowed(placeConfig, 'transit');
+
+    try {
+      let destLat = null, destLon = null;
+      if (placeConfig && (placeConfig.latitude || placeConfig.lat) && (placeConfig.longitude || placeConfig.lon)) {
+        destLat = parseFloat(placeConfig.latitude || placeConfig.lat);
+        destLon = parseFloat(placeConfig.longitude || placeConfig.lon);
+      } else {
+        const cached = sessionStorage.getItem(`geo_${ev.location}`);
+        if (cached) {
+          const coords = JSON.parse(cached);
+          destLat = coords.lat;
+          destLon = coords.lon;
+        }
+      }
+
+      if (!destLat || !destLon) {
+        returnContainer.innerHTML = 'Could not resolve location coordinates';
+        return;
+      }
+
+      const returnTime = ev.end || (ev.start ? new Date(ev.start.getTime() + 60 * 60000) : new Date());
+      const now = new Date();
+      const startTime = returnTime > now ? returnTime : now;
+
+      // 1. Bike return via OSRM
+      let bikeMin = null, bikeKm = null;
+      if (allowBike) {
+        try {
+          const bikeUrl = `https://router.project-osrm.org/route/v1/cycling/${destLon},${destLat};${home.longitude},${home.latitude}?overview=false`;
+          const res = await fetch(bikeUrl);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.code === 'Ok' && data.routes.length) {
+              const distM = data.routes[0].distance;
+              bikeKm = (distM / 1000).toFixed(1);
+              const speed = ((HOMEBOARD_CONFIG.commute && HOMEBOARD_CONFIG.commute.bikeSpeed) || 13) * 1000 / 60;
+              bikeMin = Math.round(distM / speed);
+            }
+          }
+        } catch (e) {}
+      }
+
+      // 2. Walk return
+      let walkMin = null, walkKm = null;
+      if (allowWalk) {
+        try {
+          const walkUrl = `https://router.project-osrm.org/route/v1/foot/${destLon},${destLat};${home.longitude},${home.latitude}?overview=false`;
+          const res = await fetch(walkUrl);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.code === 'Ok' && data.routes.length) {
+              const distM = data.routes[0].distance;
+              walkKm = (distM / 1000).toFixed(1);
+              const speed = ((HOMEBOARD_CONFIG.commute && HOMEBOARD_CONFIG.commute.walkSpeed) || 5) * 1000 / 60;
+              walkMin = Math.round(distM / speed);
+            }
+          }
+        } catch (e) {}
+      }
+
+      // 3. Transit return via HAFAS
+      let transitMin = null, transitLegs = [];
+      if (allowTransit) {
+        const hafasKey = HOMEBOARD_CONFIG.departures?.hafasAccessId;
+        if (hafasKey) {
+          try {
+            const hafasUrl = `https://vbb.demo.hafas.cloud/api/fahrinfo/latest/trip?` +
+              `accessId=${hafasKey}` +
+              `&originCoordLat=${destLat}&originCoordLong=${destLon}` +
+              `&destCoordLat=${home.latitude}&destCoordLong=${home.longitude}` +
+              `&format=json&numF=3&rtMode=FULL`;
+            const hRes = await fetch(hafasUrl);
+            if (hRes.ok) {
+              const hData = await hRes.json();
+              const trips = hData.Trip || [];
+              if (trips.length > 0) {
+                const trip = trips[0];
+                transitMin = parsePTDuration(trip.duration);
+                let legs = trip.LegList?.Leg || [];
+                if (!Array.isArray(legs)) legs = [legs];
+                transitLegs = legs.map(leg => {
+                  const name = (leg.name || '').trim();
+                  const dur = parsePTDuration(leg.duration);
+                  const from = (leg.Origin?.name || '').replace(' (Berlin)', '').replace(' Bhf', '');
+                  const to = (leg.Destination?.name || '').replace(' (Berlin)', '').replace(' Bhf', '');
+                  if (!name || name === 'Fußweg' || leg.type === 'WALK') {
+                    return { type: 'walk', duration: dur };
+                  }
+                  return { type: 'transit', line: name, from, to, duration: dur };
+                });
+              }
+            }
+          } catch (e) {}
+        }
+      }
+
+      // Render Return Commute routes
+      let html = '';
+      if (walkMin && walkMin <= 35) {
+        const eta = new Date(startTime.getTime() + walkMin * 60000);
+        const etaStr = `${eta.getHours().toString().padStart(2,'0')}:${eta.getMinutes().toString().padStart(2,'0')}`;
+        html += `<div class="detail-return-line">🚶 <strong>${walkMin} min</strong> · ${walkKm} km <span class="detail-return-eta">(~${etaStr})</span></div>`;
+      }
+      if (bikeMin) {
+        const eta = new Date(startTime.getTime() + bikeMin * 60000);
+        const etaStr = `${eta.getHours().toString().padStart(2,'0')}:${eta.getMinutes().toString().padStart(2,'0')}`;
+        html += `<div class="detail-return-line">🚲 <strong>${bikeMin} min</strong> · ${bikeKm} km <span class="detail-return-eta">(~${etaStr})</span></div>`;
+      }
+      if (transitMin && transitLegs.length > 0) {
+        const eta = new Date(startTime.getTime() + transitMin * 60000);
+        const etaStr = `${eta.getHours().toString().padStart(2,'0')}:${eta.getMinutes().toString().padStart(2,'0')}`;
+        const legsHtml = transitLegs.map(leg => {
+          if (leg.type === 'walk') return `<span class="event-route-walk">🚶${leg.duration}m</span>`;
+          const style = window.getTransitLineStyle ? window.getTransitLineStyle(leg.line) : { bg: 'var(--surface-hover)', fg: 'var(--text)' };
+          return `<span class="transit-badge" style="background:${style.bg};color:${style.fg};border-color:${style.bg}">${leg.line}</span>`;
+        }).join(' → ');
+        html += `<div class="detail-return-line">🚇 <strong>${transitMin} min</strong> · ${legsHtml} <span class="detail-return-eta">(~${etaStr})</span></div>`;
+      }
+
+      returnContainer.innerHTML = html || 'No return routes available';
+    } catch (err) {
+      returnContainer.innerHTML = 'Failed to load return commute';
+    }
+  }
