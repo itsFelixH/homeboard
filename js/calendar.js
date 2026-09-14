@@ -34,6 +34,10 @@ const Calendar = (() => {
   };
 
   const DEFAULT_CATEGORIES = {
+    dance: {
+      label: 'Dance', icon: '💃', color: '#e67c73',
+      match: ['swing', 'lindy hop', 'balboa', 'blues', 'tanz', 'dance', 'sunset swing', 'rayuela', 'clärchens', 'säälchen', 'gleisdreieck']
+    },
     fitness: {
       label: 'Fitness', icon: '🏋️', color: '#f4511e',
       match: ['ride.bln', 'gym', 'workout', 'training', 'boulder', 'spinning', 'fitness', 'pilates', 'yoga', 'crossfit', 'laufen', 'joggen', 'swim', 'schwimmen', 'sport']
@@ -351,6 +355,18 @@ const Calendar = (() => {
     return false;
   }
 
+    function matchesKeyword(text, pattern) {
+    if (!text || !pattern) return false;
+    const p = String(pattern).trim().toLowerCase();
+    if (!p) return false;
+    // For short words (<= 4 chars, alphanumeric), match as full word to avoid false positives (e.g. 'ber' matching 'berlin' or 'ice' matching 'service')
+    if (p.length <= 4 && /^[a-z0-9äöüß]+$/i.test(p)) {
+      const re = new RegExp(`(^|[^a-z0-9äöüß])${p}([^a-z0-9äöüß]|$)`, 'i');
+      return re.test(text);
+    }
+    return text.toLowerCase().includes(p);
+  }
+
   function getPlaceConfig(ev) {
     const places = HOMEBOARD_CONFIG.calendar?.places || [];
     if (!places.length || (!ev.location && !ev.summary)) return null;
@@ -364,13 +380,10 @@ const Calendar = (() => {
       if (!matchCriteria) continue;
 
       if (Array.isArray(matchCriteria)) {
-        const matches = matchCriteria.some(pattern => {
-          const p = String(pattern).toLowerCase();
-          return locText.includes(p) || sumText.includes(p);
-        });
+        const matches = matchCriteria.some(pattern => matchesKeyword(locText, pattern) || matchesKeyword(sumText, pattern));
         if (matches) return place;
       } else if (typeof matchCriteria === 'string') {
-        const p = matchCriteria.toLowerCase();
+        const p = matchCriteria.trim();
         let isRegex = false;
         try {
           if (p.startsWith('/') && p.endsWith('/')) {
@@ -379,7 +392,7 @@ const Calendar = (() => {
             isRegex = true;
           }
         } catch (e) {}
-        if (!isRegex && (locText.includes(p) || sumText.includes(p))) {
+        if (!isRegex && (matchesKeyword(locText, p) || matchesKeyword(sumText, p))) {
           return place;
         }
       }
@@ -417,7 +430,7 @@ const Calendar = (() => {
     for (const [key, catObj] of Object.entries(userCategories)) {
       if (!catObj || catObj.enabled === false) continue;
       const patterns = Array.isArray(catObj.match) ? catObj.match : (catObj.match ? [catObj.match] : [key]);
-      const match = patterns.some(p => text.includes(String(p).toLowerCase()));
+      const match = patterns.some(p => matchesKeyword(text, p));
       if (match) {
         const colorRaw = catObj.color || 'var(--accent)';
         const colorHex = GOOGLE_COLORS[colorRaw.toLowerCase()] || colorRaw;
@@ -433,7 +446,7 @@ const Calendar = (() => {
     // 3. Built-in Smart Categories (if not disabled by user)
     for (const [key, def] of Object.entries(DEFAULT_CATEGORIES)) {
       if (userCategories[key] && userCategories[key].enabled === false) continue;
-      const match = def.match.some(p => text.includes(p));
+      const match = def.match.some(p => matchesKeyword(text, p));
       if (match) {
         return {
           category: def.label,
@@ -729,26 +742,23 @@ const Calendar = (() => {
 
     // Walk (only show if <=30min or preferred)
     if (walk.min && (walk.min <= 30 || preferred === 'walk')) {
-      const isAct = preferred === 'walk';
+      const pref = preferred === 'walk' ? ' event-route-preferred' : '';
       const walkEta = new Date(now.getTime() + walk.min * 60000);
       const walkEtaStr = `${walkEta.getHours().toString().padStart(2,'0')}:${walkEta.getMinutes().toString().padStart(2,'0')}`;
-      const check = isAct ? '<span class="event-route-check">✓</span> ' : '';
-      routeHtml += `<div class="event-route-line${isAct ? ' event-route-active' : ''}" onclick="Calendar.selectMode(${idx}, 'walk', event)" title="Walk: ${walk.km} km, arrive ~${walkEtaStr} (click to set active mode)">${check}🚶 ${walk.min} min · ${walk.km} km</div>`;
+      routeHtml += `<div class="event-route-line${pref}" onclick="Calendar.selectMode(${idx}, 'walk', event)" title="Walk: ${walk.km} km, arrive ~${walkEtaStr}">🚶 ${walk.min} min · ${walk.km} km</div>`;
     }
 
     // Bike
     if (bike.min) {
-      const isAct = preferred === 'bike';
+      const pref = preferred === 'bike' ? ' event-route-preferred' : '';
       const bikeEta = new Date(now.getTime() + bike.min * 60000);
       const bikeEtaStr = `${bikeEta.getHours().toString().padStart(2,'0')}:${bikeEta.getMinutes().toString().padStart(2,'0')}`;
-      const check = isAct ? '<span class="event-route-check">✓</span> ' : '';
-      routeHtml += `<div class="event-route-line${isAct ? ' event-route-active' : ''}" onclick="Calendar.selectMode(${idx}, 'bike', event)" title="Bike: ${bike.km} km, arrive ~${bikeEtaStr} (click to set active mode)">${check}🚲 ${bike.min} min · ${bike.km} km${rainTag}</div>`;
+      routeHtml += `<div class="event-route-line${pref}" onclick="Calendar.selectMode(${idx}, 'bike', event)" title="Bike: ${bike.km} km, arrive ~${bikeEtaStr}">🚲 ${bike.min} min · ${bike.km} km${rainTag}</div>`;
     }
 
     // Transit
     if (transit.min && transit.legs.length > 0) {
-      const isAct = preferred === 'transit';
-      const check = isAct ? '<span class="event-route-check">✓</span> ' : '';
+      const pref = preferred === 'transit' ? ' event-route-preferred' : '';
       const legParts = transit.legs.map(leg => {
         if (leg.type === 'walk') {
           return `<span class="event-route-walk">🚶${leg.duration} min</span>`;
@@ -759,11 +769,10 @@ const Calendar = (() => {
         const style = window.getTransitLineStyle ? window.getTransitLineStyle(leg.line) : { bg: 'var(--surface-hover)', fg: 'var(--text)' };
         return `${fromLabel}<span class="transit-badge" style="background:${style.bg};color:${style.fg};border-color:${style.bg}">${leg.line}${delayBadge}</span>${toLabel}`;
       }).join(' · ');
-      routeHtml += `<div class="event-route-line${isAct ? ' event-route-active' : ''}" onclick="Calendar.selectMode(${idx}, 'transit', event)" title="Transit: ${transit.min} min (click to set active mode)">${check}🚇 ${transit.min} min · ${legParts}</div>`;
+      routeHtml += `<div class="event-route-line${pref}" onclick="Calendar.selectMode(${idx}, 'transit', event)" title="Transit: ${transit.min} min">🚇 ${transit.min} min · ${legParts}</div>`;
     } else if (transit.min) {
-      const isAct = preferred === 'transit';
-      const check = isAct ? '<span class="event-route-check">✓</span> ' : '';
-      routeHtml += `<div class="event-route-line${isAct ? ' event-route-active' : ''}" onclick="Calendar.selectMode(${idx}, 'transit', event)" title="Transit: ${transit.min} min (click to set active mode)">${check}🚇 ${transit.min} min</div>`;
+      const pref = preferred === 'transit' ? ' event-route-preferred' : '';
+      routeHtml += `<div class="event-route-line${pref}" onclick="Calendar.selectMode(${idx}, 'transit', event)" title="Transit: ${transit.min} min">🚇 ${transit.min} min</div>`;
     }
 
     commuteEl.innerHTML = routeHtml;
@@ -1170,9 +1179,9 @@ const Calendar = (() => {
       const timeStr = `${ev.start.getHours().toString().padStart(2,'0')}:${ev.start.getMinutes().toString().padStart(2,'0')}`;
       const timeHtml = `<span class="event-time">${timeStr}</span>`;
 
-      // Category badge
+      // Category badge (styled cleanly like duration bubble)
       const catBadgeHtml = category
-        ? `<span class="event-cat-tag" style="background:${dimBg};color:${color};border-color:${color}44" title="${category}">${icon ? icon + ' ' : ''}${category}</span>`
+        ? `<span class="event-cat-tag" title="${category}">${icon ? icon + ' ' : ''}${category}</span>`
         : (icon ? `<span class="event-cat-icon">${icon}</span>` : '');
 
       // Duration badge
@@ -1210,9 +1219,9 @@ const Calendar = (() => {
         ? `<div class="event-commute" title="${ev.location}"></div>`
         : '';
 
-      const summaryHtml = `<span class="event-summary event-clickable" data-detail-idx="${actualIdx}">${ev.summary || 'Untitled'}${durationHtml}</span>`;
+      const summaryHtml = `<span class="event-summary event-clickable" data-detail-idx="${actualIdx}">${ev.summary || 'Untitled'}${catBadgeHtml}${durationHtml}</span>`;
 
-      return `<li data-event-idx="${actualIdx}" class="event-item${isPast ? ' event-past' : ''}" style="--event-accent: ${color};"><div class="event-row">${timeHtml}${catBadgeHtml}${summaryHtml}${untilHtml}</div>${locationLabel}${locationHtml}</li>`;
+      return `<li data-event-idx="${actualIdx}" class="event-item${isPast ? ' event-past' : ''}" style="--event-accent: ${color};"><div class="event-row">${timeHtml}${summaryHtml}${untilHtml}</div>${locationLabel}${locationHtml}</li>`;
     }).join('');
 
     list.innerHTML = allDayHtml + timedHtml;
@@ -1263,7 +1272,7 @@ const Calendar = (() => {
 
     const { category, icon, color, dimBg } = getEventCategoryAndColor(ev);
     const colorStrip = `<div class="detail-color-strip" style="background:${color}"></div>`;
-    const catBadge = category ? `<span class="event-cat-tag detail-cat-badge" style="background:${dimBg};color:${color};border-color:${color}44">${icon ? icon + ' ' : ''}${category}</span>` : '';
+    const catBadge = category ? `<span class="event-cat-tag detail-cat-badge">${icon ? icon + ' ' : ''}${category}</span>` : '';
 
     const locationHtml = ev.location
       ? `<div class="detail-row"><span class="detail-icon">📍</span><a href="${gmapsOutboundUrl}" target="_blank" class="detail-link" title="Open in Google Maps">${ev.location}</a></div>`
