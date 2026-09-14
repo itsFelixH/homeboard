@@ -170,8 +170,8 @@ const ConfigLoader = (() => {
       hidePatterns: calCard.hidePatterns || [],
       bufferMinutes: calCard.bufferMinutes !== undefined ? calCard.bufferMinutes : 5,
       categoryColors: calCard.categoryColors || {},
-      categories: calCard.categories || {},
-      places: calCard.places || calCard.locations || []
+      categories: calCard.categories || raw.categories || {},
+      places: calCard.places || calCard.locations || raw.places || raw.locations || []
     };
 
     // --- Birthdays ---
