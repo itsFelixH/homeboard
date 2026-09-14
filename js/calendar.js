@@ -1,17 +1,77 @@
 /**
- * Calendar module - parses ICS feed and displays today's events
- * Features: RRULE support, event filtering, commute time for Berlin locations
+ * Calendar module - Google Calendar ICS parser & daily agenda with location commute
+ * - Multi-day overview with day switcher
+ * - Commute travel times (Walk, Bike, Transit via HAFAS / Transitous)
+ * - Custom place configuration & preferred transit route selection
+ * - Smart Category detection, icons, & colored accent stripes
+ * - Return Home commute calculation in event detail modal
+ * - Weather & Rain-aware smart transport mode selection
+ * - Interactive mode switcher for Desktop, Tablet, and Mobile
  */
 const Calendar = (() => {
   let refreshInterval;
+  let _multiDayCache = []; // cached events per day [{date, label, dayName, events}]
+  let _selectedDay = 0;   // 0=today, 1=tomorrow, 2=day after
+  let _renderedEvents = [];
+  let _eventCommuteData = {};
+  let _eventModeOverrides = {};
+  let _currentCommuteGen = 0;
+
+  const GOOGLE_COLORS = {
+    '1': '#7986cb', 'lavender': '#7986cb',
+    '2': '#33b679', 'sage': '#33b679',
+    '3': '#8e24aa', 'grape': '#8e24aa',
+    '4': '#e67c73', 'flamingo': '#e67c73',
+    '5': '#f6bf26', 'banana': '#f6bf26',
+    '6': '#f4511e', 'tangerine': '#f4511e',
+    '7': '#039be5', 'peacock': '#039be5',
+    '8': '#616161', 'graphite': '#616161',
+    '9': '#3f51b5', 'blueberry': '#3f51b5',
+    '10': '#0b8043', 'basil': '#0b8043',
+    '11': '#d50000', 'tomato': '#d50000',
+    'red': '#d50000', 'orange': '#f4511e', 'yellow': '#f6bf26',
+    'green': '#0b8043', 'blue': '#039be5', 'purple': '#8e24aa', 'cyan': '#00acc1'
+  };
+
+  const DEFAULT_CATEGORIES = {
+    fitness: {
+      label: 'Fitness', icon: '🏋️', color: '#f4511e',
+      match: ['ride.bln', 'gym', 'workout', 'training', 'boulder', 'spinning', 'fitness', 'pilates', 'yoga', 'crossfit', 'laufen', 'joggen', 'swim', 'schwimmen', 'sport']
+    },
+    work: {
+      label: 'Work', icon: '💼', color: '#039be5',
+      match: ['digitalcampus', 'sync', 'standup', 'meeting', 'sprint', '1:1', 'review', 'retro', 'db systel', 'office', 'call', 'arbeit']
+    },
+    health: {
+      label: 'Health', icon: '🩺', color: '#0b8043',
+      match: ['arzt', 'zahnarzt', 'zahn', 'doctor', 'dentist', 'termin', 'physio', 'blutabnahme', 'impfung', 'klinik', 'praxis']
+    },
+    social: {
+      label: 'Social', icon: '🥂', color: '#e67c73',
+      match: ['dinner', 'drinks', 'lunch', 'brunch', 'geburtstag', 'birthday', 'party', 'bar', 'restaurant', 'cafe', 'cocktail', 'abendessen', 'mittagessen', 'date', 'treffen', 'freunde']
+    },
+    travel: {
+      label: 'Travel', icon: '✈️', color: '#8e24aa',
+      match: ['flug', 'flight', 'zug', 'ice', 'hotel', 'urlaub', 'airbnb', 'airport', 'ber', 'flughafen', 'ferien', 'vacation', 'trip']
+    },
+    culture: {
+      label: 'Culture', icon: '🎭', color: '#6f4e9c',
+      match: ['kino', 'cinema', 'theater', 'konzert', 'concert', 'museum', 'ausstellung', 'oper', 'festival']
+    },
+    chores: {
+      label: 'Chores', icon: '🛒', color: '#f6bf26',
+      match: ['einkauf', 'supermarkt', 'ikea', 'rewe', 'edeka', 'putzen', 'waschen', 'auto', 'tüv', 'paket']
+    }
+  };
 
   function init() {
     const config = HOMEBOARD_CONFIG.calendar;
     if (!config.icsUrl) {
       document.getElementById('event-list').innerHTML =
-        `<li class="event-placeholder">${i18n('calendar_no_events')}</li>`;
+        '<li class="event-placeholder">Set icsUrl in config</li>';
       return;
     }
+
     fetchEvents();
     refreshInterval = setInterval(fetchEvents, config.refreshMinutes * 60 * 1000);
   }
@@ -23,16 +83,7 @@ const Calendar = (() => {
       const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const icsText = await res.text();
-      window._calendarCache = icsText;
-      let events = parseICS(icsText);
-      events = filterEvents(events);
-      render(events.slice(0, config.maxEvents));
-      // Multi-day view: tabs + week overview
       renderMultiDay(icsText);
-      // Fetch commute for events with locations
-      if (config.showCommute) {
-        fetchCommuteForEvents(events.slice(0, config.maxEvents));
-      }
     } catch (err) {
       console.error('Calendar fetch failed:', err);
       document.getElementById('event-list').innerHTML =
@@ -198,7 +249,6 @@ const Calendar = (() => {
 
     if (freq === 'WEEKLY') {
       const interval = parseInt(rule.INTERVAL || '1');
-      // Check if this week matches the interval
       const weeksDiff = Math.round((today - event.start) / (7 * 86400000));
       if (weeksDiff % interval !== 0) return false;
       const byDay = rule.BYDAY ? rule.BYDAY.split(',') : [];
@@ -297,14 +347,9 @@ const Calendar = (() => {
   function isEventEnded(ev) {
     const now = new Date();
     if (ev.end) return ev.end <= now;
-    // No end time: treat as ended if start is in the past (for timed events)
     if (!ev.allDay && ev.start) return ev.start <= now;
     return false;
   }
-
-  let _eventCommuteData = {};
-  let _eventModeOverrides = {};
-  let _currentCommuteGen = 0;
 
   function getPlaceConfig(ev) {
     const places = HOMEBOARD_CONFIG.calendar?.places || [];
@@ -340,6 +385,84 @@ const Calendar = (() => {
       }
     }
     return null;
+  }
+
+  function getEventCategoryAndColor(ev) {
+    if (!ev) return { category: null, icon: '', color: 'var(--accent)', dimBg: 'var(--accent-dim)' };
+
+    const placeConfig = getPlaceConfig(ev);
+
+    // 1. Direct Place Config
+    if (placeConfig?.category || placeConfig?.color || placeConfig?.icon) {
+      const colorRaw = placeConfig.color || (placeConfig.category ? DEFAULT_CATEGORIES[placeConfig.category.toLowerCase()]?.color : null) || 'var(--accent)';
+      const colorHex = GOOGLE_COLORS[colorRaw.toLowerCase()] || colorRaw;
+      return {
+        category: placeConfig.category || null,
+        icon: placeConfig.icon || (placeConfig.category ? DEFAULT_CATEGORIES[placeConfig.category.toLowerCase()]?.icon : ''),
+        color: colorHex,
+        dimBg: colorHex.startsWith('#') ? `${colorHex}22` : 'var(--accent-dim)'
+      };
+    }
+
+    // 2. Custom User Defined Categories from config
+    const userCategories = HOMEBOARD_CONFIG.calendar?.categories || {};
+    const text = `${ev.summary || ''} ${ev.location || ''}`.toLowerCase();
+
+    for (const [key, catObj] of Object.entries(userCategories)) {
+      if (!catObj) continue;
+      const patterns = Array.isArray(catObj.match) ? catObj.match : [catObj.match || key];
+      const match = patterns.some(p => text.includes(String(p).toLowerCase()));
+      if (match) {
+        const colorRaw = catObj.color || 'var(--accent)';
+        const colorHex = GOOGLE_COLORS[colorRaw.toLowerCase()] || colorRaw;
+        return {
+          category: catObj.label || key,
+          icon: catObj.icon || '',
+          color: colorHex,
+          dimBg: colorHex.startsWith('#') ? `${colorHex}22` : 'var(--accent-dim)'
+        };
+      }
+    }
+
+    // 3. Built-in Smart Categories
+    for (const [key, def] of Object.entries(DEFAULT_CATEGORIES)) {
+      const match = def.match.some(p => text.includes(p));
+      if (match) {
+        return {
+          category: def.label,
+          icon: def.icon,
+          color: def.color,
+          dimBg: `${def.color}22`
+        };
+      }
+    }
+
+    // 4. Fallback: Check categoryColors map
+    const categoryColors = HOMEBOARD_CONFIG.calendar?.categoryColors || {};
+    for (const [key, col] of Object.entries(categoryColors)) {
+      if (text.includes(key.toLowerCase())) {
+        const colorHex = GOOGLE_COLORS[col.toLowerCase()] || col;
+        return {
+          category: key,
+          icon: '',
+          color: colorHex,
+          dimBg: colorHex.startsWith('#') ? `${colorHex}22` : 'var(--accent-dim)'
+        };
+      }
+    }
+
+    // 5. Fallback: ICS native color or category
+    if (ev.color) {
+      const colorHex = GOOGLE_COLORS[ev.color.toLowerCase()] || ev.color;
+      return {
+        category: ev.category || null,
+        icon: '',
+        color: colorHex,
+        dimBg: colorHex.startsWith('#') ? `${colorHex}22` : 'var(--accent-dim)'
+      };
+    }
+
+    return { category: null, icon: '', color: 'var(--accent)', dimBg: 'var(--accent-dim)' };
   }
 
   function isModeAllowed(placeConfig, mode) {
@@ -642,7 +765,7 @@ const Calendar = (() => {
     const thisGen = ++_currentCommuteGen;
 
     for (let i = 0; i < events.length; i++) {
-      if (thisGen !== _currentCommuteGen) return; // cancel if generation changed (e.g. day switch)
+      if (thisGen !== _currentCommuteGen) return;
 
       const ev = events[i];
       if (!ev.location || !isBerlinLocation(ev.location)) continue;
@@ -892,9 +1015,6 @@ const Calendar = (() => {
     }
   }
 
-  let _multiDayCache = []; // cached events per day [{date, label, events}]
-  let _selectedDay = 0;   // 0=today, 1=tomorrow, 2=day after
-
   function renderMultiDay(icsText) {
     const config = HOMEBOARD_CONFIG.calendar;
     const lines = icsText.replace(/\r\n /g, '').split(/\r?\n/);
@@ -904,20 +1024,20 @@ const Calendar = (() => {
     const dayNamesShort = lang === 'de'
       ? ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa']
       : lang === 'es'
-      ? ['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá']
+      ? ['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa']
       : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+    _multiDayCache = [];
     const patterns = (config.hidePatterns || []).map(p => new RegExp(p, 'i'));
 
-    // Parse events for next 7 days
-    _multiDayCache = [];
     for (let d = 0; d < 7; d++) {
-      const date = new Date(today.getFullYear(), today.getMonth(), today.getDate() + d);
+      const date = new Date(today);
+      date.setDate(today.getDate() + d);
       const dateStr = dateToStr(date);
       const dow = date.getDay();
-
-      let event = null;
       const dayEvents = [];
 
+      let event = null;
       for (const line of lines) {
         if (line === 'BEGIN:VEVENT') {
           event = { exdates: [] };
@@ -958,44 +1078,41 @@ const Calendar = (() => {
       _multiDayCache.push({ date, label, dayName: dayNamesShort[dow], events: dayEvents });
     }
 
-    renderDayTabs();
     renderWeekStrip();
+    const currentDayEvents = _multiDayCache[_selectedDay] ? _multiDayCache[_selectedDay].events : [];
+    render(currentDayEvents);
+
+    if (config.showCommute) {
+      fetchCommuteForEvents(currentDayEvents.slice(0, config.maxEvents));
+    }
   }
 
-  function switchDay(idx) {
-    _selectedDay = idx;
-    // Re-render main event list for selected day
-    const config = HOMEBOARD_CONFIG.calendar;
-    const dayData = _multiDayCache[idx];
+  function switchDay(dayIdx) {
+    if (dayIdx < 0 || dayIdx >= _multiDayCache.length) return;
+    _selectedDay = dayIdx;
+    _eventModeOverrides = {}; // reset mode overrides for new day
+    const dayData = _multiDayCache[dayIdx];
     if (dayData) {
-      render(dayData.events.slice(0, config.maxEvents));
-      // Update card header title
-      const headerLabel = document.querySelector('.card-calendar .card-header span[data-i18n="calendar_title"]');
+      const config = HOMEBOARD_CONFIG.calendar;
+      render(dayData.events);
+      const headerLabel = document.getElementById('calendar-header-day');
       if (headerLabel) headerLabel.textContent = dayData.label;
-      // Fetch commute for events with locations
       if (config.showCommute) {
         fetchCommuteForEvents(dayData.events.slice(0, config.maxEvents));
       }
     }
-    // Update strip selection highlight
     renderWeekStrip();
   }
 
-  function renderDayTabs() {
-    // No tabs — week strip handles day switching
-  }
-
   function renderWeekStrip() {
-    // Week strip is rendered once in a persistent container
     let stripContainer = document.getElementById('calendar-week-strip');
     if (!stripContainer) {
-      const previewEl = document.getElementById('calendar-tomorrow');
+      const previewEl = document.getElementById('calendar-preview');
       if (!previewEl) return;
       previewEl.innerHTML = '<div id="calendar-week-strip"></div>';
       stripContainer = document.getElementById('calendar-week-strip');
     }
 
-    // Mini week overview: single dot if day has events
     stripContainer.innerHTML = `<div class="cal-week-strip">${_multiDayCache.map((day, i) => {
       const isToday = i === 0;
       const isSelected = i === _selectedDay;
@@ -1005,49 +1122,6 @@ const Calendar = (() => {
         <span class="cal-week-date">${day.date.getDate()}</span>
       </div>`;
     }).join('')}</div>`;
-  }
-
-  const GOOGLE_COLORS = {
-    '1': '#7986cb', 'lavender': '#7986cb',
-    '2': '#33b679', 'sage': '#33b679',
-    '3': '#8e24aa', 'grape': '#8e24aa',
-    '4': '#e67c73', 'flamingo': '#e67c73',
-    '5': '#f6bf26', 'banana': '#f6bf26',
-    '6': '#f4511e', 'tangerine': '#f4511e',
-    '7': '#039be5', 'peacock': '#039be5',
-    '8': '#616161', 'graphite': '#616161',
-    '9': '#3f51b5', 'blueberry': '#3f51b5',
-    '10': '#0b8043', 'basil': '#0b8043',
-    '11': '#d50000', 'tomato': '#d50000',
-    'red': '#d50000', 'orange': '#f4511e', 'yellow': '#f6bf26',
-    'green': '#0b8043', 'blue': '#039be5', 'purple': '#8e24aa'
-  };
-
-  function getEventColor(ev) {
-    if (!ev) return null;
-    if (ev.color) {
-      const c = ev.color.toLowerCase();
-      return GOOGLE_COLORS[c] || ev.color;
-    }
-    if (ev.category) {
-      const c = ev.category.toLowerCase();
-      if (GOOGLE_COLORS[c]) return GOOGLE_COLORS[c];
-    }
-    const placeConfig = getPlaceConfig(ev);
-    if (placeConfig?.color) {
-      const c = placeConfig.color.toLowerCase();
-      return GOOGLE_COLORS[c] || placeConfig.color;
-    }
-    // Check keyword/category color patterns from config
-    const categoryColors = HOMEBOARD_CONFIG.calendar?.categoryColors || {};
-    const text = `${ev.summary || ''} ${ev.location || ''}`.toLowerCase();
-    for (const [key, col] of Object.entries(categoryColors)) {
-      if (text.includes(key.toLowerCase())) {
-        const c = col.toLowerCase();
-        return GOOGLE_COLORS[c] || col;
-      }
-    }
-    return null;
   }
 
   function render(events) {
@@ -1061,27 +1135,34 @@ const Calendar = (() => {
     const allDay = events.filter(ev => ev.allDay);
     const timed = events.filter(ev => !ev.allDay);
 
-    // All-day events as pills at the top
+    // All-day events as pills at the top with subtle category color
     const allDayHtml = allDay.length > 0
       ? `<li class="event-allday-row">${allDay.map(ev => {
+          const { category, icon, color, dimBg } = getEventCategoryAndColor(ev);
+          const iconPrefix = icon ? `${icon} ` : '';
           const mapsUrl = ev.location ? `https://maps.google.com/?q=${encodeURIComponent(ev.location)}` : '';
+          const style = `border-left: 3px solid ${color}; background: ${dimBg}; color: var(--text-1);`;
           return mapsUrl
-            ? `<a href="${mapsUrl}" target="_blank" class="event-allday-pill" title="${ev.location}">${ev.summary || 'Untitled'}</a>`
-            : `<span class="event-allday-pill">${ev.summary || 'Untitled'}</span>`;
+            ? `<a href="${mapsUrl}" target="_blank" class="event-allday-pill" style="${style}" title="${ev.location}">${iconPrefix}${ev.summary || 'Untitled'}</a>`
+            : `<span class="event-allday-pill" style="${style}">${iconPrefix}${ev.summary || 'Untitled'}</span>`;
         }).join('')}</li>`
       : '';
 
-    // Timed events with "in X min" badge
+    // Timed events with accent stripes & smart category tags
     const timedHtml = timed.map((ev, i) => {
-      const idx = allDay.length + i; // preserve data-event-idx across full list
       const actualIdx = events.indexOf(ev);
-
-      // Determine if event has ended
-      const eventEnd = ev.end || new Date(ev.start.getTime() + 60 * 60000); // default 1h if no end
+      const eventEnd = ev.end || new Date(ev.start.getTime() + 60 * 60000);
       const isPast = eventEnd <= now;
+
+      const { category, icon, color, dimBg } = getEventCategoryAndColor(ev);
 
       const timeStr = `${ev.start.getHours().toString().padStart(2,'0')}:${ev.start.getMinutes().toString().padStart(2,'0')}`;
       const timeHtml = `<span class="event-time">${timeStr}</span>`;
+
+      // Category badge
+      const catBadgeHtml = category
+        ? `<span class="event-cat-tag" style="background:${dimBg};color:${color};border-color:${color}44" title="${category}">${icon ? icon + ' ' : ''}${category}</span>`
+        : (icon ? `<span class="event-cat-icon">${icon}</span>` : '');
 
       // Duration badge
       let durationHtml = '';
@@ -1093,7 +1174,7 @@ const Calendar = (() => {
           const durStr = durMin >= 60
             ? `${Math.floor(durMin / 60)}h${durMin % 60 > 0 ? ` ${durMin % 60}m` : ''}`
             : `${durMin} min`;
-          durationHtml = `<span class="event-duration" title="${timeStr} – ${endTimeStr}">${durStr}</span>`;
+          durationHtml = `<span class="event-duration" title="${timeStr} - ${endTimeStr}">${durStr}</span>`;
         }
       }
 
@@ -1113,8 +1194,51 @@ const Calendar = (() => {
           ? `<div class="event-location event-location-home" title="${ev.location}">🏠 ${i18n('home')}</div>`
           : `<a href="https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(HOMEBOARD_CONFIG.location.address || '')}&destination=${encodeURIComponent(ev.location)}" target="_blank" class="event-location" title="${ev.location}">📍 ${ev.location.split(',')[0]}</a>`
         : '';
-      const evColor = getEventColor(ev);
-    const colorStrip = evColor ? `<div class="detail-color-strip" style="background:${evColor}"></div>` : '';
+
+      const locationHtml = ev.location && isBerlinLocation(ev.location)
+        ? `<div class="event-commute" title="${ev.location}"></div>`
+        : '';
+
+      const summaryHtml = `<span class="event-summary event-clickable" data-detail-idx="${actualIdx}">${ev.summary || 'Untitled'}${durationHtml}</span>`;
+
+      return `<li data-event-idx="${actualIdx}" class="event-item${isPast ? ' event-past' : ''}" style="--event-accent: ${color};"><div class="event-row">${timeHtml}${catBadgeHtml}${summaryHtml}${untilHtml}</div>${locationLabel}${locationHtml}</li>`;
+    }).join('');
+
+    list.innerHTML = allDayHtml + timedHtml;
+
+    _renderedEvents = events;
+    list.querySelectorAll('.event-clickable').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.preventDefault();
+        const idx = parseInt(el.getAttribute('data-detail-idx'));
+        showEventDetail(_renderedEvents[idx]);
+      });
+    });
+  }
+
+  function showEventDetail(ev) {
+    if (!ev) return;
+    const existing = document.getElementById('event-detail-overlay');
+    if (existing) existing.remove();
+
+    const timeStr = ev.allDay
+      ? (Lang.get() === 'de' ? 'Ganztägig' : Lang.get() === 'es' ? 'Todo el día' : 'All day')
+      : `${ev.start.getHours().toString().padStart(2,'0')}:${ev.start.getMinutes().toString().padStart(2,'0')}` +
+        (ev.end ? ` - ${ev.end.getHours().toString().padStart(2,'0')}:${ev.end.getMinutes().toString().padStart(2,'0')}` : '');
+
+    let durationStr = '';
+    if (ev.end && !ev.allDay) {
+      const durMin = Math.round((ev.end - ev.start) / 60000);
+      if (durMin > 0) {
+        durationStr = durMin >= 60
+          ? `${Math.floor(durMin / 60)}h${durMin % 60 > 0 ? ` ${durMin % 60}m` : ''}`
+          : `${durMin} min`;
+      }
+    }
+
+    const { category, icon, color, dimBg } = getEventCategoryAndColor(ev);
+    const colorStrip = `<div class="detail-color-strip" style="background:${color}"></div>`;
+    const catBadge = category ? `<span class="event-cat-tag detail-cat-badge" style="background:${dimBg};color:${color};border-color:${color}44">${icon ? icon + ' ' : ''}${category}</span>` : '';
 
     const locationHtml = ev.location
       ? `<div class="detail-row"><span class="detail-icon">📍</span><a href="https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(HOMEBOARD_CONFIG.location.address || '')}&destination=${encodeURIComponent(ev.location)}" target="_blank" class="detail-link">${ev.location}</a></div>`
@@ -1142,7 +1266,7 @@ const Calendar = (() => {
       <div class="event-detail-card">
         ${colorStrip}
         <div class="detail-header">
-          <span class="detail-summary">${ev.summary || 'Untitled'}</span>
+          <span class="detail-summary">${catBadge}${ev.summary || 'Untitled'}</span>
           <button class="detail-close" aria-label="Close">✕</button>
         </div>
         <div class="detail-time">${timeStr}${durationStr ? ` · ${durationStr}` : ''}</div>
@@ -1152,39 +1276,18 @@ const Calendar = (() => {
         ${descHtml}
       </div>`;
 
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay || e.target.classList.contains('detail-close')) {
+        overlay.remove();
+      }
+    });
+
+    document.body.appendChild(overlay);
+
     if (showReturn) {
       setTimeout(() => fetchReturnCommute(ev), 10);
     }
-
-    document.body.appendChild(overlay);
   }
-
-  function parsePTDuration(str) {
-    if (!str) return null;
-    const h = str.match(/(\d+)H/);
-    const m = str.match(/(\d+)M/);
-    return (h ? parseInt(h[1]) * 60 : 0) + (m ? parseInt(m[1]) : 0);
-  }
-
-  function parseHafasDateTime(dateStr, timeStr) {
-    // HAFAS format: date=YYYY-MM-DD, time=HH:MM:SS
-    if (!dateStr || !timeStr) return null;
-    const [y, mo, d] = dateStr.split('-').map(Number);
-    const [h, m] = timeStr.split(':').map(Number);
-    return new Date(y, mo - 1, d, h, m);
-  }
-
-  function parseHafasTimeDiff(date1, time1, date2, time2) {
-    // Returns delay in minutes (positive = late)
-    const dt1 = parseHafasDateTime(date1, time1);
-    const dt2 = parseHafasDateTime(date2, time2);
-    if (!dt1 || !dt2) return 0;
-    return Math.round((dt2 - dt1) / 60000);
-  }
-
-  return { init, switchDay, selectMode };
-})();
-
 
   async function fetchReturnCommute(ev) {
     const returnContainer = document.getElementById('detail-return-content');
@@ -1296,7 +1399,6 @@ const Calendar = (() => {
         }
       }
 
-      // Render Return Commute routes
       let html = '';
       if (walkMin && walkMin <= 35) {
         const eta = new Date(startTime.getTime() + walkMin * 60000);
@@ -1324,3 +1426,27 @@ const Calendar = (() => {
       returnContainer.innerHTML = 'Failed to load return commute';
     }
   }
+
+  function parsePTDuration(str) {
+    if (!str) return null;
+    const h = str.match(/(\d+)H/);
+    const m = str.match(/(\d+)M/);
+    return (h ? parseInt(h[1]) * 60 : 0) + (m ? parseInt(m[1]) : 0);
+  }
+
+  function parseHafasDateTime(dateStr, timeStr) {
+    if (!dateStr || !timeStr) return null;
+    const [y, mo, d] = dateStr.split('-').map(Number);
+    const [h, m] = timeStr.split(':').map(Number);
+    return new Date(y, mo - 1, d, h, m);
+  }
+
+  function parseHafasTimeDiff(date1, time1, date2, time2) {
+    const dt1 = parseHafasDateTime(date1, time1);
+    const dt2 = parseHafasDateTime(date2, time2);
+    if (!dt1 || !dt2) return 0;
+    return Math.round((dt2 - dt1) / 60000);
+  }
+
+  return { init, switchDay, selectMode };
+})();
