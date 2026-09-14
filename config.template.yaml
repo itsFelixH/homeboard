@@ -93,7 +93,26 @@ cards:
     # showTomorrow: true
     # showCommute: true     # bike/transit time for events with locations
     # bufferMinutes: 5      # default pre-event buffer time (minutes)
+    # showCategories: true  # show category badges & colored accent stripes
     # hidePatterns: []      # regex patterns to filter events
+    #
+    # Custom Category Tags & Icons (customizable categories, icons, and colors)
+    # categories:
+    #   fitness:
+    #     label: Fitness
+    #     icon: '🏋️'
+    #     color: Tangerine     # Google color name or hex (#f4511e)
+    #     match: ['ride.bln', 'gym', 'workout', 'boulder', 'spinning', 'yoga', 'sport']
+    #   work:
+    #     label: Work
+    #     icon: '💼'
+    #     color: Peacock       # #039be5
+    #     match: ['digitalcampus', 'sync', 'standup', 'meeting', 'sprint', '1:1', 'review', 'db systel']
+    #   gaming:
+    #     label: Gaming
+    #     icon: '🎮'
+    #     color: Grape         # #8e24aa
+    #     match: ['lan', 'raid', 'game night', 'dnd']
     # categoryColors:       # custom colors for categories/keywords or Google color names (e.g. Tomato, Flamingo, Peacock)
     #   sport: Tangerine
     #   work: Peacock
