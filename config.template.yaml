@@ -120,7 +120,7 @@ cards:
     #
     # Custom location rules for commute options & route preferences
     # places:
-    #   - match: 'ride.bln'                  # match keyword/substring or regex in event location or summary
+    #   - match: ['ride.bln', 'ride bln', 'Lietzenburger']                  # match keyword/substring or regex in event location or summary
     #     modes: ['walk', 'bike']            # allowed modes: ['walk', 'bike', 'transit'] (omit 'transit' to skip ÖPNV)
     #     preferredMode: 'bike'              # preferred mode for leave countdown: 'bike', 'walk', or 'transit'
     #   - match: 'Digitalcampus'
