@@ -729,22 +729,26 @@ const Calendar = (() => {
 
     // Walk (only show if <=30min or preferred)
     if (walk.min && (walk.min <= 30 || preferred === 'walk')) {
-      const pref = preferred === 'walk' ? ' event-route-preferred' : '';
+      const isAct = preferred === 'walk';
       const walkEta = new Date(now.getTime() + walk.min * 60000);
       const walkEtaStr = `${walkEta.getHours().toString().padStart(2,'0')}:${walkEta.getMinutes().toString().padStart(2,'0')}`;
-      routeHtml += `<div class="event-route-line${pref}" onclick="Calendar.selectMode(${idx}, 'walk', event)" title="Walk: ${walk.km} km, arrive ~${walkEtaStr} (click/tap to select)">🚶 ${walk.min} min · ${walk.km} km</div>`;
+      const check = isAct ? '<span class="event-route-check">✓</span> ' : '';
+      routeHtml += `<div class="event-route-line${isAct ? ' event-route-active' : ''}" onclick="Calendar.selectMode(${idx}, 'walk', event)" title="Walk: ${walk.km} km, arrive ~${walkEtaStr} (click to set active mode)">${check}🚶 ${walk.min} min · ${walk.km} km</div>`;
     }
 
     // Bike
     if (bike.min) {
-      const pref = preferred === 'bike' ? ' event-route-preferred' : '';
+      const isAct = preferred === 'bike';
       const bikeEta = new Date(now.getTime() + bike.min * 60000);
       const bikeEtaStr = `${bikeEta.getHours().toString().padStart(2,'0')}:${bikeEta.getMinutes().toString().padStart(2,'0')}`;
-      routeHtml += `<div class="event-route-line${pref}" onclick="Calendar.selectMode(${idx}, 'bike', event)" title="Bike: ${bike.km} km, arrive ~${bikeEtaStr} (click/tap to select)">🚲 ${bike.min} min · ${bike.km} km${rainTag}</div>`;
+      const check = isAct ? '<span class="event-route-check">✓</span> ' : '';
+      routeHtml += `<div class="event-route-line${isAct ? ' event-route-active' : ''}" onclick="Calendar.selectMode(${idx}, 'bike', event)" title="Bike: ${bike.km} km, arrive ~${bikeEtaStr} (click to set active mode)">${check}🚲 ${bike.min} min · ${bike.km} km${rainTag}</div>`;
     }
 
     // Transit
     if (transit.min && transit.legs.length > 0) {
+      const isAct = preferred === 'transit';
+      const check = isAct ? '<span class="event-route-check">✓</span> ' : '';
       const legParts = transit.legs.map(leg => {
         if (leg.type === 'walk') {
           return `<span class="event-route-walk">🚶${leg.duration} min</span>`;
@@ -755,11 +759,11 @@ const Calendar = (() => {
         const style = window.getTransitLineStyle ? window.getTransitLineStyle(leg.line) : { bg: 'var(--surface-hover)', fg: 'var(--text)' };
         return `${fromLabel}<span class="transit-badge" style="background:${style.bg};color:${style.fg};border-color:${style.bg}">${leg.line}${delayBadge}</span>${toLabel}`;
       }).join(' · ');
-      const pref = preferred === 'transit' ? ' event-route-preferred' : '';
-      routeHtml += `<div class="event-route-line${pref}" onclick="Calendar.selectMode(${idx}, 'transit', event)" title="Transit: ${transit.min} min (click/tap to select)">🚇 ${transit.min} min · ${legParts}</div>`;
+      routeHtml += `<div class="event-route-line${isAct ? ' event-route-active' : ''}" onclick="Calendar.selectMode(${idx}, 'transit', event)" title="Transit: ${transit.min} min (click to set active mode)">${check}🚇 ${transit.min} min · ${legParts}</div>`;
     } else if (transit.min) {
-      const pref = preferred === 'transit' ? ' event-route-preferred' : '';
-      routeHtml += `<div class="event-route-line${pref}" onclick="Calendar.selectMode(${idx}, 'transit', event)" title="Transit: ${transit.min} min (click/tap to select)">🚇 ${transit.min} min</div>`;
+      const isAct = preferred === 'transit';
+      const check = isAct ? '<span class="event-route-check">✓</span> ' : '';
+      routeHtml += `<div class="event-route-line${isAct ? ' event-route-active' : ''}" onclick="Calendar.selectMode(${idx}, 'transit', event)" title="Transit: ${transit.min} min (click to set active mode)">${check}🚇 ${transit.min} min</div>`;
     }
 
     commuteEl.innerHTML = routeHtml;
@@ -1228,6 +1232,20 @@ const Calendar = (() => {
     const existing = document.getElementById('event-detail-overlay');
     if (existing) existing.remove();
 
+    const actualIdx = _renderedEvents.indexOf(ev);
+    const commuteData = actualIdx !== -1 ? _eventCommuteData[actualIdx] : null;
+    const activeMode = actualIdx !== -1 ? (_eventModeOverrides[actualIdx] || (commuteData ? (commuteData.bike.min ? 'bike' : commuteData.transit.min ? 'transit' : 'walk') : 'bicycling')) : 'bicycling';
+
+    const gMode = activeMode === 'bike' ? 'bicycling' : activeMode === 'walk' ? 'walking' : 'transit';
+
+    const homeAddr = HOMEBOARD_CONFIG.location.address || `${HOMEBOARD_CONFIG.location.latitude},${HOMEBOARD_CONFIG.location.longitude}`;
+    const gmapsOutboundUrl = ev.location
+      ? `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(homeAddr)}&destination=${encodeURIComponent(ev.location)}&travelmode=${gMode}`
+      : '';
+    const gmapsReturnUrl = ev.location
+      ? `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(ev.location)}&destination=${encodeURIComponent(homeAddr)}&travelmode=${gMode}`
+      : '';
+
     const timeStr = ev.allDay
       ? (Lang.get() === 'de' ? 'Ganztägig' : Lang.get() === 'es' ? 'Todo el día' : 'All day')
       : `${ev.start.getHours().toString().padStart(2,'0')}:${ev.start.getMinutes().toString().padStart(2,'0')}` +
@@ -1248,7 +1266,7 @@ const Calendar = (() => {
     const catBadge = category ? `<span class="event-cat-tag detail-cat-badge" style="background:${dimBg};color:${color};border-color:${color}44">${icon ? icon + ' ' : ''}${category}</span>` : '';
 
     const locationHtml = ev.location
-      ? `<div class="detail-row"><span class="detail-icon">📍</span><a href="https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(HOMEBOARD_CONFIG.location.address || '')}&destination=${encodeURIComponent(ev.location)}" target="_blank" class="detail-link">${ev.location}</a></div>`
+      ? `<div class="detail-row"><span class="detail-icon">📍</span><a href="${gmapsOutboundUrl}" target="_blank" class="detail-link" title="Open in Google Maps">${ev.location}</a></div>`
       : '';
 
     const descHtml = ev.description
@@ -1259,11 +1277,32 @@ const Calendar = (() => {
       ? `<div class="detail-row"><span class="detail-icon">👥</span>${ev.attendees.join(', ')}</div>`
       : '';
 
+    // Interactive Mode Selector inside Modal
+    let modeTabsHtml = '';
+    if (commuteData && (commuteData.walk.min || commuteData.bike.min || commuteData.transit.min)) {
+      modeTabsHtml = `<div class="detail-mode-tabs">
+        ${commuteData.walk.min ? `<button class="detail-mode-tab ${activeMode === 'walk' ? 'active' : ''}" onclick="Calendar.selectModeAndRefreshDetail(${actualIdx}, 'walk')">🚶 ${commuteData.walk.min}m</button>` : ''}
+        ${commuteData.bike.min ? `<button class="detail-mode-tab ${activeMode === 'bike' ? 'active' : ''}" onclick="Calendar.selectModeAndRefreshDetail(${actualIdx}, 'bike')">🚲 ${commuteData.bike.min}m</button>` : ''}
+        ${commuteData.transit.min ? `<button class="detail-mode-tab ${activeMode === 'transit' ? 'active' : ''}" onclick="Calendar.selectModeAndRefreshDetail(${actualIdx}, 'transit')">🚇 ${commuteData.transit.min}m</button>` : ''}
+      </div>`;
+    }
+
     const showReturn = ev.location && isBerlinLocation(ev.location) && !isHomeAddress(ev.location);
     const returnSectionHtml = showReturn
       ? `<div class="detail-return-box">
           <div class="detail-return-title">🏠 ${Lang.get() === 'de' ? 'Rückweg nach Hause' : Lang.get() === 'es' ? 'Regreso a casa' : 'Return Home'}</div>
           <div class="detail-return-content" id="detail-return-content"><span class="detail-loading">Calculating route...</span></div>
+        </div>`
+      : '';
+
+    const actionsHtml = ev.location
+      ? `<div class="detail-actions">
+          <a href="${gmapsOutboundUrl}" target="_blank" class="detail-btn detail-btn-primary">
+            🗺️ ${Lang.get() === 'de' ? 'Google Maps Route' : 'Google Maps'}
+          </a>
+          ${showReturn ? `<a href="${gmapsReturnUrl}" target="_blank" class="detail-btn detail-btn-secondary">
+            🏠 ${Lang.get() === 'de' ? 'Route nach Hause' : 'Route Home'}
+          </a>` : ''}
         </div>`
       : '';
 
@@ -1278,9 +1317,11 @@ const Calendar = (() => {
         </div>
         <div class="detail-time">${timeStr}${durationStr ? ` · ${durationStr}` : ''}</div>
         ${locationHtml}
+        ${modeTabsHtml}
         ${returnSectionHtml}
         ${attendeesHtml}
         ${descHtml}
+        ${actionsHtml}
       </div>`;
 
     overlay.addEventListener('click', (e) => {
@@ -1293,6 +1334,14 @@ const Calendar = (() => {
 
     if (showReturn) {
       setTimeout(() => fetchReturnCommute(ev), 10);
+    }
+  }
+
+  function selectModeAndRefreshDetail(idx, mode) {
+    _eventModeOverrides[idx] = mode;
+    renderCommuteForEvent(idx);
+    if (_renderedEvents[idx]) {
+      showEventDetail(_renderedEvents[idx]);
     }
   }
 
@@ -1463,5 +1512,5 @@ const Calendar = (() => {
     return Math.round((dt2 - dt1) / 60000);
   }
 
-  return { init, switchDay, selectMode };
+  return { init, switchDay, selectMode, selectModeAndRefreshDetail };
 })();
