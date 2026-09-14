@@ -92,7 +92,24 @@ cards:
     # refreshMinutes: 30
     # showTomorrow: true
     # showCommute: true     # bike/transit time for events with locations
+    # bufferMinutes: 5      # default pre-event buffer time (minutes)
     # hidePatterns: []      # regex patterns to filter events
+    # categoryColors:       # custom colors for categories/keywords or Google color names (e.g. Tomato, Flamingo, Peacock)
+    #   sport: Tangerine
+    #   work: Peacock
+    #   arzt: Basil
+    #
+    # Custom location rules for commute options & route preferences
+    # places:
+    #   - match: 'ride.bln'                  # match keyword/substring or regex in event location or summary
+    #     modes: ['walk', 'bike']            # allowed modes: ['walk', 'bike', 'transit'] (omit 'transit' to skip ÖPNV)
+    #     preferredMode: 'bike'              # preferred mode for leave countdown: 'bike', 'walk', or 'transit'
+    #   - match: 'Digitalcampus'
+    #     modes: ['transit', 'bike']
+    #     preferredLines: ['S3', 'S5', 'S7'] # picks trip featuring preferred ÖPNV line(s)
+    #     preferredTransitVia: 'Ostkreuz'    # optional transfer/via stop preference
+    #     latitude: 52.5025                  # optional: exact destination coords (skips geocoding)
+    #     longitude: 13.4753
 
   birthdays:
     enabled: true
