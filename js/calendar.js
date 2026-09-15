@@ -15,6 +15,7 @@ const Calendar = (() => {
   let _renderedEvents = [];
   let _eventCommuteData = {};
   let _eventModeOverrides = {};
+  let _eventCategoryOverrides = {};
   let _returnModeOverrides = {};
   let _returnCommuteCache = {};
   let _currentCommuteGen = 0;
@@ -409,8 +410,30 @@ const Calendar = (() => {
       return { category: null, icon: '', color: 'var(--accent)', dimBg: 'var(--accent-dim)' };
     }
 
-    const placeConfig = getPlaceConfig(ev);
+    const eventKey = ev.id || `${ev.summary || ''}_${ev.start ? ev.start.getTime() : ''}`;
     const userCategories = HOMEBOARD_CONFIG.calendar?.categories || {};
+
+    // 0. Manual Category Override
+    let manualCat = _eventCategoryOverrides[eventKey];
+    if (!manualCat) {
+      try { manualCat = sessionStorage.getItem(`cat_override_${eventKey}`); } catch (e) {}
+    }
+
+    if (manualCat && manualCat !== 'RESET') {
+      const catKey = manualCat.toLowerCase();
+      const matchedCat = userCategories[catKey] || DEFAULT_CATEGORIES[catKey] || { label: manualCat, icon: '🏷️', color: 'var(--accent)' };
+      const colorRaw = matchedCat.color || 'var(--accent)';
+      const colorHex = GOOGLE_COLORS[colorRaw.toLowerCase()] || colorRaw;
+      return {
+        category: matchedCat.label || manualCat,
+        icon: matchedCat.icon || '🏷️',
+        color: colorHex,
+        dimBg: colorHex.startsWith('#') ? `${colorHex}22` : 'var(--accent-dim)',
+        key: catKey
+      };
+    }
+
+    const placeConfig = getPlaceConfig(ev);
 
     // 1. Direct Place Config
     if (placeConfig?.category || placeConfig?.color || placeConfig?.icon) {
@@ -1301,13 +1324,32 @@ const Calendar = (() => {
           : `<a href="https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(HOMEBOARD_CONFIG.location.address || '')}&destination=${encodeURIComponent(ev.location)}" target="_blank" class="event-location" title="${ev.location}">📍 ${ev.location.split(',')[0]}</a>`
         : '';
 
-      const locationHtml = ev.location && isBerlinLocation(ev.location)
+      
+    // Category Picker Drawer Options
+    const userCategories = HOMEBOARD_CONFIG.calendar?.categories || {};
+    const allCategories = { ...DEFAULT_CATEGORIES, ...userCategories };
+    const currentCatKey = (getEventCategoryAndColor(ev).key || '').toLowerCase();
+    
+    const catChipsHtml = Object.entries(allCategories).map(([k, c]) => {
+      if (c.enabled === false) return '';
+      const isActive = currentCatKey === k.toLowerCase();
+      return `<button class="bento-cat-chip ${isActive ? 'active' : ''}" onclick="Calendar.overrideEventCategory(${actualIdx}, '${k}')">${c.icon || ''} ${c.label || k}</button>`;
+    }).join('') + `<button class="bento-cat-chip bento-cat-chip-reset" onclick="Calendar.overrideEventCategory(${actualIdx}, 'RESET')">🔄 Auto</button>`;
+
+    const catDrawerHtml = `
+      <div class="bento-cat-drawer" id="bento-cat-drawer" style="display: none;">
+        <div class="bento-cat-drawer-title">🏷️ Kategorie wählen</div>
+        <div class="bento-cat-grid">${catChipsHtml}</div>
+      </div>`;
+
+    const locationHtml = ev.location && isBerlinLocation(ev.location)
         ? `<div class="event-commute" title="${ev.location}"></div>`
         : '';
 
       const summaryHtml = `<span class="event-summary event-clickable" data-detail-idx="${actualIdx}">${ev.summary || 'Untitled'}${catBadgeHtml}${durationHtml}</span>`;
 
-      return `<li data-event-idx="${actualIdx}" class="event-item${isPast ? ' event-past' : ''}" style="--event-accent: ${color};"><div class="event-row">${timeHtml}${summaryHtml}${untilHtml}</div>${locationLabel}${locationHtml}</li>`;
+      return `<li data-event-idx="${actualIdx}" class="event-item${isPast ? ' event-past' : ''}" style="--event-accent: ${color};"><div class="event-row">${timeHtml}${summaryHtml}${untilHtml}</div>${locationLabel}${catDrawerHtml}
+          ${locationHtml}</li>`;
     }).join('');
 
     list.innerHTML = allDayHtml + timedHtml;
@@ -1646,7 +1688,7 @@ const Calendar = (() => {
           <div class="bento-top-row">
             <div class="bento-title-box">
               <h3 class="bento-title">${ev.summary || 'Untitled'}</h3>
-              ${catBadge}
+              <span class="bento-cat-badge bento-cat-clickable" onclick="Calendar.toggleCategoryPicker(event)" title="Kategorie ändern">${catBadge ? `${icon ? icon + ' ' : ''}${category} ▾` : '+ Kategorie ▾'}</span>
             </div>
             <div class="bento-header-nav">
               ${totalEvents > 1 ? `
@@ -1661,6 +1703,7 @@ const Calendar = (() => {
             <span>🕒 ${timeStr}</span>
             ${durationHtml}
           </div>
+          ${catDrawerHtml}
           ${locationHtml}
         </div>
         ${departureTileHtml}
@@ -1694,6 +1737,32 @@ const Calendar = (() => {
     if (showReturn) {
       setTimeout(() => fetchReturnCommute(ev, actualIdx), 10);
     }
+  }
+
+    function toggleCategoryPicker(e) {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    const drawer = document.getElementById('bento-cat-drawer');
+    if (!drawer) return;
+    drawer.style.display = drawer.style.display === 'none' ? 'block' : 'none';
+  }
+
+  function overrideEventCategory(idx, catKey) {
+    const ev = _renderedEvents[idx];
+    if (!ev) return;
+
+    const eventKey = ev.id || `${ev.summary || ''}_${ev.start ? ev.start.getTime() : ''}`;
+    _eventCategoryOverrides[eventKey] = catKey;
+    try {
+      if (catKey === 'RESET') sessionStorage.removeItem(`cat_override_${eventKey}`);
+      else sessionStorage.setItem(`cat_override_${eventKey}`, catKey);
+    } catch (e) {}
+
+    // Refresh modal and calendar list view
+    render(_renderedEvents);
+    showEventDetail(ev);
   }
 
   function closeEventDetail() {
@@ -2028,5 +2097,5 @@ const Calendar = (() => {
     return Math.round((dt2 - dt1) / 60000);
   }
 
-  return { init, switchDay, selectMode, selectModeAndRefreshDetail, showEventDetail, closeEventDetail, navigateEventDetail, selectReturnMode, toggleQR, switchQrTarget, copyEventDetails };
+  return { init, switchDay, selectMode, selectModeAndRefreshDetail, showEventDetail, closeEventDetail, navigateEventDetail, selectReturnMode, toggleQR, switchQrTarget, copyEventDetails, toggleCategoryPicker, overrideEventCategory };
 })();

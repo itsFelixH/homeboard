@@ -546,6 +546,75 @@ body {
 
 /* 1. Hero Header Bento Tile */
 
+
+/* Interactive Category Picker */
+.bento-cat-clickable {
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+.bento-cat-clickable:hover {
+  background: var(--accent-dim, rgba(56, 189, 248, 0.18));
+  border-color: var(--accent, #38bdf8);
+  color: var(--text-1);
+  transform: translateY(-1px);
+}
+.bento-cat-empty {
+  color: var(--text-3);
+  border-style: dashed;
+}
+
+.bento-cat-drawer {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 10px;
+  margin: 8px 0;
+  animation: bentoFadeIn 0.18s ease-out;
+}
+.bento-cat-drawer-title {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin-bottom: 8px;
+}
+.bento-cat-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.bento-cat-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  font-size: 0.72rem;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: all 0.12s ease;
+  user-select: none;
+}
+.bento-cat-chip:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--text-1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+.bento-cat-chip.active {
+  background: var(--accent-dim);
+  color: var(--accent);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+.bento-cat-chip-reset {
+  color: var(--text-3);
+  border-style: dashed;
+}
+
 /* Prev / Next Header Navigation */
 .bento-header-nav {
   display: flex;
