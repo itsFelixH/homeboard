@@ -15,6 +15,8 @@ const Calendar = (() => {
   let _renderedEvents = [];
   let _eventCommuteData = {};
   let _eventModeOverrides = {};
+  let _returnModeOverrides = {};
+  let _returnCommuteCache = {};
   let _currentCommuteGen = 0;
 
   const GOOGLE_COLORS = {
@@ -634,6 +636,14 @@ const Calendar = (() => {
     renderCommuteForEvent(eventIdx);
   }
 
+  function selectModeAndRefreshDetail(idx, mode) {
+    _eventModeOverrides[idx] = mode;
+    renderCommuteForEvent(idx);
+    if (_renderedEvents[idx]) {
+      showEventDetail(_renderedEvents[idx]);
+    }
+  }
+
   function renderCommuteForEvent(idx) {
     const data = _eventCommuteData[idx];
     if (!data) return;
@@ -778,6 +788,81 @@ const Calendar = (() => {
     }
 
     commuteEl.innerHTML = routeHtml;
+  }
+
+    async function resolveEventCoordinates(ev, placeConfig) {
+    if (placeConfig && (placeConfig.latitude || placeConfig.lat) && (placeConfig.longitude || placeConfig.lon)) {
+      return {
+        lat: parseFloat(placeConfig.latitude || placeConfig.lat),
+        lon: parseFloat(placeConfig.longitude || placeConfig.lon)
+      };
+    }
+
+    if (!ev || !ev.location) return null;
+    const locStr = ev.location.trim();
+    const cacheKey = `geo_${locStr}`;
+
+    try {
+      const cached = sessionStorage.getItem(cacheKey);
+      if (cached) {
+        const coords = JSON.parse(cached);
+        if (coords.lat && coords.lon) return coords;
+      }
+    } catch (e) {}
+
+    // Prepare queries
+    const queries = [locStr];
+    if (!locStr.toLowerCase().includes('berlin')) {
+      queries.push(`${locStr}, Berlin`);
+    }
+    const parts = locStr.split(',').map(s => s.trim());
+    if (parts.length >= 2) queries.push(parts.slice(1).join(', '));
+    if (parts.length >= 3) queries.push(parts.slice(-2).join(', '));
+
+    let destLat = null, destLon = null;
+
+    // 1. Nominatim via server proxy
+    for (const q of queries) {
+      try {
+        const geoUrl = `/proxy?url=${encodeURIComponent(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}`)}`;
+        const res = await fetch(geoUrl);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.length > 0) {
+            destLat = parseFloat(data[0].lat);
+            destLon = parseFloat(data[0].lon);
+            break;
+          }
+        }
+      } catch (e) {}
+    }
+
+    // 2. Photon fallback
+    if (!destLat || !destLon) {
+      for (const q of queries) {
+        try {
+          const photonUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=1&lang=de`;
+          const res = await fetch(photonUrl);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.features && data.features.length > 0) {
+              const [lon, lat] = data.features[0].geometry.coordinates;
+              destLat = lat;
+              destLon = lon;
+              break;
+            }
+          }
+        } catch (e) {}
+      }
+    }
+
+    if (destLat && destLon) {
+      try {
+        sessionStorage.setItem(cacheKey, JSON.stringify({ lat: destLat, lon: destLon }));
+      } catch (e) {}
+      return { lat: destLat, lon: destLon };
+    }
+    return null;
   }
 
   async function fetchCommuteForEvents(events) {
@@ -1164,9 +1249,8 @@ const Calendar = (() => {
           const iconPrefix = icon ? `${icon} ` : '';
           const mapsUrl = ev.location ? `https://maps.google.com/?q=${encodeURIComponent(ev.location)}` : '';
           const style = `border-left: 3px solid ${color}; background: ${dimBg}; color: var(--text-1);`;
-          return mapsUrl
-            ? `<a href="${mapsUrl}" target="_blank" class="event-allday-pill" style="${style}" title="${ev.location}">${iconPrefix}${ev.summary || 'Untitled'}</a>`
-            : `<span class="event-allday-pill" style="${style}">${iconPrefix}${ev.summary || 'Untitled'}</span>`;
+          const actualIdx = events.indexOf(ev);
+          return `<span class="event-allday-pill event-clickable" data-detail-idx="${actualIdx}" style="${style}" title="${ev.location || ''}">${iconPrefix}${ev.summary || 'Untitled'}</span>`;
         }).join('')}</li>`
       : '';
 
@@ -1238,12 +1322,56 @@ const Calendar = (() => {
     });
   }
 
+              function getCategoryGearHints(category, summary, placeConfig) {
+    const text = `${category || ''} ${summary || ''} ${placeConfig?.category || ''}`.toLowerCase();
+    
+    if (/fitness|workout|gym|ride\.bln|training|spinning|pilates|yoga|kraftsport|calisthenics|sport/i.test(text)) {
+      return ['👟 Sportschuhe', '💧 Trinkflasche', '🚿 Handtuch', '🧼 Duschzeug'];
+    }
+    if (/dance|tango|swing|salsa|bachata|tanzen|ballroom/i.test(text)) {
+      return ['👞 Tanzschuhe', '💧 Trinkflasche', '👕 Wechselshirt'];
+    }
+    if (/travel|flight|train|flug|reise|urlaub|flughafen|bahnhof|hotel|ice|db/i.test(text)) {
+      return ['🛂 Ausweis / Reisepass', '🎟️ Ticket / Bordkarte', '🔌 Ladekabel / Powerbank'];
+    }
+    if (/hiking|wandern|outdoor|trekking|berge|trail/i.test(text)) {
+      return ['🥾 Wanderschuhe', '🧥 Regenjacke / Windbreaker', '💧 Trinkflasche', '🍫 Snack'];
+    }
+    if (/swimming|schwimmen|sauna|therme|bad|spa|wellness/i.test(text)) {
+      return ['🩱 Badesachen', '🧖 Handtuch / Bademantel', '🧴 Duschgel', '🩴 Badelatschen'];
+    }
+    if (/work|office|arbeit|meeting|b\u00fcro|call/i.test(text)) {
+      return ['💻 Laptop & Ladekabel', '🔑 Schlüssel / Badge', '🎧 Kopfhörer'];
+    }
+    if (/culture|kino|theater|konzert|museum|opera|cinema|show/i.test(text)) {
+      return ['🎟️ Tickets / Reservierung', '💳 Bezahlkarte / Bargeld'];
+    }
+    if (/health|arzt|doctor|zahnarzt|praxis|klinik|physio|therapie/i.test(text)) {
+      return ['🪪 Versichertenkarte', '📋 Unterlagen / Impfpass'];
+    }
+    return null;
+  }
+
+    let _currentDetailIdx = -1;
+  let _modalKeyHandler = null;
+
   function showEventDetail(ev) {
     if (!ev) return;
     const existing = document.getElementById('event-detail-overlay');
     if (existing) existing.remove();
+    if (_modalKeyHandler) {
+      window.removeEventListener('keydown', _modalKeyHandler);
+      _modalKeyHandler = null;
+    }
 
+    const placeConfig = getPlaceConfig(ev);
     const actualIdx = _renderedEvents.indexOf(ev);
+    _currentDetailIdx = actualIdx;
+
+    const totalEvents = _renderedEvents.length;
+    const hasPrev = actualIdx > 0;
+    const hasNext = actualIdx !== -1 && actualIdx < totalEvents - 1;
+
     const commuteData = actualIdx !== -1 ? _eventCommuteData[actualIdx] : null;
     const activeMode = actualIdx !== -1 ? (_eventModeOverrides[actualIdx] || (commuteData ? (commuteData.bike.min ? 'bike' : commuteData.transit.min ? 'transit' : 'walk') : 'bicycling')) : 'bicycling';
 
@@ -1260,106 +1388,398 @@ const Calendar = (() => {
     const timeStr = ev.allDay
       ? (Lang.get() === 'de' ? 'Ganztägig' : Lang.get() === 'es' ? 'Todo el día' : 'All day')
       : `${ev.start.getHours().toString().padStart(2,'0')}:${ev.start.getMinutes().toString().padStart(2,'0')}` +
-        (ev.end ? ` - ${ev.end.getHours().toString().padStart(2,'0')}:${ev.end.getMinutes().toString().padStart(2,'0')}` : '');
+        (ev.end ? ` – ${ev.end.getHours().toString().padStart(2,'0')}:${ev.end.getMinutes().toString().padStart(2,'0')}` : '');
 
-    let durationStr = '';
+    let durationHtml = '';
     if (ev.end && !ev.allDay) {
       const durMin = Math.round((ev.end - ev.start) / 60000);
       if (durMin > 0) {
-        durationStr = durMin >= 60
+        const durStr = durMin >= 60
           ? `${Math.floor(durMin / 60)}h${durMin % 60 > 0 ? ` ${durMin % 60}m` : ''}`
           : `${durMin} min`;
+        durationHtml = `<span class="bento-dur-pill">${durStr}</span>`;
       }
     }
 
     const { category, icon, color, dimBg } = getEventCategoryAndColor(ev);
-    const colorStrip = `<div class="detail-color-strip" style="background:${color}"></div>`;
-    const catBadge = category ? `<span class="event-cat-tag detail-cat-badge">${icon ? icon + ' ' : ''}${category}</span>` : '';
+    const colorStrip = `<div class="bento-color-strip" style="background:${color}"></div>`;
+    const catBadge = category ? `<span class="bento-cat-badge">${icon ? icon + ' ' : ''}${category}</span>` : '';
 
-    const locationHtml = ev.location
-      ? `<div class="detail-row"><span class="detail-icon">📍</span><a href="${gmapsOutboundUrl}" target="_blank" class="detail-link" title="Open in Google Maps">${ev.location}</a></div>`
-      : '';
+    const now = new Date();
 
-    const descHtml = ev.description
-      ? `<div class="detail-row detail-desc">${ev.description.replace(/\n/g, '<br>')}</div>`
-      : '';
-
-    const attendeesHtml = ev.attendees && ev.attendees.length > 0
-      ? `<div class="detail-row"><span class="detail-icon">👥</span>${ev.attendees.join(', ')}</div>`
-      : '';
-
-    // Interactive Mode Selector inside Modal (respecting placeConfig allowed modes)
-    let modeTabsHtml = '';
-    const allowWalk = isModeAllowed(placeConfig, 'walk');
-    const allowBike = isModeAllowed(placeConfig, 'bike');
-    const allowTransit = isModeAllowed(placeConfig, 'transit');
-    if (commuteData && ((allowWalk && commuteData.walk.min) || (allowBike && commuteData.bike.min) || (allowTransit && commuteData.transit.min))) {
-      modeTabsHtml = `<div class="detail-mode-tabs">
-        ${allowWalk && commuteData.walk.min ? `<button class="detail-mode-tab ${activeMode === 'walk' ? 'active' : ''}" onclick="Calendar.selectModeAndRefreshDetail(${actualIdx}, 'walk')">🚶 ${commuteData.walk.min}m</button>` : ''}
-        ${allowBike && commuteData.bike.min ? `<button class="detail-mode-tab ${activeMode === 'bike' ? 'active' : ''}" onclick="Calendar.selectModeAndRefreshDetail(${actualIdx}, 'bike')">🚲 ${commuteData.bike.min}m</button>` : ''}
-        ${allowTransit && commuteData.transit.min ? `<button class="detail-mode-tab ${activeMode === 'transit' ? 'active' : ''}" onclick="Calendar.selectModeAndRefreshDetail(${actualIdx}, 'transit')">🚇 ${commuteData.transit.min}m</button>` : ''}
-      </div>`;
+    // 1. Departure Assistant Bento Tile with Smart Formatting
+    let departureTileHtml = '';
+    const activeModeMin = commuteData ? commuteData[activeMode]?.min : null;
+    const bufferMin = placeConfig?.bufferMinutes !== undefined ? placeConfig.bufferMinutes : ((HOMEBOARD_CONFIG.commute?.bufferMinutes) || 5);
+    const modeName = activeMode === 'bike' ? 'Fahrrad' : activeMode === 'walk' ? 'Fußweg' : 'ÖPNV';
+    
+    // Rain warning check
+    let rainStripHtml = '';
+    const rainInfo = window.Rain?.getRainAt && ev.start ? window.Rain.getRainAt(ev.start) : null;
+    if (rainInfo && (rainInfo.probability >= (placeConfig?.rainThreshold || 50) || rainInfo.precipitation >= 0.5)) {
+      rainStripHtml = `<div class="bento-rain-strip"><span>🌧️</span><div><strong>Regenwarnung:</strong> ~${rainInfo.probability}% Regen (${rainInfo.precipitation} mm) zu Beginn. Regenschirm / ÖPNV empfohlen!</div></div>`;
     }
 
-    const showReturn = ev.location && isBerlinLocation(ev.location) && !isHomeAddress(ev.location);
-    const returnSectionHtml = showReturn
-      ? `<div class="detail-return-box">
-          <div class="detail-return-title">🏠 ${Lang.get() === 'de' ? 'Rückweg nach Hause' : Lang.get() === 'es' ? 'Regreso a casa' : 'Return Home'}</div>
-          <div class="detail-return-content" id="detail-return-content"><span class="detail-loading">Calculating route...</span></div>
+    if (activeModeMin && ev.start && !ev.allDay) {
+      const depTime = new Date(ev.start.getTime() - (activeModeMin + bufferMin) * 60000);
+      const minUntil = Math.round((depTime - now) / 60000);
+      const depTimeStr = `${depTime.getHours().toString().padStart(2,'0')}:${depTime.getMinutes().toString().padStart(2,'0')}`;
+      
+      const isToday = depTime.toDateString() === now.toDateString();
+      const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+      const isTomorrow = depTime.toDateString() === tomorrow.toDateString();
+      const dayNamesShort = Lang.get() === 'de' ? ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'] : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      
+      let clockDisplay = depTimeStr;
+      if (isTomorrow) {
+        clockDisplay = `Morgen, ${depTimeStr}`;
+      } else if (!isToday) {
+        clockDisplay = `${dayNamesShort[depTime.getDay()]}, ${depTimeStr}`;
+      }
+
+      let pillClass = 'dep-calm';
+      let pillText = '';
+      if (minUntil > 24 * 60) {
+        const days = Math.round(minUntil / (24 * 60));
+        pillClass = 'dep-calm';
+        pillText = isTomorrow ? 'Morgen' : `in ${days} Tagen`;
+      } else if (minUntil > 90) {
+        const hrs = Math.floor(minUntil / 60);
+        const mins = minUntil % 60;
+        pillClass = 'dep-calm';
+        pillText = `in ${hrs}h${mins > 0 ? ` ${mins}m` : ''}`;
+      } else if (minUntil > 45) {
+        pillClass = 'dep-calm';
+        pillText = `in ${minUntil} min`;
+      } else if (minUntil > 15) {
+        pillClass = 'dep-soon';
+        pillText = `in ${minUntil} min`;
+      } else if (minUntil > 0) {
+        pillClass = 'dep-urgent';
+        pillText = `⚡ Sofort los! (${minUntil}m)`;
+      } else if (minUntil <= 0 && minUntil > -activeModeMin) {
+        pillClass = 'dep-late';
+        pillText = `⚠️ Vor ${Math.abs(minUntil)} min`;
+      } else {
+        pillClass = 'dep-past';
+        pillText = `🏁 Läuft`;
+      }
+
+      departureTileHtml = `
+        <div class="bento-tile bento-departure">
+          <div class="bento-dep-main">
+            <span class="bento-dep-label">🏃 Empfohlener Aufbruch</span>
+            <span class="bento-dep-clock">${clockDisplay}</span>
+            <span class="bento-dep-sub">${modeName} · ${activeModeMin}m Fahrt + ${bufferMin}m Puffer</span>
+          </div>
+          <div class="bento-dep-badge-col">
+            <span class="bento-dep-pill ${pillClass}">${pillText}</span>
+          </div>
+        </div>
+        ${rainStripHtml ? `<div class="bento-tile" style="padding: 8px 12px;">${rainStripHtml}</div>` : ''}
+      `;
+    }
+
+    // 2. Location Chip
+    const locationHtml = ev.location
+      ? `<a href="${gmapsOutboundUrl}" target="_blank" class="bento-location-chip" title="In Google Maps öffnen">
+          <span>📍</span>
+          <span class="bento-loc-text">${ev.location}</span>
+          <span class="bento-loc-arrow">↗</span>
+        </a>`
+      : '';
+
+    // 3. Smart Packing Checklist / Gear Hints Tile
+    const gearHints = getCategoryGearHints(category, ev.summary, placeConfig);
+    const checklistHtml = gearHints && gearHints.length > 0
+      ? `<div class="bento-tile bento-checklist-tile">
+          <div class="bento-tile-header">
+            <span>🎒 Packliste & Vorbereitung</span>
+          </div>
+          <div class="bento-checklist-grid">
+            ${gearHints.map(hint => `
+              <label class="bento-check-item">
+                <input type="checkbox" onchange="this.parentElement.classList.toggle('checked', this.checked)">
+                <span>${hint}</span>
+              </label>
+            `).join('')}
+          </div>
         </div>`
       : '';
 
+    const descHtml = ev.description
+      ? `<div class="bento-tile" style="font-size: 0.74rem; color: var(--text-3); line-height: 1.5;">${ev.description.replace(/\n/g, '<br>')}</div>`
+      : '';
+
+    // 4. Mode Switcher & Stepper Bento Tile
+    let routeTileHtml = '';
+    const allowWalk = isModeAllowed(placeConfig, 'walk');
+    const allowBike = isModeAllowed(placeConfig, 'bike');
+    const allowTransit = isModeAllowed(placeConfig, 'transit');
+    
+    if (commuteData && ((allowWalk && commuteData.walk.min) || (allowBike && commuteData.bike.min) || (allowTransit && commuteData.transit.min))) {
+      const modeTabsHtml = `
+        <div class="bento-route-nav">
+          ${allowBike && commuteData.bike.min ? `<button class="bento-mode-tab ${activeMode === 'bike' ? 'active' : ''}" onclick="Calendar.selectModeAndRefreshDetail(${actualIdx}, 'bike')">🚲 ${commuteData.bike.min}m</button>` : ''}
+          ${allowTransit && commuteData.transit.min ? `<button class="bento-mode-tab ${activeMode === 'transit' ? 'active' : ''}" onclick="Calendar.selectModeAndRefreshDetail(${actualIdx}, 'transit')">🚇 ${commuteData.transit.min}m</button>` : ''}
+          ${allowWalk && commuteData.walk.min ? `<button class="bento-mode-tab ${activeMode === 'walk' ? 'active' : ''}" onclick="Calendar.selectModeAndRefreshDetail(${actualIdx}, 'walk')">🚶 ${commuteData.walk.min}m</button>` : ''}
+        </div>`;
+
+      let routeContentHtml = '';
+      if (activeMode === 'transit' && commuteData.transit && commuteData.transit.min) {
+        if (commuteData.transit.legs && commuteData.transit.legs.length > 0) {
+          const steps = commuteData.transit.legs.map(leg => {
+            if (leg.type === 'walk') {
+              return `<div class="bento-step">
+                <span class="bento-step-icon">🚶</span>
+                <div class="bento-step-content">
+                  <span class="bento-step-title">Fußweg</span>
+                  <span class="bento-step-meta">${leg.duration} min</span>
+                </div>
+              </div>`;
+            }
+            const style = window.getTransitLineStyle ? window.getTransitLineStyle(leg.line) : { bg: 'var(--surface-hover)', fg: 'var(--text)' };
+            return `<div class="bento-step">
+              <span class="bento-step-icon"><span class="transit-badge" style="background:${style.bg};color:${style.fg};border-color:${style.bg}">${leg.line}</span></span>
+              <div class="bento-step-content">
+                <span class="bento-step-title">${leg.from || 'Start'} → ${leg.to || 'Ziel'}</span>
+                <span class="bento-step-meta">${leg.duration} min${leg.delay > 0 ? ` <span class="bento-step-delay">+${leg.delay}m</span>` : ''}</span>
+              </div>
+            </div>`;
+          }).join('');
+          routeContentHtml = `<div class="bento-stepper">${steps}</div>`;
+        } else {
+          routeContentHtml = `<div class="bento-route-summary"><span class="bento-step-icon">🚇</span><div><strong>${commuteData.transit.min} min</strong> ÖPNV-Fahrt</div></div>`;
+        }
+      } else if (activeMode === 'bike' && commuteData.bike && commuteData.bike.min) {
+        const bikeEta = new Date(now.getTime() + commuteData.bike.min * 60000);
+        const bikeEtaStr = `${bikeEta.getHours().toString().padStart(2,'0')}:${bikeEta.getMinutes().toString().padStart(2,'0')}`;
+        routeContentHtml = `<div class="bento-route-summary">
+          <span class="bento-step-icon">🚲</span>
+          <div>
+            <strong>${commuteData.bike.min} min</strong> Fahrrad (${commuteData.bike.km} km)
+            <div class="bento-submeta">Ankunft ca. ${bikeEtaStr} bei Abfahrt jetzt</div>
+          </div>
+        </div>`;
+      } else if (activeMode === 'walk' && commuteData.walk && commuteData.walk.min) {
+        const walkEta = new Date(now.getTime() + commuteData.walk.min * 60000);
+        const walkEtaStr = `${walkEta.getHours().toString().padStart(2,'0')}:${walkEta.getMinutes().toString().padStart(2,'0')}`;
+        routeContentHtml = `<div class="bento-route-summary">
+          <span class="bento-step-icon">🚶</span>
+          <div>
+            <strong>${commuteData.walk.min} min</strong> Fußweg (${commuteData.walk.km} km)
+            <div class="bento-submeta">Ankunft ca. ${walkEtaStr} bei Abfahrt jetzt</div>
+          </div>
+        </div>`;
+      }
+
+      routeTileHtml = `
+        <div class="bento-tile">
+          <div class="bento-tile-header">
+            <span>🗺️ Hinfahrt Route</span>
+          </div>
+          ${modeTabsHtml}
+          ${routeContentHtml}
+        </div>`;
+    }
+
+    // 5. Return Trip Bento Tile (Styled symmetrically with Hinfahrt)
+    const eventEnd = ev.end || (ev.start ? new Date(ev.start.getTime() + 60 * 60000) : null);
+    const isPastGracePeriod = eventEnd && (now.getTime() - eventEnd.getTime()) > 60 * 60000;
+    const isFarFuture = ev.start && (ev.start.getTime() - now.getTime()) > 48 * 3600000;
+    const isPastDay = ev.start && (now.getTime() - ev.start.getTime()) > 24 * 3600000;
+    
+    const showReturn = ev.location && 
+                       isBerlinLocation(ev.location) && 
+                       !isHomeAddress(ev.location) && 
+                       !isPastGracePeriod && 
+                       !isFarFuture && 
+                       !isPastDay;
+
+    const returnTileHtml = showReturn
+      ? `<div class="bento-tile" id="detail-return-tile">
+          <div class="bento-tile-header">
+            <span>🏠 Rückweg nach Hause</span>
+          </div>
+          <div id="detail-return-content"><span class="detail-loading">Calculating return route...</span></div>
+        </div>`
+      : '';
+
+    // 6. Phone Handoff QR Drawer with Outbound / Return Toggle
+    const qrOutboundUrl = gmapsOutboundUrl ? `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(gmapsOutboundUrl)}&margin=4` : '';
+    const qrReturnUrl = gmapsReturnUrl ? `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(gmapsReturnUrl)}&margin=4` : '';
+    
+    const qrDrawerHtml = gmapsOutboundUrl
+      ? `<div class="bento-qr-drawer" id="detail-qr-drawer" style="display: none;" data-outbound="${qrOutboundUrl}" data-return="${qrReturnUrl}">
+          ${showReturn && gmapsReturnUrl ? `
+            <div class="bento-qr-nav">
+              <button class="bento-qr-tab active" onclick="Calendar.switchQrTarget('outbound')">🚀 Hinfahrt</button>
+              <button class="bento-qr-tab" onclick="Calendar.switchQrTarget('return')">🏠 Rückweg</button>
+            </div>
+          ` : ''}
+          <img src="${qrOutboundUrl}" alt="QR Code" id="bento-qr-img" class="bento-qr-img" />
+          <div class="bento-qr-hint" id="bento-qr-hint">📱 Kamera auf den QR-Code richten, um die Google Maps Route direkt auf dem Smartphone zu öffnen.</div>
+        </div>`
+      : '';
+
+    // 7. Action Buttons Bento Bar
     const actionsHtml = ev.location
-      ? `<div class="detail-actions">
-          <a href="${gmapsOutboundUrl}" target="_blank" class="detail-btn detail-btn-primary">
-            🗺️ ${Lang.get() === 'de' ? 'Google Maps Route' : 'Google Maps'}
+      ? `<div class="bento-actions">
+          <a href="${gmapsOutboundUrl}" target="_blank" class="bento-btn bento-btn-primary">
+            🗺️ Google Maps
           </a>
-          ${showReturn ? `<a href="${gmapsReturnUrl}" target="_blank" class="detail-btn detail-btn-secondary">
-            🏠 ${Lang.get() === 'de' ? 'Route nach Hause' : 'Route Home'}
-          </a>` : ''}
+          <button class="bento-btn bento-btn-qr" onclick="Calendar.toggleQR()">
+            📱 QR Code
+          </button>
+          <button class="bento-btn bento-btn-copy" onclick="Calendar.copyEventDetails(${actualIdx}, this)">
+            📋 Kopieren
+          </button>
         </div>`
       : '';
 
     const overlay = document.createElement('div');
     overlay.id = 'event-detail-overlay';
     overlay.innerHTML = `
-      <div class="event-detail-card">
+      <div class="bento-modal-card">
         ${colorStrip}
-        <div class="detail-header">
-          <span class="detail-summary">${catBadge}${ev.summary || 'Untitled'}</span>
-          <button class="detail-close" aria-label="Close">✕</button>
+        <div class="bento-tile bento-hero">
+          <div class="bento-top-row">
+            <div class="bento-title-box">
+              <h3 class="bento-title">${ev.summary || 'Untitled'}</h3>
+              ${catBadge}
+            </div>
+            <div class="bento-header-nav">
+              ${totalEvents > 1 ? `
+                <button class="bento-nav-btn" ${!hasPrev ? 'disabled' : ''} onclick="Calendar.navigateEventDetail(-1)" title="Vorheriger Termin (←)">‹</button>
+                <span class="bento-nav-count">${actualIdx + 1}/${totalEvents}</span>
+                <button class="bento-nav-btn" ${!hasNext ? 'disabled' : ''} onclick="Calendar.navigateEventDetail(1)" title="Nächster Termin (→)">›</button>
+              ` : ''}
+              <button class="bento-close" aria-label="Close" onclick="Calendar.closeEventDetail()" title="Schließen (Esc)">✕</button>
+            </div>
+          </div>
+          <div class="bento-time-row">
+            <span>🕒 ${timeStr}</span>
+            ${durationHtml}
+          </div>
+          ${locationHtml}
         </div>
-        <div class="detail-time">${timeStr}${durationStr ? ` · ${durationStr}` : ''}</div>
-        ${locationHtml}
-        ${modeTabsHtml}
-        ${returnSectionHtml}
-        ${attendeesHtml}
+        ${departureTileHtml}
+        ${checklistHtml}
+        ${routeTileHtml}
+        ${returnTileHtml}
+        ${qrDrawerHtml}
         ${descHtml}
         ${actionsHtml}
       </div>`;
 
     overlay.addEventListener('click', (e) => {
-      if (e.target === overlay || e.target.classList.contains('detail-close')) {
-        overlay.remove();
+      if (e.target === overlay || e.target.classList.contains('bento-close')) {
+        closeEventDetail();
       }
     });
+
+    _modalKeyHandler = (e) => {
+      if (e.key === 'Escape') {
+        closeEventDetail();
+      } else if (e.key === 'ArrowLeft') {
+        navigateEventDetail(-1);
+      } else if (e.key === 'ArrowRight') {
+        navigateEventDetail(1);
+      }
+    };
+    window.addEventListener('keydown', _modalKeyHandler);
 
     document.body.appendChild(overlay);
 
     if (showReturn) {
-      setTimeout(() => fetchReturnCommute(ev), 10);
+      setTimeout(() => fetchReturnCommute(ev, actualIdx), 10);
     }
   }
 
-  function selectModeAndRefreshDetail(idx, mode) {
-    _eventModeOverrides[idx] = mode;
-    renderCommuteForEvent(idx);
-    if (_renderedEvents[idx]) {
-      showEventDetail(_renderedEvents[idx]);
+  function closeEventDetail() {
+    const existing = document.getElementById('event-detail-overlay');
+    if (existing) existing.remove();
+    if (_modalKeyHandler) {
+      window.removeEventListener('keydown', _modalKeyHandler);
+      _modalKeyHandler = null;
     }
   }
 
-  async function fetchReturnCommute(ev) {
+  function navigateEventDetail(direction) {
+    if (_currentDetailIdx === -1 || !_renderedEvents.length) return;
+    const nextIdx = _currentDetailIdx + direction;
+    if (nextIdx >= 0 && nextIdx < _renderedEvents.length) {
+      showEventDetail(_renderedEvents[nextIdx]);
+    }
+  }
+
+  function toggleQR() {
+    const qrDrawer = document.getElementById('detail-qr-drawer');
+    if (!qrDrawer) return;
+    qrDrawer.style.display = qrDrawer.style.display === 'none' ? 'block' : 'none';
+  }
+
+  function switchQrTarget(target) {
+    const qrDrawer = document.getElementById('detail-qr-drawer');
+    const qrImg = document.getElementById('bento-qr-img');
+    const qrHint = document.getElementById('bento-qr-hint');
+    if (!qrDrawer || !qrImg || !qrHint) return;
+
+    qrDrawer.querySelectorAll('.bento-qr-tab').forEach((tab, i) => {
+      tab.classList.toggle('active', (target === 'outbound' && i === 0) || (target === 'return' && i === 1));
+    });
+
+    if (target === 'return') {
+      qrImg.src = qrDrawer.getAttribute('data-return');
+      qrHint.textContent = '📱 Kamera auf den QR-Code richten, um die Google Maps Route nach Hause zu starten.';
+    } else {
+      qrImg.src = qrDrawer.getAttribute('data-outbound');
+      qrHint.textContent = '📱 Kamera auf den QR-Code richten, um die Google Maps Route zum Zielort zu starten.';
+    }
+  }
+
+  function copyEventDetails(idx, btn) {
+    const ev = _renderedEvents[idx];
+    if (!ev) return;
+
+    const timeStr = ev.allDay
+      ? 'Ganztägig'
+      : `${ev.start.getHours().toString().padStart(2,'0')}:${ev.start.getMinutes().toString().padStart(2,'0')}` +
+        (ev.end ? ` – ${ev.end.getHours().toString().padStart(2,'0')}:${ev.end.getMinutes().toString().padStart(2,'0')}` : '');
+
+    const lines = [
+      `📅 ${ev.summary || 'Termin'}`,
+      `🕒 ${timeStr}`
+    ];
+    if (ev.location) {
+      lines.push(`📍 ${ev.location}`);
+      lines.push(`🗺️ https://maps.google.com/?q=${encodeURIComponent(ev.location)}`);
+    }
+
+    const textToCopy = lines.join('\n');
+    navigator.clipboard.writeText(textToCopy).then(() => {
+      if (btn) {
+        const origText = btn.innerHTML;
+        btn.innerHTML = '✓ Kopiert!';
+        btn.classList.add('copied');
+        setTimeout(() => {
+          btn.innerHTML = origText;
+          btn.classList.remove('copied');
+        }, 1800);
+      }
+    }).catch(() => {});
+  }
+
+  function selectReturnMode(idx, mode) {
+    _returnModeOverrides[idx] = mode;
+    const ev = _renderedEvents[idx];
+    if (ev) {
+      renderReturnCommuteContent(ev, idx);
+    }
+  }
+
+
+  async function fetchReturnCommute(ev, actualIdx) {
     const returnContainer = document.getElementById('detail-return-content');
     if (!returnContainer) return;
 
@@ -1375,7 +1795,128 @@ const Calendar = (() => {
     const allowTransit = isModeAllowed(placeConfig, 'transit');
 
     try {
-      let destLat = null, destLon = null;
+      const coords = await resolveEventCoordinates(ev, placeConfig);
+      if (!coords || !coords.lat || !coords.lon) {
+        returnContainer.innerHTML = 'Could not resolve location coordinates';
+        return;
+      }
+
+      const destLat = coords.lat;
+      const destLon = coords.lon;
+
+      const distFromHome = getDistanceKm(home.latitude, home.longitude, destLat, destLon);
+      if (distFromHome > 60) {
+        const returnBox = document.querySelector('.bento-return');
+        if (returnBox) returnBox.remove();
+        return;
+      }
+
+      const returnTime = ev.end || (ev.start ? new Date(ev.start.getTime() + 60 * 60000) : new Date());
+      const now = new Date();
+      const startTime = returnTime > now ? returnTime : now;
+
+      // Check return cache first
+      const cacheKey = `ret_${actualIdx}_${destLat}_${destLon}`;
+      let returnData = _returnCommuteCache[cacheKey];
+
+      if (!returnData) {
+        returnData = { bike: {}, walk: {}, transit: {} };
+
+        // 1. Bike return
+        if (allowBike) {
+          try {
+            const bikeUrl = `https://router.project-osrm.org/route/v1/cycling/${destLon},${destLat};${home.longitude},${home.latitude}?overview=false`;
+            const res = await fetch(bikeUrl);
+            if (res.ok) {
+              const data = await res.json();
+              if (data.code === 'Ok' && data.routes.length) {
+                const distM = data.routes[0].distance;
+                const speed = ((HOMEBOARD_CONFIG.commute && HOMEBOARD_CONFIG.commute.bikeSpeed) || 13) * 1000 / 60;
+                returnData.bike = {
+                  min: Math.round(distM / speed),
+                  km: (distM / 1000).toFixed(1)
+                };
+              }
+            }
+          } catch (e) {}
+        }
+
+        // 2. Walk return
+        if (allowWalk) {
+          try {
+            const walkUrl = `https://router.project-osrm.org/route/v1/foot/${destLon},${destLat};${home.longitude},${home.latitude}?overview=false`;
+            const res = await fetch(walkUrl);
+            if (res.ok) {
+              const data = await res.json();
+              if (data.code === 'Ok' && data.routes.length) {
+                const distM = data.routes[0].distance;
+                const speed = ((HOMEBOARD_CONFIG.commute && HOMEBOARD_CONFIG.commute.walkSpeed) || 5) * 1000 / 60;
+                returnData.walk = {
+                  min: Math.round(distM / speed),
+                  km: (distM / 1000).toFixed(1)
+                };
+              }
+            }
+          } catch (e) {}
+        }
+
+        // 3. Transit return via HAFAS
+        if (allowTransit) {
+          const hafasKey = HOMEBOARD_CONFIG.departures?.hafasAccessId;
+          if (hafasKey) {
+            try {
+              const hafasUrl = `https://vbb.demo.hafas.cloud/api/fahrinfo/latest/trip?` +
+                `accessId=${hafasKey}` +
+                `&originCoordLat=${destLat}&originCoordLong=${destLon}` +
+                `&destCoordLat=${home.latitude}&destCoordLong=${home.longitude}` +
+                `&format=json&numF=3&rtMode=FULL`;
+              const hRes = await fetch(hafasUrl);
+              if (hRes.ok) {
+                const hData = await hRes.json();
+                const trips = hData.Trip || [];
+                if (trips.length > 0) {
+                  const trip = trips[0];
+                  let legs = trip.LegList?.Leg || [];
+                  if (!Array.isArray(legs)) legs = [legs];
+                  const transitLegs = legs.map(leg => {
+                    const name = (leg.name || '').trim();
+                    const dur = parsePTDuration(leg.duration);
+                    const from = (leg.Origin?.name || '').replace(' (Berlin)', '').replace(' Bhf', '');
+                    const to = (leg.Destination?.name || '').replace(' (Berlin)', '').replace(' Bhf', '');
+                    if (!name || name === 'Fußweg' || leg.type === 'WALK') {
+                      return { type: 'walk', duration: dur };
+                    }
+                    return { type: 'transit', line: name, from, to, duration: dur };
+                  });
+                  returnData.transit = {
+                    min: parsePTDuration(trip.duration),
+                    legs: transitLegs
+                  };
+                }
+              }
+            } catch (e) {}
+          }
+        }
+
+        _returnCommuteCache[cacheKey] = returnData;
+      }
+
+      renderReturnCommuteContent(ev, actualIdx, destLat, destLon);
+    } catch (err) {
+      returnContainer.innerHTML = 'Failed to load return commute';
+    }
+  }
+
+    function renderReturnCommuteContent(ev, actualIdx, destLat, destLon) {
+    const returnContainer = document.getElementById('detail-return-content');
+    if (!returnContainer) return;
+
+    const placeConfig = getPlaceConfig(ev);
+    const allowWalk = isModeAllowed(placeConfig, 'walk');
+    const allowBike = isModeAllowed(placeConfig, 'bike');
+    const allowTransit = isModeAllowed(placeConfig, 'transit');
+
+    if (!destLat || !destLon) {
       if (placeConfig && (placeConfig.latitude || placeConfig.lat) && (placeConfig.longitude || placeConfig.lon)) {
         destLat = parseFloat(placeConfig.latitude || placeConfig.lat);
         destLon = parseFloat(placeConfig.longitude || placeConfig.lon);
@@ -1387,122 +1928,83 @@ const Calendar = (() => {
           destLon = coords.lon;
         }
       }
-
-      if (!destLat || !destLon) {
-        returnContainer.innerHTML = 'Could not resolve location coordinates';
-        return;
-      }
-
-      // Strictly only calculate return commute for Berlin / VBB metro zone (<= 60 km)
-      const distFromHome = getDistanceKm(home.latitude, home.longitude, destLat, destLon);
-      if (distFromHome > 60) {
-        const returnBox = document.querySelector('.detail-return-box');
-        if (returnBox) returnBox.remove();
-        return;
-      }
-
-      const returnTime = ev.end || (ev.start ? new Date(ev.start.getTime() + 60 * 60000) : new Date());
-      const now = new Date();
-      const startTime = returnTime > now ? returnTime : now;
-
-      // 1. Bike return via OSRM
-      let bikeMin = null, bikeKm = null;
-      if (allowBike) {
-        try {
-          const bikeUrl = `https://router.project-osrm.org/route/v1/cycling/${destLon},${destLat};${home.longitude},${home.latitude}?overview=false`;
-          const res = await fetch(bikeUrl);
-          if (res.ok) {
-            const data = await res.json();
-            if (data.code === 'Ok' && data.routes.length) {
-              const distM = data.routes[0].distance;
-              bikeKm = (distM / 1000).toFixed(1);
-              const speed = ((HOMEBOARD_CONFIG.commute && HOMEBOARD_CONFIG.commute.bikeSpeed) || 13) * 1000 / 60;
-              bikeMin = Math.round(distM / speed);
-            }
-          }
-        } catch (e) {}
-      }
-
-      // 2. Walk return
-      let walkMin = null, walkKm = null;
-      if (allowWalk) {
-        try {
-          const walkUrl = `https://router.project-osrm.org/route/v1/foot/${destLon},${destLat};${home.longitude},${home.latitude}?overview=false`;
-          const res = await fetch(walkUrl);
-          if (res.ok) {
-            const data = await res.json();
-            if (data.code === 'Ok' && data.routes.length) {
-              const distM = data.routes[0].distance;
-              walkKm = (distM / 1000).toFixed(1);
-              const speed = ((HOMEBOARD_CONFIG.commute && HOMEBOARD_CONFIG.commute.walkSpeed) || 5) * 1000 / 60;
-              walkMin = Math.round(distM / speed);
-            }
-          }
-        } catch (e) {}
-      }
-
-      // 3. Transit return via HAFAS
-      let transitMin = null, transitLegs = [];
-      if (allowTransit) {
-        const hafasKey = HOMEBOARD_CONFIG.departures?.hafasAccessId;
-        if (hafasKey) {
-          try {
-            const hafasUrl = `https://vbb.demo.hafas.cloud/api/fahrinfo/latest/trip?` +
-              `accessId=${hafasKey}` +
-              `&originCoordLat=${destLat}&originCoordLong=${destLon}` +
-              `&destCoordLat=${home.latitude}&destCoordLong=${home.longitude}` +
-              `&format=json&numF=3&rtMode=FULL`;
-            const hRes = await fetch(hafasUrl);
-            if (hRes.ok) {
-              const hData = await hRes.json();
-              const trips = hData.Trip || [];
-              if (trips.length > 0) {
-                const trip = trips[0];
-                transitMin = parsePTDuration(trip.duration);
-                let legs = trip.LegList?.Leg || [];
-                if (!Array.isArray(legs)) legs = [legs];
-                transitLegs = legs.map(leg => {
-                  const name = (leg.name || '').trim();
-                  const dur = parsePTDuration(leg.duration);
-                  const from = (leg.Origin?.name || '').replace(' (Berlin)', '').replace(' Bhf', '');
-                  const to = (leg.Destination?.name || '').replace(' (Berlin)', '').replace(' Bhf', '');
-                  if (!name || name === 'Fußweg' || leg.type === 'WALK') {
-                    return { type: 'walk', duration: dur };
-                  }
-                  return { type: 'transit', line: name, from, to, duration: dur };
-                });
-              }
-            }
-          } catch (e) {}
-        }
-      }
-
-      let html = '';
-      if (walkMin && walkMin <= 35) {
-        const eta = new Date(startTime.getTime() + walkMin * 60000);
-        const etaStr = `${eta.getHours().toString().padStart(2,'0')}:${eta.getMinutes().toString().padStart(2,'0')}`;
-        html += `<div class="detail-return-line">🚶 <strong>${walkMin} min</strong> · ${walkKm} km <span class="detail-return-eta">(~${etaStr})</span></div>`;
-      }
-      if (bikeMin) {
-        const eta = new Date(startTime.getTime() + bikeMin * 60000);
-        const etaStr = `${eta.getHours().toString().padStart(2,'0')}:${eta.getMinutes().toString().padStart(2,'0')}`;
-        html += `<div class="detail-return-line">🚲 <strong>${bikeMin} min</strong> · ${bikeKm} km <span class="detail-return-eta">(~${etaStr})</span></div>`;
-      }
-      if (transitMin && transitLegs.length > 0) {
-        const eta = new Date(startTime.getTime() + transitMin * 60000);
-        const etaStr = `${eta.getHours().toString().padStart(2,'0')}:${eta.getMinutes().toString().padStart(2,'0')}`;
-        const legsHtml = transitLegs.map(leg => {
-          if (leg.type === 'walk') return `<span class="event-route-walk">🚶${leg.duration}m</span>`;
-          const style = window.getTransitLineStyle ? window.getTransitLineStyle(leg.line) : { bg: 'var(--surface-hover)', fg: 'var(--text)' };
-          return `<span class="transit-badge" style="background:${style.bg};color:${style.fg};border-color:${style.bg}">${leg.line}</span>`;
-        }).join(' → ');
-        html += `<div class="detail-return-line">🚇 <strong>${transitMin} min</strong> · ${legsHtml} <span class="detail-return-eta">(~${etaStr})</span></div>`;
-      }
-
-      returnContainer.innerHTML = html || 'No return routes available';
-    } catch (err) {
-      returnContainer.innerHTML = 'Failed to load return commute';
     }
+
+    const cacheKey = `ret_${actualIdx}_${destLat}_${destLon}`;
+    const returnData = _returnCommuteCache[cacheKey];
+    if (!returnData) return;
+
+    const returnTime = ev.end || (ev.start ? new Date(ev.start.getTime() + 60 * 60000) : new Date());
+    const now = new Date();
+    const startTime = returnTime > now ? returnTime : now;
+
+    // Determine chosen return mode
+    let selectedMode = _returnModeOverrides[actualIdx];
+    if (!selectedMode) {
+      if (allowBike && returnData.bike.min) selectedMode = 'bike';
+      else if (allowTransit && returnData.transit.min) selectedMode = 'transit';
+      else if (allowWalk && returnData.walk.min) selectedMode = 'walk';
+      else selectedMode = 'bike';
+    }
+
+    const returnNavHtml = `
+      <div class="bento-route-nav">
+        ${allowBike && returnData.bike.min ? `<button class="bento-mode-tab ${selectedMode === 'bike' ? 'active' : ''}" onclick="Calendar.selectReturnMode(${actualIdx}, 'bike')">🚲 ${returnData.bike.min}m</button>` : ''}
+        ${allowTransit && returnData.transit.min ? `<button class="bento-mode-tab ${selectedMode === 'transit' ? 'active' : ''}" onclick="Calendar.selectReturnMode(${actualIdx}, 'transit')">🚇 ${returnData.transit.min}m</button>` : ''}
+        ${allowWalk && returnData.walk.min ? `<button class="bento-mode-tab ${selectedMode === 'walk' ? 'active' : ''}" onclick="Calendar.selectReturnMode(${actualIdx}, 'walk')">🚶 ${returnData.walk.min}m</button>` : ''}
+      </div>`;
+
+    let returnBodyHtml = '';
+    if (selectedMode === 'transit' && returnData.transit && returnData.transit.min) {
+      if (returnData.transit.legs && returnData.transit.legs.length > 0) {
+        const steps = returnData.transit.legs.map(leg => {
+          if (leg.type === 'walk') {
+            return `<div class="bento-step">
+              <span class="bento-step-icon">🚶</span>
+              <div class="bento-step-content">
+                <span class="bento-step-title">Fußweg</span>
+                <span class="bento-step-meta">${leg.duration} min</span>
+              </div>
+            </div>`;
+          }
+          const style = window.getTransitLineStyle ? window.getTransitLineStyle(leg.line) : { bg: 'var(--surface-hover)', fg: 'var(--text)' };
+          return `<div class="bento-step">
+            <span class="bento-step-icon"><span class="transit-badge" style="background:${style.bg};color:${style.fg};border-color:${style.bg}">${leg.line}</span></span>
+            <div class="bento-step-content">
+              <span class="bento-step-title">${leg.from || 'Start'} → ${leg.to || 'Ziel'}</span>
+              <span class="bento-step-meta">${leg.duration} min${leg.delay > 0 ? ` <span class="bento-step-delay">+${leg.delay}m</span>` : ''}</span>
+            </div>
+          </div>`;
+        }).join('');
+        returnBodyHtml = `<div class="bento-stepper">${steps}</div>`;
+      } else {
+        returnBodyHtml = `<div class="bento-route-summary"><span class="bento-step-icon">🚇</span><div><strong>${returnData.transit.min} min</strong> ÖPNV-Fahrt nach Hause</div></div>`;
+      }
+    } else if (selectedMode === 'bike' && returnData.bike.min) {
+      const eta = new Date(startTime.getTime() + returnData.bike.min * 60000);
+      const etaStr = `${eta.getHours().toString().padStart(2,'0')}:${eta.getMinutes().toString().padStart(2,'0')}`;
+      returnBodyHtml = `<div class="bento-route-summary">
+        <span class="bento-step-icon">🚲</span>
+        <div>
+          <strong>${returnData.bike.min} min</strong> Fahrrad (${returnData.bike.km} km)
+          <div class="bento-submeta">Rückkehr ca. ${etaStr}</div>
+        </div>
+      </div>`;
+    } else if (selectedMode === 'walk' && returnData.walk.min) {
+      const eta = new Date(startTime.getTime() + returnData.walk.min * 60000);
+      const etaStr = `${eta.getHours().toString().padStart(2,'0')}:${eta.getMinutes().toString().padStart(2,'0')}`;
+      returnBodyHtml = `<div class="bento-route-summary">
+        <span class="bento-step-icon">🚶</span>
+        <div>
+          <strong>${returnData.walk.min} min</strong> Fußweg (${returnData.walk.km} km)
+          <div class="bento-submeta">Rückkehr ca. ${etaStr}</div>
+        </div>
+      </div>`;
+    } else {
+      returnBodyHtml = `<div class="detail-return-line">Keine Route für diesen Modus verfügbar.</div>`;
+    }
+
+    returnContainer.innerHTML = returnNavHtml + returnBodyHtml;
   }
 
   function parsePTDuration(str) {
@@ -1526,5 +2028,5 @@ const Calendar = (() => {
     return Math.round((dt2 - dt1) / 60000);
   }
 
-  return { init, switchDay, selectMode, selectModeAndRefreshDetail };
+  return { init, switchDay, selectMode, selectModeAndRefreshDetail, showEventDetail, closeEventDetail, navigateEventDetail, selectReturnMode, toggleQR, switchQrTarget, copyEventDetails };
 })();
