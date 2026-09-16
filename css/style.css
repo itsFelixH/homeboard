@@ -1207,3 +1207,199 @@ body {
   color: var(--text-1);
   border-left: 2.5px solid var(--accent, #38bdf8);
 }
+
+/* === Vacation & Birthday Modal Styles === */
+#vacation-detail-overlay,
+#birthday-detail-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.68);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999;
+  padding: 1rem;
+  animation: modalFadeIn 0.18s ease-out;
+}
+
+/* Vacation Live Countdown Digits */
+.countdown-timer-digits {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+.countdown-digit-cell {
+  flex: 1;
+  background: var(--surface-hover, rgba(255, 255, 255, 0.05));
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.digit-val {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--accent, #38bdf8);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.digit-lbl {
+  font-size: 0.62rem;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 3px;
+}
+
+/* Destination Weather Grid */
+.vac-weather-grid {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 0;
+}
+.vac-weather-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.vac-weather-icon {
+  font-size: 1.8rem;
+  line-height: 1;
+}
+.vac-weather-temp {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--text-1);
+}
+.vac-weather-feel {
+  font-size: 0.68rem;
+  color: var(--text-3);
+  display: block;
+}
+.vac-weather-details {
+  font-size: 0.72rem;
+  color: var(--text-2);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: right;
+}
+
+/* Birthday Detail Styles */
+.detail-age-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #f43f5e;
+  background: rgba(244, 63, 94, 0.12);
+  border: 1px solid rgba(244, 63, 94, 0.3);
+  padding: 3px 9px;
+  border-radius: 9999px;
+  width: fit-content;
+  margin-top: 5px;
+}
+.milestone-glow {
+  background: rgba(244, 63, 94, 0.2);
+  border-color: #f43f5e;
+  box-shadow: 0 0 12px rgba(244, 63, 94, 0.35);
+}
+
+.bday-labels-row {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+.bday-label-chip {
+  font-size: 0.68rem;
+  font-weight: 500;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: var(--surface-hover, rgba(255, 255, 255, 0.06));
+  color: var(--text-2);
+  border: 1px solid var(--border);
+}
+
+.bday-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 8px;
+}
+.bday-meta-cell {
+  background: var(--surface-hover, rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.76rem;
+}
+.bday-meta-icon {
+  font-size: 1.3rem;
+  line-height: 1;
+}
+.bday-meta-sub {
+  font-size: 0.64rem;
+  color: var(--text-3);
+  margin-top: 1px;
+}
+
+/* Birthday Wish Generator Cards */
+.bday-wishes-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.bday-wish-card {
+  background: var(--surface-hover, rgba(255, 255, 255, 0.03));
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 9px 11px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.bday-wish-title {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-1);
+}
+.bday-wish-preview {
+  font-size: 0.7rem;
+  color: var(--text-2);
+  font-style: italic;
+  line-height: 1.35;
+}
+.bday-wish-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.bday-notes-input {
+  width: 100%;
+  height: 60px;
+  background: var(--surface-hover, rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 6px 8px;
+  color: var(--text-1);
+  font-family: inherit;
+  font-size: 0.72rem;
+  resize: none;
+  box-sizing: border-box;
+}
+.bday-notes-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
