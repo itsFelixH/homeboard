@@ -178,7 +178,7 @@ const Birthdays = (() => {
     const contactUrl = contactUrlMatch ? contactUrlMatch[0] : `https://contacts.google.com/search/${encodeURIComponent(cleanPersonName(b.summary))}`;
 
     // City / Location
-    let city = '';
+    let city = HOMEBOARD_CONFIG.birthdays?.cities?.[cleanPersonName(b.summary)] || '';
     if (b.location && b.location.trim()) {
       city = b.location.split(',')[0].trim();
     } else {
@@ -202,6 +202,8 @@ const Birthdays = (() => {
     if (/sport|gym|fitness|training|cycling/i.test(raw)) labels.add('🏋️ Sport');
 
     const nameKey = cleanPersonName(b.summary);
+    const cfgLabels = HOMEBOARD_CONFIG.birthdays?.labels?.[nameKey] || [];
+    cfgLabels.forEach(l => labels.add(l));
     try {
       const custom = JSON.parse(localStorage.getItem(`bday_labels_${nameKey}`) || '[]');
       custom.forEach(l => labels.add(l));
@@ -292,7 +294,8 @@ const Birthdays = (() => {
       const turningAge = currentYear - birthYear;
       if (turningAge > 0 && turningAge < 120) {
         ageStr = `Wird ${turningAge} Jahre alt`;
-        if (turningAge % 10 === 0 || turningAge === 18 || turningAge === 25) {
+        const milestoneList = HOMEBOARD_CONFIG.birthdays?.milestones || [18, 20, 25, 30, 40, 50, 60, 70, 80, 90, 100];
+        if (milestoneList.includes(turningAge)) {
           isMilestone = true;
           ageStr += ` · 🍾 Runder Geburtstag!`;
         }
@@ -523,7 +526,8 @@ const Birthdays = (() => {
   }
 
   function copyWishQuick(firstName, btn) {
-    const text = `Liebe/r ${firstName}, alles Liebe und Gute zum Geburtstag! Ich wünsche dir ein fantastisches neues Lebensjahr, viel Gesundheit und Glück! Lass dich heute ordentlich feiern! 🎂🎉🍾`;
+    const customTpl = HOMEBOARD_CONFIG.birthdays?.whatsappTemplate;
+    const text = customTpl ? customTpl.replace('{name}', firstName) : `Liebe/r ${firstName}, alles Liebe und Gute zum Geburtstag! Ich wünsche dir ein fantastisches neues Lebensjahr, viel Gesundheit und Glück! Lass dich heute ordentlich feiern! 🎂🎉🍾`;
     navigator.clipboard.writeText(text).then(() => {
       if (btn) {
         const orig = btn.innerHTML;
