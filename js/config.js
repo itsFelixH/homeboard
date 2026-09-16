@@ -16,7 +16,7 @@ let HOMEBOARD_CONFIG = {};
 
 const ConfigLoader = (() => {
   const CACHE_KEY = 'homeboard_config_cache';
-  const CACHE_VERSION = 4;
+  const CACHE_VERSION = 5;
 
   async function load() {
     let yamlText = null;
@@ -177,9 +177,15 @@ const ConfigLoader = (() => {
     // --- Birthdays ---
     const bdayCard = cards.birthdays || {};
     config.birthdays = {
+      enabled: bdayCard.enabled !== false,
       icsUrl: bdayCard.icsUrl || '',
       refreshMinutes: bdayCard.refreshMinutes || 60,
-      lookaheadDays: bdayCard.lookaheadDays || 7
+      lookaheadDays: bdayCard.lookaheadDays || 14,
+      milestones: bdayCard.milestones || [18, 20, 25, 30, 40, 50, 60, 70, 80, 90, 100],
+      whatsappTemplate: bdayCard.whatsappTemplate || '',
+      labels: bdayCard.labels || {},
+      cities: bdayCard.cities || {},
+      ...bdayCard
     };
 
     // --- Slideshow ---
@@ -203,11 +209,17 @@ const ConfigLoader = (() => {
     // --- Countdown ---
     const countCard = cards.countdown || {};
     config.countdown = {
+      enabled: countCard.enabled !== false,
       date: countCard.date || '',
       label: countCard.label || 'Vacation',
       names: countCard.names || {},
+      destinations: countCard.destinations || {},
+      docs: countCard.docs || {},
+      defaultPackingList: countCard.defaultPackingList || null,
       maxVacations: countCard.maxVacations || 3,
-      keyword: countCard.keyword || 'Urlaub'
+      keyword: countCard.keyword || 'Urlaub',
+      keywords: countCard.keywords || countCard.keyword || 'Urlaub',
+      ...countCard
     };
 
     // --- Trash ---
