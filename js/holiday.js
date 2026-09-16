@@ -85,8 +85,9 @@ const Holiday = (() => {
         event = {};
       } else if (line === 'END:VEVENT' && event) {
         if (event.summary && event.start) {
-          const keyword = (HOMEBOARD_CONFIG.countdown && HOMEBOARD_CONFIG.countdown.keyword) || 'Urlaub';
-          if (event.summary.toLowerCase().includes(keyword.toLowerCase())) {
+          const rawKw = HOMEBOARD_CONFIG.countdown?.keywords || HOMEBOARD_CONFIG.countdown?.keyword || 'Urlaub';
+          const keywords = Array.isArray(rawKw) ? rawKw : [rawKw];
+          if (keywords.some(kw => event.summary.toLowerCase().includes(kw.toLowerCase()))) {
             const eventMidnight = new Date(
               event.start.getFullYear(),
               event.start.getMonth(),
@@ -252,7 +253,7 @@ const Holiday = (() => {
       const saved = localStorage.getItem(`vac_pack_items_${dateKey}`);
       if (saved) return JSON.parse(saved);
     } catch (e) {}
-    return [...DEFAULT_PACKING_ITEMS];
+    return [...(HOMEBOARD_CONFIG.countdown?.defaultPackingList || DEFAULT_PACKING_ITEMS)];
   }
 
   function savePackingItems(dateKey, items) {
@@ -340,6 +341,8 @@ const Holiday = (() => {
     try {
       const custom = localStorage.getItem(`vac_doc_${dateKey}`);
       if (custom && custom.trim()) return custom.trim();
+      const cfgDoc = HOMEBOARD_CONFIG.countdown?.docs?.[dateKey];
+      if (cfgDoc) return cfgDoc;
     } catch (e) {}
 
     if (vacDesc) {
@@ -429,7 +432,7 @@ const Holiday = (() => {
     }
 
     // Destination determination & banner backdrop
-    const destinationQuery = extractDestination(label, vac.location, vac.description);
+    const destinationQuery = HOMEBOARD_CONFIG.countdown?.destinations?.[dateKey] || extractDestination(label, vac.location, vac.description);
     const bannerInfo = getDestinationBanner(destinationQuery || label);
 
     const gmapsUrl = destinationQuery
