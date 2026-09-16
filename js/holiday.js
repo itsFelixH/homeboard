@@ -16,8 +16,8 @@ const Holiday = (() => {
   let _modalKeyHandler = null;
 
   async function init() {
-    const config = HOMEBOARD_CONFIG.countdown;
-    if (!config || !config.enabled) return;
+    const config = HOMEBOARD_CONFIG.countdown || HOMEBOARD_CONFIG.cards?.countdown;
+    if (!config || config.enabled === false) return;
 
     await fetchAndFind();
     const refreshMinutes = config.refreshMinutes || 60;
@@ -49,16 +49,31 @@ const Holiday = (() => {
   }
 
   async function fetchAndFind() {
-    const calConfig = HOMEBOARD_CONFIG.calendar;
+    const calConfig = HOMEBOARD_CONFIG.calendar || HOMEBOARD_CONFIG.cards?.calendar || {};
+    const countConfig = HOMEBOARD_CONFIG.countdown || HOMEBOARD_CONFIG.cards?.countdown || {};
+    const icsUrl = countConfig.icsUrl || calConfig.icsUrl;
 
     try {
       let icsText = window._calendarCache;
-      if (!icsText) {
-        const url = `/proxy?url=${encodeURIComponent(calConfig.icsUrl)}`;
+      if (!icsText && icsUrl) {
+        const url = /proxy?url=;
         const res = await fetch(url);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        if (!res.ok) throw new Error(HTTP );
         icsText = await res.text();
+        window._calendarCache = icsText;
       }
+      const vacations = findNextVacations(icsText);
+
+      if (vacations.length > 0) {
+        renderAll(vacations);
+      } else {
+        showFallback();
+      }
+    } catch (err) {
+      console.error('Countdown calendar fetch failed:', err);
+      showFallback();
+    }
+  }
       const vacations = findNextVacations(icsText);
 
       if (vacations.length > 0) {
