@@ -1147,3 +1147,63 @@ body {
   letter-spacing: 0.02em;
   white-space: nowrap;
 }
+
+/* Commute Card Mode Toggle & Preferred Route Highlighting */
+.commute-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.commute-mode-nav {
+  display: inline-flex;
+  gap: 2px;
+  background: var(--surface-hover, rgba(255, 255, 255, 0.05));
+  padding: 1px 2px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+.commute-mode-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-3);
+  font-size: 0.65rem;
+  padding: 1px 5px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+  line-height: 1.2;
+}
+.commute-mode-btn:hover {
+  color: var(--text-1);
+}
+.commute-mode-btn.active {
+  background: var(--surface, #1e293b);
+  color: var(--text-1);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+.commute-route-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.72rem;
+  color: var(--text-3);
+  margin-top: 4px;
+  width: 100%;
+  cursor: pointer;
+  padding: 3px 6px;
+  border-radius: 5px;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+.commute-route-line:hover {
+  background: var(--surface-hover, rgba(255, 255, 255, 0.04));
+  color: var(--text-2);
+}
+.commute-route-line.commute-route-preferred {
+  background: var(--surface-hover, rgba(255, 255, 255, 0.07));
+  color: var(--text-1);
+  border-left: 2.5px solid var(--accent, #38bdf8);
+}
