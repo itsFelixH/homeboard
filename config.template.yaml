@@ -93,6 +93,7 @@ cards:
     # showTomorrow: true
     # showCommute: true     # bike/transit time for events with locations
     # bufferMinutes: 5      # default pre-event buffer time (minutes)
+    # chainedRouteGapMinutes: 210 # max gap in minutes to route from previous event instead of home (default: 210 = 3.5h)
     # showCategories: true  # show category badges & colored accent stripes
     # hidePatterns: []      # regex patterns to filter events
     #
