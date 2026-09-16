@@ -133,20 +133,41 @@ cards:
     #     preferredTransitVia: 'Ostkreuz'    # optional transfer/via stop preference
     #     latitude: 52.5025                  # optional: exact destination coords (skips geocoding)
     #     longitude: 13.4753
-
   birthdays:
     enabled: true
     icsUrl: ''              # Separate ICS calendar for birthdays
     # refreshMinutes: 60
-    # lookaheadDays: 7
+    # lookaheadDays: 14     # days ahead to display upcoming birthdays (default: 14)
+    # milestones: [18, 20, 25, 30, 40, 50, 60, 70, 80, 90, 100] # ages highlighted as milestone jubilees
+    # whatsappTemplate: 'Liebe/r {name}, alles Liebe und Gute zum Geburtstag! Ich wünsche dir ein fantastisches neues Lebensjahr, viel Gesundheit und Glück! 🎂🎉'
+    # labels:               # Category badges per contact name
+    #   'Max Mustermann': ['👨‍👩‍👧 Familie', '📍 Berlin']
+    #   'Sarah Becker': ['💼 Arbeit', '💃 Sport']
+    # cities:               # Residential city per contact (for location tag & local context)
+    #   'Sarah Becker': 'München'
 
   countdown:
     enabled: true
     # maxVacations: 3
-    # keyword: Urlaub       # calendar keyword to detect vacations
+    # keywords: ['Urlaub', 'Vacation', 'Reise', 'Trip', 'Holiday', 'Ferien'] # calendar keywords to detect vacations
     # date: ''              # manual fallback: 'YYYY-MM-DD'
     # label: Vacation
-    # names: {}             # { '2026-09-17': 'Barcelona' }
+    # names:                # override display title: { 'YYYY-MM-DD': 'Barcelona Trip' }
+    #   '2026-09-17': 'Barcelona Trip'
+    # destinations:         # explicit destination overrides for live weather/currency/timezone
+    #   '2026-09-17': 'Barcelona'
+    # docs:                 # Google Docs / Sheets / Notion planning links per trip
+    #   '2026-09-17': 'https://docs.google.com/document/d/your-trip-notes'
+    # defaultPackingList:   # custom default checklist items template
+    #   - 'Reisepass / Personalausweis'
+    #   - 'Krankenversicherungskarte'
+    #   - 'Ladekabel & Powerbank'
+    #   - 'Kopfhörer'
+    #   - 'Zahnbürste & Kulturbeutel'
+    #   - 'Sonnencreme & Sonnenbrille'
+    #   - 'Bequeme Schuhe'
+    #   - 'Hausapotheke'
+
 
   news:
     enabled: true
