@@ -1123,3 +1123,27 @@ body {
 .detail-loading { color: var(--text-3); font-style: italic; font-size: 0.68rem; }
 
 
+
+/* Commute Card Schedule Badge & Header */
+.commute-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 5px;
+}
+.commute-dest-title {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--text-1);
+}
+.commute-schedule-badge {
+  font-size: 0.62rem;
+  font-weight: 500;
+  padding: 1px 7px;
+  border-radius: 9999px;
+  background: var(--accent-dim, rgba(56, 189, 248, 0.12));
+  color: var(--accent, #38bdf8);
+  border: 1px solid var(--border);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
