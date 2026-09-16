@@ -15,6 +15,7 @@ const Calendar = (() => {
   let _renderedEvents = [];
   let _eventCommuteData = {};
   let _eventModeOverrides = {};
+  let _eventOriginOverrides = {};
   let _eventCategoryOverrides = {};
   let _returnModeOverrides = {};
   let _returnCommuteCache = {};
@@ -888,6 +889,113 @@ const Calendar = (() => {
     return null;
   }
 
+    async function fetchRouteBetweenPoints(originLat, originLon, destLat, destLon, allowBike, allowWalk, allowTransit, placeConfig) {
+    const routeResult = { bike: {}, walk: {}, transit: {} };
+
+    // 1. Bike time via OSRM
+    if (allowBike) {
+      try {
+        const bikeUrl = `https://router.project-osrm.org/route/v1/cycling/${originLon},${originLat};${destLon},${destLat}?overview=false`;
+        const bikeRes = await fetch(bikeUrl);
+        if (bikeRes.ok) {
+          const bikeData = await bikeRes.json();
+          if (bikeData.code === 'Ok' && bikeData.routes.length) {
+            const distM = bikeData.routes[0].distance;
+            const bikeSpeedMpm = ((HOMEBOARD_CONFIG.commute && HOMEBOARD_CONFIG.commute.bikeSpeed) || 13) * 1000 / 60;
+            routeResult.bike = {
+              min: Math.round(distM / bikeSpeedMpm),
+              km: (distM / 1000).toFixed(1)
+            };
+          }
+        }
+      } catch (e) { /* skip */ }
+    }
+
+    // 2. Walk time via OSRM
+    if (allowWalk) {
+      try {
+        const walkUrl = `https://router.project-osrm.org/route/v1/foot/${originLon},${originLat};${destLon},${destLat}?overview=false`;
+        const walkRes = await fetch(walkUrl);
+        if (walkRes.ok) {
+          const walkData = await walkRes.json();
+          if (walkData.code === 'Ok' && walkData.routes.length) {
+            const distM = walkData.routes[0].distance;
+            const walkSpeedMpm = ((HOMEBOARD_CONFIG.commute && HOMEBOARD_CONFIG.commute.walkSpeed) || 5) * 1000 / 60;
+            routeResult.walk = {
+              min: Math.round(distM / walkSpeedMpm),
+              km: (distM / 1000).toFixed(1)
+            };
+          }
+        }
+      } catch (e) { /* skip */ }
+    }
+
+    // 3. Transit via HAFAS / Transitous
+    if (allowTransit) {
+      const hafasKey = HOMEBOARD_CONFIG.departures?.hafasAccessId;
+      if (hafasKey) {
+        try {
+          const hafasUrl = `https://vbb.demo.hafas.cloud/api/fahrinfo/latest/trip?` +
+            `accessId=${hafasKey}` +
+            `&originCoordLat=${originLat}&originCoordLong=${originLon}` +
+            `&destCoordLat=${destLat}&destCoordLong=${destLon}` +
+            `&format=json&numF=4&rtMode=FULL`;
+          const hafasRes = await fetch(hafasUrl);
+          if (hafasRes.ok) {
+            const hData = await hafasRes.json();
+            const trips = hData.Trip || [];
+            if (trips.length > 0) {
+              const trip = selectBestTransitTrip(trips, placeConfig);
+              const plannedMin = parsePTDuration(trip.duration);
+              let transitMin = plannedMin;
+              let transitDelayMin = 0;
+
+              const originDep = trip.Origin?.rtTime || trip.Origin?.time;
+              const originDate = trip.Origin?.rtDate || trip.Origin?.date;
+              const destArr = trip.Destination?.rtTime || trip.Destination?.time;
+              const destDate = trip.Destination?.rtDate || trip.Destination?.date;
+              if (originDep && destArr && originDate && destDate) {
+                const depDt = parseHafasDateTime(originDate, originDep);
+                const arrDt = parseHafasDateTime(destDate, destArr);
+                if (depDt && arrDt) {
+                  const realMin = Math.round((arrDt - depDt) / 60000);
+                  if (realMin > 0) {
+                    transitDelayMin = realMin - plannedMin;
+                    transitMin = realMin;
+                  }
+                }
+              }
+
+              let legs = trip.LegList?.Leg || [];
+              if (!Array.isArray(legs)) legs = [legs];
+              const transitLegs = legs.map(leg => {
+                const name = (leg.name || '').trim();
+                const dur = parsePTDuration(leg.duration);
+                const from = (leg.Origin?.name || '').replace(' (Berlin)', '').replace(' Bhf', '');
+                const to = (leg.Destination?.name || '').replace(' (Berlin)', '').replace(' Bhf', '');
+                const legDelay = leg.Destination?.rtTime && leg.Destination?.time
+                  ? parseHafasTimeDiff(leg.Destination.date, leg.Destination.time, leg.Destination.rtDate || leg.Destination.date, leg.Destination.rtTime)
+                  : 0;
+                if (!name || name === 'Fußweg' || leg.type === 'WALK') {
+                  return { type: 'walk', duration: dur };
+                }
+                return { type: 'transit', line: name, from, to, duration: dur, delay: legDelay };
+              });
+
+              routeResult.transit = {
+                min: transitMin,
+                delay: transitDelayMin,
+                legs: transitLegs
+              };
+            }
+          }
+        } catch (e) { /* skip */ }
+      }
+    }
+
+    return routeResult;
+  }
+
   async function fetchCommuteForEvents(events) {
     const origin = HOMEBOARD_CONFIG.location;
     if (!origin.latitude || !origin.longitude) return;
@@ -908,6 +1016,14 @@ const Calendar = (() => {
       const allowTransit = isModeAllowed(placeConfig, 'transit');
 
       if (!allowWalk && !allowBike && !allowTransit) continue;
+
+      // Check if previous event exists for chained commute
+      const prevEv = i > 0 ? events[i - 1] : null;
+      const prevPlaceConfig = prevEv ? getPlaceConfig(prevEv) : null;
+      let prevCoords = null;
+      if (prevEv && prevEv.location && isBerlinLocation(prevEv.location) && !isHomeAddress(prevEv.location)) {
+        try { prevCoords = await resolveEventCoordinates(prevEv, prevPlaceConfig); } catch (e) {}
+      }
 
       try {
         let destLat = null, destLon = null;
@@ -1256,6 +1372,7 @@ const Calendar = (() => {
 
   function render(events) {
     const list = document.getElementById('event-list');
+    if (!list) return;
     if (events.length === 0) {
       list.innerHTML = `<li class="event-placeholder">${i18n('calendar_no_events')}</li>`;
       return;
@@ -1270,10 +1387,9 @@ const Calendar = (() => {
       ? `<li class="event-allday-row">${allDay.map(ev => {
           const { category, icon, color, dimBg } = getEventCategoryAndColor(ev);
           const iconPrefix = icon ? `${icon} ` : '';
-          const mapsUrl = ev.location ? `https://maps.google.com/?q=${encodeURIComponent(ev.location)}` : '';
           const style = `border-left: 3px solid ${color}; background: ${dimBg}; color: var(--text-1);`;
           const actualIdx = events.indexOf(ev);
-          return `<span class="event-allday-pill event-clickable" data-detail-idx="${actualIdx}" style="${style}" title="${ev.location || ''}">${iconPrefix}${ev.summary || 'Untitled'}</span>`;
+          return `<span class="event-allday-pill event-clickable" onclick="Calendar.showEventDetailByIdx(${actualIdx})" style="${style}" title="${ev.location || ''}">${iconPrefix}${ev.summary || 'Untitled'}</span>`;
         }).join('')}</li>`
       : '';
 
@@ -1321,50 +1437,29 @@ const Calendar = (() => {
       const locationLabel = ev.location
         ? isHomeAddress(ev.location)
           ? `<div class="event-location event-location-home" title="${ev.location}">🏠 ${i18n('home')}</div>`
-          : `<a href="https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(HOMEBOARD_CONFIG.location.address || '')}&destination=${encodeURIComponent(ev.location)}" target="_blank" class="event-location" title="${ev.location}">📍 ${ev.location.split(',')[0]}</a>`
+          : `<div class="event-location" title="${ev.location}">📍 ${ev.location.split(',')[0]}</div>`
         : '';
 
-      
-    // Category Picker Drawer Options
-    const userCategories = HOMEBOARD_CONFIG.calendar?.categories || {};
-    const allCategories = { ...DEFAULT_CATEGORIES, ...userCategories };
-    const currentCatKey = (getEventCategoryAndColor(ev).key || '').toLowerCase();
-    
-    const catChipsHtml = Object.entries(allCategories).map(([k, c]) => {
-      if (c.enabled === false) return '';
-      const isActive = currentCatKey === k.toLowerCase();
-      return `<button class="bento-cat-chip ${isActive ? 'active' : ''}" onclick="Calendar.overrideEventCategory(${actualIdx}, '${k}')">${c.icon || ''} ${c.label || k}</button>`;
-    }).join('') + `<button class="bento-cat-chip bento-cat-chip-reset" onclick="Calendar.overrideEventCategory(${actualIdx}, 'RESET')">🔄 Auto</button>`;
-
-    const catDrawerHtml = `
-      <div class="bento-cat-drawer" id="bento-cat-drawer" style="display: none;">
-        <div class="bento-cat-drawer-title">🏷️ Kategorie wählen</div>
-        <div class="bento-cat-grid">${catChipsHtml}</div>
-      </div>`;
-
-    const locationHtml = ev.location && isBerlinLocation(ev.location)
+      const locationHtml = ev.location && isBerlinLocation(ev.location)
         ? `<div class="event-commute" title="${ev.location}"></div>`
         : '';
 
-      const summaryHtml = `<span class="event-summary event-clickable" data-detail-idx="${actualIdx}">${ev.summary || 'Untitled'}${catBadgeHtml}${durationHtml}</span>`;
+      const summaryHtml = `<span class="event-summary">${ev.summary || 'Untitled'}${catBadgeHtml}${durationHtml}</span>`;
 
-      return `<li data-event-idx="${actualIdx}" class="event-item${isPast ? ' event-past' : ''}" style="--event-accent: ${color};"><div class="event-row">${timeHtml}${summaryHtml}${untilHtml}</div>${locationLabel}${catDrawerHtml}
-          ${locationHtml}</li>`;
+      return `<li data-event-idx="${actualIdx}" class="event-item${isPast ? ' event-past' : ''} event-clickable" style="--event-accent: ${color};" onclick="Calendar.showEventDetailByIdx(${actualIdx})"><div class="event-row">${timeHtml}${summaryHtml}${untilHtml}</div>${locationLabel}${locationHtml}</li>`;
     }).join('');
 
     list.innerHTML = allDayHtml + timedHtml;
-
     _renderedEvents = events;
-    list.querySelectorAll('.event-clickable').forEach(el => {
-      el.addEventListener('click', (e) => {
-        e.preventDefault();
-        const idx = parseInt(el.getAttribute('data-detail-idx'));
-        showEventDetail(_renderedEvents[idx]);
-      });
-    });
   }
 
-              function getCategoryGearHints(category, summary, placeConfig) {
+  function showEventDetailByIdx(idx) {
+    if (_renderedEvents && _renderedEvents[idx]) {
+      showEventDetail(_renderedEvents[idx]);
+    }
+  }
+
+  function getCategoryGearHints(category, summary, placeConfig) {
     const text = `${category || ''} ${summary || ''} ${placeConfig?.category || ''}`.toLowerCase();
     
     if (/fitness|workout|gym|ride\.bln|training|spinning|pilates|yoga|kraftsport|calisthenics|sport/i.test(text)) {
@@ -1379,10 +1474,10 @@ const Calendar = (() => {
     if (/hiking|wandern|outdoor|trekking|berge|trail/i.test(text)) {
       return ['🥾 Wanderschuhe', '🧥 Regenjacke / Windbreaker', '💧 Trinkflasche', '🍫 Snack'];
     }
-    if (/swimming|schwimmen|sauna|therme|bad|spa|wellness/i.test(text)) {
-      return ['🩱 Badesachen', '🧖 Handtuch / Bademantel', '🧴 Duschgel', '🩴 Badelatschen'];
+    if (/swimming|schwimmen|badeland|therme|pool|sauna|strand/i.test(text)) {
+      return ['🩱 Badesachen', '🚿 Handtuch', '🩴 Badelatschen'];
     }
-    if (/work|office|arbeit|meeting|b\u00fcro|call/i.test(text)) {
+    if (/work|office|arbeit|meeting|büro|call/i.test(text)) {
       return ['💻 Laptop & Ladekabel', '🔑 Schlüssel / Badge', '🎧 Kopfhörer'];
     }
     if (/culture|kino|theater|konzert|museum|opera|cinema|show/i.test(text)) {
@@ -1394,7 +1489,7 @@ const Calendar = (() => {
     return null;
   }
 
-    let _currentDetailIdx = -1;
+  let _currentDetailIdx = -1;
   let _modalKeyHandler = null;
 
   function showEventDetail(ev) {
@@ -1414,21 +1509,47 @@ const Calendar = (() => {
     const hasPrev = actualIdx > 0;
     const hasNext = actualIdx !== -1 && actualIdx < totalEvents - 1;
 
-    const commuteData = actualIdx !== -1 ? _eventCommuteData[actualIdx] : null;
-    const activeMode = actualIdx !== -1 ? (_eventModeOverrides[actualIdx] || (commuteData ? (commuteData.bike.min ? 'bike' : commuteData.transit.min ? 'transit' : 'walk') : 'bicycling')) : 'bicycling';
+    // Configurable gap threshold (minutes) for automatic chained routing default (default: 210 = 3.5h)
+    const calConfig = HOMEBOARD_CONFIG.calendar || {};
+    const maxChainedGapMin = calConfig.chainedRouteGapMinutes 
+      ?? calConfig.chained_route_gap_min 
+      ?? (calConfig.chainedRouteMaxGapHours ? calConfig.chainedRouteMaxGapHours * 60 : 210);
 
+    // Check if previous event exists on the same day for chained routing
+    const prevEv = actualIdx > 0 ? _renderedEvents[actualIdx - 1] : null;
+    const hasValidPrev = prevEv && prevEv.location && isBerlinLocation(prevEv.location) && !isHomeAddress(prevEv.location) && prevEv.location !== ev.location;
+    
+    // Active origin: 'home' or 'prev' (default to 'prev' if chained and gap <= maxChainedGapMin)
+    let activeOrigin = _eventOriginOverrides[actualIdx];
+    if (!activeOrigin) {
+      if (hasValidPrev && ev.start && prevEv.end) {
+        const gapMin = Math.round((ev.start - prevEv.end) / 60000);
+        activeOrigin = (gapMin >= 0 && gapMin <= maxChainedGapMin) ? 'prev' : 'home';
+      } else {
+        activeOrigin = 'home';
+      }
+    }
+
+    const commuteDataFull = actualIdx !== -1 ? _eventCommuteData[actualIdx] : null;
+    const commuteData = (commuteDataFull && commuteDataFull[activeOrigin]) ? commuteDataFull[activeOrigin] : (commuteDataFull && commuteDataFull.home ? commuteDataFull.home : commuteDataFull);
+
+    const activeMode = actualIdx !== -1 ? (_eventModeOverrides[actualIdx] || (commuteData ? (commuteData.bike?.min ? 'bike' : commuteData.transit?.min ? 'transit' : 'walk') : 'bicycling')) : 'bicycling';
     const gMode = activeMode === 'bike' ? 'bicycling' : activeMode === 'walk' ? 'walking' : 'transit';
 
     const homeAddr = HOMEBOARD_CONFIG.location.address || `${HOMEBOARD_CONFIG.location.latitude},${HOMEBOARD_CONFIG.location.longitude}`;
+    const originAddr = (activeOrigin === 'prev' && hasValidPrev) ? prevEv.location : homeAddr;
+    const originName = (activeOrigin === 'prev' && hasValidPrev) ? (prevEv.summary || 'Vorherigem Termin') : 'Zuhause';
+
     const gmapsOutboundUrl = ev.location
-      ? `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(homeAddr)}&destination=${encodeURIComponent(ev.location)}&travelmode=${gMode}`
+      ? `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(originAddr)}&destination=${encodeURIComponent(ev.location)}&travelmode=${gMode}`
       : '';
     const gmapsReturnUrl = ev.location
       ? `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(ev.location)}&destination=${encodeURIComponent(homeAddr)}&travelmode=${gMode}`
       : '';
 
+    const lang = (window.Lang && typeof window.Lang.get === 'function') ? window.Lang.get() : 'de';
     const timeStr = ev.allDay
-      ? (Lang.get() === 'de' ? 'Ganztägig' : Lang.get() === 'es' ? 'Todo el día' : 'All day')
+      ? (lang === 'de' ? 'Ganztägig' : lang === 'es' ? 'Todo el día' : 'All day')
       : `${ev.start.getHours().toString().padStart(2,'0')}:${ev.start.getMinutes().toString().padStart(2,'0')}` +
         (ev.end ? ` – ${ev.end.getHours().toString().padStart(2,'0')}:${ev.end.getMinutes().toString().padStart(2,'0')}` : '');
 
@@ -1439,28 +1560,37 @@ const Calendar = (() => {
         const durStr = durMin >= 60
           ? `${Math.floor(durMin / 60)}h${durMin % 60 > 0 ? ` ${durMin % 60}m` : ''}`
           : `${durMin} min`;
-        durationHtml = `<span class="bento-dur-pill">${durStr}</span>`;
+        durationHtml = `<span class="event-duration">${durStr}</span>`;
       }
     }
 
     const { category, icon, color, dimBg } = getEventCategoryAndColor(ev);
-    const colorStrip = `<div class="bento-color-strip" style="background:${color}"></div>`;
-    const catBadge = category ? `<span class="bento-cat-badge">${icon ? icon + ' ' : ''}${category}</span>` : '';
+    const catBadge = category ? `<span class="event-cat-tag bento-cat-clickable" onclick="Calendar.toggleCategoryPicker(event)" title="Kategorie ändern">${icon ? icon + ' ' : ''}${category} ▾</span>` : `<span class="event-cat-tag bento-cat-empty bento-cat-clickable" onclick="Calendar.toggleCategoryPicker(event)" title="Kategorie zuweisen">+ Kategorie ▾</span>`;
 
     const now = new Date();
 
-    // 1. Departure Assistant Bento Tile with Smart Formatting
-    let departureTileHtml = '';
+    // Category Picker Drawer Options
+    const userCategories = HOMEBOARD_CONFIG.calendar?.categories || {};
+    const allCategories = { ...DEFAULT_CATEGORIES, ...userCategories };
+    const currentCatKey = (getEventCategoryAndColor(ev).key || '').toLowerCase();
+    
+    const catChipsHtml = Object.entries(allCategories).map(([k, c]) => {
+      if (c.enabled === false) return '';
+      const isActive = currentCatKey === k.toLowerCase();
+      return `<button class="bento-cat-chip ${isActive ? 'active' : ''}" onclick="Calendar.overrideEventCategory(${actualIdx}, '${k}')">${c.icon || ''} ${c.label || k}</button>`;
+    }).join('') + `<button class="bento-cat-chip bento-cat-chip-reset" onclick="Calendar.overrideEventCategory(${actualIdx}, 'RESET')">🔄 Auto</button>`;
+
+    const catDrawerHtml = `
+      <div class="bento-cat-drawer" id="bento-cat-drawer" style="display: none;">
+        <div class="bento-cat-drawer-title">🏷️ Kategorie wählen</div>
+        <div class="bento-cat-grid">${catChipsHtml}</div>
+      </div>`;
+
+    // 1. Departure Assistant Calculation
+    let departureHtml = '';
     const activeModeMin = commuteData ? commuteData[activeMode]?.min : null;
     const bufferMin = placeConfig?.bufferMinutes !== undefined ? placeConfig.bufferMinutes : ((HOMEBOARD_CONFIG.commute?.bufferMinutes) || 5);
     const modeName = activeMode === 'bike' ? 'Fahrrad' : activeMode === 'walk' ? 'Fußweg' : 'ÖPNV';
-    
-    // Rain warning check
-    let rainStripHtml = '';
-    const rainInfo = window.Rain?.getRainAt && ev.start ? window.Rain.getRainAt(ev.start) : null;
-    if (rainInfo && (rainInfo.probability >= (placeConfig?.rainThreshold || 50) || rainInfo.precipitation >= 0.5)) {
-      rainStripHtml = `<div class="bento-rain-strip"><span>🌧️</span><div><strong>Regenwarnung:</strong> ~${rainInfo.probability}% Regen (${rainInfo.precipitation} mm) zu Beginn. Regenschirm / ÖPNV empfohlen!</div></div>`;
-    }
 
     if (activeModeMin && ev.start && !ev.allDay) {
       const depTime = new Date(ev.start.getTime() - (activeModeMin + bufferMin) * 60000);
@@ -1470,14 +1600,11 @@ const Calendar = (() => {
       const isToday = depTime.toDateString() === now.toDateString();
       const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
       const isTomorrow = depTime.toDateString() === tomorrow.toDateString();
-      const dayNamesShort = Lang.get() === 'de' ? ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'] : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const dayNamesShort = lang === 'de' ? ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'] : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
       
       let clockDisplay = depTimeStr;
-      if (isTomorrow) {
-        clockDisplay = `Morgen, ${depTimeStr}`;
-      } else if (!isToday) {
-        clockDisplay = `${dayNamesShort[depTime.getDay()]}, ${depTimeStr}`;
-      }
+      if (isTomorrow) clockDisplay = `Morgen, ${depTimeStr}`;
+      else if (!isToday) clockDisplay = `${dayNamesShort[depTime.getDay()]}, ${depTimeStr}`;
 
       let pillClass = 'dep-calm';
       let pillText = '';
@@ -1507,35 +1634,26 @@ const Calendar = (() => {
         pillText = `🏁 Läuft`;
       }
 
-      departureTileHtml = `
-        <div class="bento-tile bento-departure">
-          <div class="bento-dep-main">
-            <span class="bento-dep-label">🏃 Empfohlener Aufbruch</span>
-            <span class="bento-dep-clock">${clockDisplay}</span>
-            <span class="bento-dep-sub">${modeName} · ${activeModeMin}m Fahrt + ${bufferMin}m Puffer</span>
+      departureHtml = `
+        <div class="detail-section-box">
+          <div class="detail-section-title">
+            <span>🏃 Aufbruch-Assistent</span>
+            <span class="detail-dep-pill ${pillClass}">${pillText}</span>
           </div>
-          <div class="bento-dep-badge-col">
-            <span class="bento-dep-pill ${pillClass}">${pillText}</span>
+          <div class="detail-dep-row">
+            <div class="detail-dep-clock-box">
+              <span class="detail-dep-time">${clockDisplay}</span>
+              <span class="detail-dep-desc">Von ${originName} · ${modeName} (${activeModeMin}m) + ${bufferMin}m Puffer</span>
+            </div>
           </div>
-        </div>
-        ${rainStripHtml ? `<div class="bento-tile" style="padding: 8px 12px;">${rainStripHtml}</div>` : ''}
-      `;
+        </div>`;
     }
 
-    // 2. Location Chip
-    const locationHtml = ev.location
-      ? `<a href="${gmapsOutboundUrl}" target="_blank" class="bento-location-chip" title="In Google Maps öffnen">
-          <span>📍</span>
-          <span class="bento-loc-text">${ev.location}</span>
-          <span class="bento-loc-arrow">↗</span>
-        </a>`
-      : '';
-
-    // 3. Smart Packing Checklist / Gear Hints Tile
+    // 2. Smart Packing Checklist
     const gearHints = getCategoryGearHints(category, ev.summary, placeConfig);
     const checklistHtml = gearHints && gearHints.length > 0
-      ? `<div class="bento-tile bento-checklist-tile">
-          <div class="bento-tile-header">
+      ? `<div class="detail-section-box bento-checklist-tile">
+          <div class="detail-section-title">
             <span>🎒 Packliste & Vorbereitung</span>
           </div>
           <div class="bento-checklist-grid">
@@ -1549,22 +1667,24 @@ const Calendar = (() => {
         </div>`
       : '';
 
-    const descHtml = ev.description
-      ? `<div class="bento-tile" style="font-size: 0.74rem; color: var(--text-3); line-height: 1.5;">${ev.description.replace(/\n/g, '<br>')}</div>`
-      : '';
-
-    // 4. Mode Switcher & Stepper Bento Tile
-    let routeTileHtml = '';
+    // 3. Commute Route Section (with Origin Switcher if chained)
+    let routeSectionHtml = '';
     const allowWalk = isModeAllowed(placeConfig, 'walk');
     const allowBike = isModeAllowed(placeConfig, 'bike');
     const allowTransit = isModeAllowed(placeConfig, 'transit');
-    
-    if (commuteData && ((allowWalk && commuteData.walk.min) || (allowBike && commuteData.bike.min) || (allowTransit && commuteData.transit.min))) {
-      const modeTabsHtml = `
-        <div class="bento-route-nav">
-          ${allowBike && commuteData.bike.min ? `<button class="bento-mode-tab ${activeMode === 'bike' ? 'active' : ''}" onclick="Calendar.selectModeAndRefreshDetail(${actualIdx}, 'bike')">🚲 ${commuteData.bike.min}m</button>` : ''}
-          ${allowTransit && commuteData.transit.min ? `<button class="bento-mode-tab ${activeMode === 'transit' ? 'active' : ''}" onclick="Calendar.selectModeAndRefreshDetail(${actualIdx}, 'transit')">🚇 ${commuteData.transit.min}m</button>` : ''}
-          ${allowWalk && commuteData.walk.min ? `<button class="bento-mode-tab ${activeMode === 'walk' ? 'active' : ''}" onclick="Calendar.selectModeAndRefreshDetail(${actualIdx}, 'walk')">🚶 ${commuteData.walk.min}m</button>` : ''}
+
+    if (commuteData && ((allowWalk && commuteData.walk?.min) || (allowBike && commuteData.bike?.min) || (allowTransit && commuteData.transit?.min))) {
+      const originSwitcherHtml = hasValidPrev ? `
+        <div class="detail-origin-switcher">
+          <button class="detail-origin-tab ${activeOrigin === 'prev' ? 'active' : ''}" onclick="Calendar.selectOriginAndRefresh(${actualIdx}, 'prev')" title="Route von ${prevEv.summary}">📍 Von ${prevEv.summary ? (prevEv.summary.length > 16 ? prevEv.summary.slice(0, 16) + '…' : prevEv.summary) : 'Vorherigem Termin'}</button>
+          <button class="detail-origin-tab ${activeOrigin === 'home' ? 'active' : ''}" onclick="Calendar.selectOriginAndRefresh(${actualIdx}, 'home')">🏠 Von Zuhause</button>
+        </div>` : '';
+
+      const modeNavHtml = `
+        <div class="detail-mode-nav">
+          ${allowBike && commuteData.bike?.min ? `<button class="detail-mode-btn ${activeMode === 'bike' ? 'active' : ''}" onclick="Calendar.selectModeAndRefreshDetail(${actualIdx}, 'bike')">🚲 ${commuteData.bike.min}m</button>` : ''}
+          ${allowTransit && commuteData.transit?.min ? `<button class="detail-mode-btn ${activeMode === 'transit' ? 'active' : ''}" onclick="Calendar.selectModeAndRefreshDetail(${actualIdx}, 'transit')">🚇 ${commuteData.transit.min}m</button>` : ''}
+          ${allowWalk && commuteData.walk?.min ? `<button class="detail-mode-btn ${activeMode === 'walk' ? 'active' : ''}" onclick="Calendar.selectModeAndRefreshDetail(${actualIdx}, 'walk')">🚶 ${commuteData.walk.min}m</button>` : ''}
         </div>`;
 
       let routeContentHtml = '';
@@ -1572,60 +1692,61 @@ const Calendar = (() => {
         if (commuteData.transit.legs && commuteData.transit.legs.length > 0) {
           const steps = commuteData.transit.legs.map(leg => {
             if (leg.type === 'walk') {
-              return `<div class="bento-step">
-                <span class="bento-step-icon">🚶</span>
-                <div class="bento-step-content">
-                  <span class="bento-step-title">Fußweg</span>
-                  <span class="bento-step-meta">${leg.duration} min</span>
+              return `<div class="detail-step">
+                <span class="detail-step-icon">🚶</span>
+                <div class="detail-step-content">
+                  <span class="detail-step-title">Fußweg</span>
+                  <span class="detail-step-meta">${leg.duration} min</span>
                 </div>
               </div>`;
             }
             const style = window.getTransitLineStyle ? window.getTransitLineStyle(leg.line) : { bg: 'var(--surface-hover)', fg: 'var(--text)' };
-            return `<div class="bento-step">
-              <span class="bento-step-icon"><span class="transit-badge" style="background:${style.bg};color:${style.fg};border-color:${style.bg}">${leg.line}</span></span>
-              <div class="bento-step-content">
-                <span class="bento-step-title">${leg.from || 'Start'} → ${leg.to || 'Ziel'}</span>
-                <span class="bento-step-meta">${leg.duration} min${leg.delay > 0 ? ` <span class="bento-step-delay">+${leg.delay}m</span>` : ''}</span>
+            return `<div class="detail-step">
+              <span class="detail-step-icon"><span class="transit-badge" style="background:${style.bg};color:${style.fg};border-color:${style.bg}">${leg.line}</span></span>
+              <div class="detail-step-content">
+                <span class="detail-step-title">${leg.from || 'Start'} → ${leg.to || 'Ziel'}</span>
+                <span class="detail-step-meta">${leg.duration} min${leg.delay > 0 ? ` <span class="detail-step-delay">+${leg.delay}m</span>` : ''}</span>
               </div>
             </div>`;
           }).join('');
-          routeContentHtml = `<div class="bento-stepper">${steps}</div>`;
+          routeContentHtml = `<div class="detail-stepper">${steps}</div>`;
         } else {
-          routeContentHtml = `<div class="bento-route-summary"><span class="bento-step-icon">🚇</span><div><strong>${commuteData.transit.min} min</strong> ÖPNV-Fahrt</div></div>`;
+          routeContentHtml = `<div class="detail-route-simple"><span class="detail-step-icon">🚇</span><div><strong>${commuteData.transit.min} min</strong> ÖPNV-Fahrt</div></div>`;
         }
       } else if (activeMode === 'bike' && commuteData.bike && commuteData.bike.min) {
         const bikeEta = new Date(now.getTime() + commuteData.bike.min * 60000);
         const bikeEtaStr = `${bikeEta.getHours().toString().padStart(2,'0')}:${bikeEta.getMinutes().toString().padStart(2,'0')}`;
-        routeContentHtml = `<div class="bento-route-summary">
-          <span class="bento-step-icon">🚲</span>
+        routeContentHtml = `<div class="detail-route-simple">
+          <span class="detail-step-icon">🚲</span>
           <div>
             <strong>${commuteData.bike.min} min</strong> Fahrrad (${commuteData.bike.km} km)
-            <div class="bento-submeta">Ankunft ca. ${bikeEtaStr} bei Abfahrt jetzt</div>
+            <div class="detail-route-sub">Ankunft ca. ${bikeEtaStr} bei sofortiger Abfahrt</div>
           </div>
         </div>`;
       } else if (activeMode === 'walk' && commuteData.walk && commuteData.walk.min) {
         const walkEta = new Date(now.getTime() + commuteData.walk.min * 60000);
         const walkEtaStr = `${walkEta.getHours().toString().padStart(2,'0')}:${walkEta.getMinutes().toString().padStart(2,'0')}`;
-        routeContentHtml = `<div class="bento-route-summary">
-          <span class="bento-step-icon">🚶</span>
+        routeContentHtml = `<div class="detail-route-simple">
+          <span class="detail-step-icon">🚶</span>
           <div>
             <strong>${commuteData.walk.min} min</strong> Fußweg (${commuteData.walk.km} km)
-            <div class="bento-submeta">Ankunft ca. ${walkEtaStr} bei Abfahrt jetzt</div>
+            <div class="detail-route-sub">Ankunft ca. ${walkEtaStr} bei sofortiger Abfahrt</div>
           </div>
         </div>`;
       }
 
-      routeTileHtml = `
-        <div class="bento-tile">
-          <div class="bento-tile-header">
+      routeSectionHtml = `
+        <div class="detail-section-box">
+          <div class="detail-section-title">
             <span>🗺️ Hinfahrt Route</span>
           </div>
-          ${modeTabsHtml}
+          ${originSwitcherHtml}
+          ${modeNavHtml}
           ${routeContentHtml}
         </div>`;
     }
 
-    // 5. Return Trip Bento Tile (Styled symmetrically with Hinfahrt)
+    // 4. Return Trip Section
     const eventEnd = ev.end || (ev.start ? new Date(ev.start.getTime() + 60 * 60000) : null);
     const isPastGracePeriod = eventEnd && (now.getTime() - eventEnd.getTime()) > 60 * 60000;
     const isFarFuture = ev.start && (ev.start.getTime() - now.getTime()) > 48 * 3600000;
@@ -1638,21 +1759,21 @@ const Calendar = (() => {
                        !isFarFuture && 
                        !isPastDay;
 
-    const returnTileHtml = showReturn
-      ? `<div class="bento-tile" id="detail-return-tile">
-          <div class="bento-tile-header">
+    const returnSectionHtml = showReturn
+      ? `<div class="detail-section-box" id="detail-return-tile">
+          <div class="detail-section-title">
             <span>🏠 Rückweg nach Hause</span>
           </div>
           <div id="detail-return-content"><span class="detail-loading">Calculating return route...</span></div>
         </div>`
       : '';
 
-    // 6. Phone Handoff QR Drawer with Outbound / Return Toggle
+    // 5. QR Code Phone Handoff Drawer
     const qrOutboundUrl = gmapsOutboundUrl ? `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(gmapsOutboundUrl)}&margin=4` : '';
     const qrReturnUrl = gmapsReturnUrl ? `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(gmapsReturnUrl)}&margin=4` : '';
     
     const qrDrawerHtml = gmapsOutboundUrl
-      ? `<div class="bento-qr-drawer" id="detail-qr-drawer" style="display: none;" data-outbound="${qrOutboundUrl}" data-return="${qrReturnUrl}">
+      ? `<div class="detail-section-box bento-qr-drawer" id="detail-qr-drawer" style="display: none;" data-outbound="${qrOutboundUrl}" data-return="${qrReturnUrl}">
           ${showReturn && gmapsReturnUrl ? `
             <div class="bento-qr-nav">
               <button class="bento-qr-tab active" onclick="Calendar.switchQrTarget('outbound')">🚀 Hinfahrt</button>
@@ -1664,16 +1785,16 @@ const Calendar = (() => {
         </div>`
       : '';
 
-    // 7. Action Buttons Bento Bar
+    // 6. Action Buttons Bar
     const actionsHtml = ev.location
-      ? `<div class="bento-actions">
-          <a href="${gmapsOutboundUrl}" target="_blank" class="bento-btn bento-btn-primary">
+      ? `<div class="detail-actions-bar">
+          <a href="${gmapsOutboundUrl}" target="_blank" class="detail-action-btn detail-action-primary">
             🗺️ Google Maps
           </a>
-          <button class="bento-btn bento-btn-qr" onclick="Calendar.toggleQR()">
+          <button class="detail-action-btn" onclick="Calendar.toggleQR()">
             📱 QR Code
           </button>
-          <button class="bento-btn bento-btn-copy" onclick="Calendar.copyEventDetails(${actualIdx}, this)">
+          <button class="detail-action-btn" onclick="Calendar.copyEventDetails(${actualIdx}, this)">
             📋 Kopieren
           </button>
         </div>`
@@ -1682,53 +1803,50 @@ const Calendar = (() => {
     const overlay = document.createElement('div');
     overlay.id = 'event-detail-overlay';
     overlay.innerHTML = `
-      <div class="bento-modal-card">
-        ${colorStrip}
-        <div class="bento-tile bento-hero">
-          <div class="bento-top-row">
-            <div class="bento-title-box">
-              <h3 class="bento-title">${ev.summary || 'Untitled'}</h3>
-              <span class="bento-cat-badge bento-cat-clickable" onclick="Calendar.toggleCategoryPicker(event)" title="Kategorie ändern">${catBadge ? `${icon ? icon + ' ' : ''}${category} ▾` : '+ Kategorie ▾'}</span>
-            </div>
-            <div class="bento-header-nav">
-              ${totalEvents > 1 ? `
-                <button class="bento-nav-btn" ${!hasPrev ? 'disabled' : ''} onclick="Calendar.navigateEventDetail(-1)" title="Vorheriger Termin (←)">‹</button>
-                <span class="bento-nav-count">${actualIdx + 1}/${totalEvents}</span>
-                <button class="bento-nav-btn" ${!hasNext ? 'disabled' : ''} onclick="Calendar.navigateEventDetail(1)" title="Nächster Termin (→)">›</button>
-              ` : ''}
-              <button class="bento-close" aria-label="Close" onclick="Calendar.closeEventDetail()" title="Schließen (Esc)">✕</button>
-            </div>
+      <div class="event-detail-card">
+        <div class="detail-modal-header">
+          <span class="detail-modal-title">📅 Termindetails</span>
+          <div class="detail-header-nav">
+            ${totalEvents > 1 ? `
+              <button class="detail-nav-btn" ${!hasPrev ? 'disabled' : ''} onclick="Calendar.navigateEventDetail(-1)" title="Vorheriger Termin (←)">‹</button>
+              <span class="detail-nav-count">${actualIdx + 1}/${totalEvents}</span>
+              <button class="detail-nav-btn" ${!hasNext ? 'disabled' : ''} onclick="Calendar.navigateEventDetail(1)" title="Nächster Termin (→)">›</button>
+            ` : ''}
+            <button class="detail-close-btn" aria-label="Close" onclick="Calendar.closeEventDetail()" title="Schließen (Esc)">✕</button>
           </div>
-          <div class="bento-time-row">
-            <span>🕒 ${timeStr}</span>
+        </div>
+
+        <div class="detail-hero-section" style="--event-accent: ${color};">
+          <div class="detail-title-row">
+            <span class="detail-title">${ev.summary || 'Untitled'}</span>
+            ${catBadge}
+          </div>
+          <div class="detail-time-line">
+            <span class="detail-time-text">${timeStr}</span>
             ${durationHtml}
           </div>
-          ${catDrawerHtml}
-          ${locationHtml}
+          ${ev.location ? `<div class="detail-location-line">📍 <a href="${gmapsOutboundUrl}" target="_blank">${ev.location}</a></div>` : ''}
         </div>
-        ${departureTileHtml}
+
+        ${catDrawerHtml}
+        ${departureHtml}
         ${checklistHtml}
-        ${routeTileHtml}
-        ${returnTileHtml}
+        ${routeSectionHtml}
+        ${returnSectionHtml}
         ${qrDrawerHtml}
-        ${descHtml}
         ${actionsHtml}
       </div>`;
 
     overlay.addEventListener('click', (e) => {
-      if (e.target === overlay || e.target.classList.contains('bento-close')) {
+      if (e.target === overlay || e.target.classList.contains('detail-close-btn')) {
         closeEventDetail();
       }
     });
 
     _modalKeyHandler = (e) => {
-      if (e.key === 'Escape') {
-        closeEventDetail();
-      } else if (e.key === 'ArrowLeft') {
-        navigateEventDetail(-1);
-      } else if (e.key === 'ArrowRight') {
-        navigateEventDetail(1);
-      }
+      if (e.key === 'Escape') closeEventDetail();
+      else if (e.key === 'ArrowLeft') navigateEventDetail(-1);
+      else if (e.key === 'ArrowRight') navigateEventDetail(1);
     };
     window.addEventListener('keydown', _modalKeyHandler);
 
@@ -1739,14 +1857,30 @@ const Calendar = (() => {
     }
   }
 
-    function toggleCategoryPicker(e) {
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
+  function closeEventDetail() {
+    const existing = document.getElementById('event-detail-overlay');
+    if (existing) existing.remove();
+    if (_modalKeyHandler) {
+      window.removeEventListener('keydown', _modalKeyHandler);
+      _modalKeyHandler = null;
     }
+  }
+  const closeDetailModal = closeEventDetail;
+
+  function navigateEventDetail(direction) {
+    if (_currentDetailIdx === -1 || !_renderedEvents.length) return;
+    const nextIdx = _currentDetailIdx + direction;
+    if (nextIdx >= 0 && nextIdx < _renderedEvents.length) {
+      showEventDetail(_renderedEvents[nextIdx]);
+    }
+  }
+
+  function toggleCategoryPicker(event) {
+    if (event) event.stopPropagation();
     const drawer = document.getElementById('bento-cat-drawer');
-    if (!drawer) return;
-    drawer.style.display = drawer.style.display === 'none' ? 'block' : 'none';
+    if (drawer) {
+      drawer.style.display = drawer.style.display === 'none' ? 'block' : 'none';
+    }
   }
 
   function overrideEventCategory(idx, catKey) {
@@ -1760,25 +1894,15 @@ const Calendar = (() => {
       else sessionStorage.setItem(`cat_override_${eventKey}`, catKey);
     } catch (e) {}
 
-    // Refresh modal and calendar list view
     render(_renderedEvents);
     showEventDetail(ev);
   }
 
-  function closeEventDetail() {
-    const existing = document.getElementById('event-detail-overlay');
-    if (existing) existing.remove();
-    if (_modalKeyHandler) {
-      window.removeEventListener('keydown', _modalKeyHandler);
-      _modalKeyHandler = null;
-    }
-  }
-
-  function navigateEventDetail(direction) {
-    if (_currentDetailIdx === -1 || !_renderedEvents.length) return;
-    const nextIdx = _currentDetailIdx + direction;
-    if (nextIdx >= 0 && nextIdx < _renderedEvents.length) {
-      showEventDetail(_renderedEvents[nextIdx]);
+  function selectOriginAndRefresh(idx, originType) {
+    _eventOriginOverrides[idx] = originType;
+    renderCommuteForEvent(idx);
+    if (_renderedEvents[idx]) {
+      showEventDetail(_renderedEvents[idx]);
     }
   }
 
@@ -1847,14 +1971,210 @@ const Calendar = (() => {
     }
   }
 
+  async function fetchReturnCommute(ev, eventIdx) {
+    const returnContainer = document.getElementById('detail-return-content');
+    if (!returnContainer || !ev || !ev.location) return;
 
-  async function fetchReturnCommute(ev, actualIdx) {
+    const cacheKey = `return_${ev.location}`;
+    if (_returnCommuteCache[cacheKey]) {
+      renderReturnCommuteContent(ev, eventIdx);
+      return;
+    }
+
+    try {
+      const placeConfig = getPlaceConfig(ev);
+      const destCoords = await resolveEventCoordinates(ev, placeConfig);
+      if (!destCoords) {
+        returnContainer.innerHTML = '<div class="detail-route-simple">Standort-Koordinaten konnten nicht ermittelt werden.</div>';
+        return;
+      }
+
+      const homeLat = HOMEBOARD_CONFIG.location.latitude;
+      const homeLon = HOMEBOARD_CONFIG.location.longitude;
+
+      const returnData = await fetchRouteBetweenPoints(destCoords.lat, destCoords.lon, homeLat, homeLon, placeConfig);
+      _returnCommuteCache[cacheKey] = returnData;
+      renderReturnCommuteContent(ev, eventIdx);
+    } catch (e) {
+      if (returnContainer) {
+        returnContainer.innerHTML = '<div class="detail-route-simple">Rückweg konnte nicht berechnet werden.</div>';
+      }
+    }
+  }
+
+  async function resolveEventCoordinates(ev, placeConfig) {
+    if (placeConfig && (placeConfig.latitude || placeConfig.lat) && (placeConfig.longitude || placeConfig.lon)) {
+      return {
+        lat: parseFloat(placeConfig.latitude || placeConfig.lat),
+        lon: parseFloat(placeConfig.longitude || placeConfig.lon)
+      };
+    }
+
+    const locStr = ev.location;
+    if (!locStr) return null;
+
+    const cacheKey = `geo_${locStr}`;
+    try {
+      const cached = sessionStorage.getItem(cacheKey);
+      if (cached) return JSON.parse(cached);
+    } catch (e) {}
+
+    const queries = [locStr];
+    const parts = locStr.split(',').map(s => s.trim());
+    if (parts.length >= 2) queries.push(parts.slice(1).join(', '));
+    if (parts.length >= 3) queries.push(parts.slice(-2).join(', '));
+
+    for (const q of queries) {
+      try {
+        const geoUrl = `/proxy?url=${encodeURIComponent(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}`)}`;
+        const geoRes = await fetch(geoUrl);
+        if (geoRes.ok) {
+          const geoData = await geoRes.json();
+          if (geoData.length) {
+            const coords = { lat: parseFloat(geoData[0].lat), lon: parseFloat(geoData[0].lon) };
+            try { sessionStorage.setItem(cacheKey, JSON.stringify(coords)); } catch (e) {}
+            return coords;
+          }
+        }
+      } catch (e) {}
+    }
+
+    for (const q of queries) {
+      try {
+        const photonUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=1&lang=de`;
+        const photonRes = await fetch(photonUrl);
+        if (photonRes.ok) {
+          const photonData = await photonRes.json();
+          if (photonData.features && photonData.features.length) {
+            const [lon, lat] = photonData.features[0].geometry.coordinates;
+            const coords = { lat, lon };
+            try { sessionStorage.setItem(cacheKey, JSON.stringify(coords)); } catch (e) {}
+            return coords;
+          }
+        }
+      } catch (e) {}
+    }
+
+    return null;
+  }
+
+  async function fetchRouteBetweenPoints(originLat, originLon, destLat, destLon, placeConfig) {
+    const allowWalk = isModeAllowed(placeConfig, 'walk');
+    const allowBike = isModeAllowed(placeConfig, 'bike');
+    const allowTransit = isModeAllowed(placeConfig, 'transit');
+
+    let bikeMin = null, bikeKm = null;
+    if (allowBike) {
+      try {
+        const bikeUrl = `https://router.project-osrm.org/route/v1/cycling/${originLon},${originLat};${destLon},${destLat}?overview=false`;
+        const res = await fetch(bikeUrl);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.code === 'Ok' && data.routes.length) {
+            const distM = data.routes[0].distance;
+            bikeKm = (distM / 1000).toFixed(1);
+            const speedMpm = ((HOMEBOARD_CONFIG.commute && HOMEBOARD_CONFIG.commute.bikeSpeed) || 13) * 1000 / 60;
+            bikeMin = Math.round(distM / speedMpm);
+          }
+        }
+      } catch (e) {}
+    }
+
+    let walkMin = null, walkKm = null;
+    if (allowWalk) {
+      try {
+        const walkUrl = `https://router.project-osrm.org/route/v1/foot/${originLon},${originLat};${destLon},${destLat}?overview=false`;
+        const res = await fetch(walkUrl);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.code === 'Ok' && data.routes.length) {
+            const distM = data.routes[0].distance;
+            walkKm = (distM / 1000).toFixed(1);
+            const speedMpm = ((HOMEBOARD_CONFIG.commute && HOMEBOARD_CONFIG.commute.walkSpeed) || 5) * 1000 / 60;
+            walkMin = Math.round(distM / speedMpm);
+          }
+        }
+      } catch (e) {}
+    }
+
+    let transitMin = null, transitLegs = [];
+    if (allowTransit) {
+      const hafasKey = HOMEBOARD_CONFIG.departures?.hafasAccessId;
+      if (hafasKey) {
+        try {
+          const hafasUrl = `https://vbb.demo.hafas.cloud/api/fahrinfo/latest/trip?` +
+            `accessId=${hafasKey}` +
+            `&originCoordLat=${originLat}&originCoordLong=${originLon}` +
+            `&destCoordLat=${destLat}&destCoordLong=${destLon}` +
+            `&format=json&numF=4&rtMode=FULL`;
+          const res = await fetch(hafasUrl);
+          if (res.ok) {
+            const hData = await res.json();
+            const trips = hData.Trip || [];
+            if (trips.length > 0) {
+              const trip = selectBestTransitTrip(trips, placeConfig);
+              transitMin = parsePTDuration(trip.duration);
+              let legs = trip.LegList?.Leg || [];
+              if (!Array.isArray(legs)) legs = [legs];
+              transitLegs = legs.map(leg => {
+                const name = (leg.name || '').trim();
+                const dur = parsePTDuration(leg.duration);
+                const from = (leg.Origin?.name || '').replace(' (Berlin)', '').replace(' Bhf', '');
+                const to = (leg.Destination?.name || '').replace(' (Berlin)', '').replace(' Bhf', '');
+                const legDelay = leg.Destination?.rtTime && leg.Destination?.time
+                  ? parseHafasTimeDiff(leg.Destination.date, leg.Destination.time, leg.Destination.rtDate || leg.Destination.date, leg.Destination.rtTime)
+                  : 0;
+                if (!name || name === 'Fußweg' || leg.type === 'WALK') {
+                  return { type: 'walk', duration: dur };
+                }
+                return { type: 'transit', line: name, from, to, duration: dur, delay: legDelay };
+              });
+            }
+          }
+        } catch (e) {}
+      }
+
+      if (!transitMin) {
+        try {
+          const transitUrl = `https://api.transitous.org/api/v1/plan?` +
+            `fromPlace=${originLat},${originLon}` +
+            `&toPlace=${destLat},${destLon}` +
+            `&mode=TRANSIT,WALK&numItineraries=4`;
+          const res = await fetch(transitUrl);
+          if (res.ok) {
+            const tData = await res.json();
+            if (tData.itineraries?.length > 0) {
+              const it = selectBestTransitousItinerary(tData.itineraries, placeConfig);
+              transitMin = Math.round(it.duration / 60);
+              transitLegs = (it.legs || []).map(leg => {
+                const dur = Math.round((leg.duration || 0) / 60);
+                if (leg.mode === 'WALK') return { type: 'walk', duration: dur };
+                const line = leg.route || leg.routeShortName || leg.mode;
+                const from = (leg.from?.name || '').replace(' (Berlin)', '');
+                const to = (leg.to?.name || '').replace(' (Berlin)', '');
+                return { type: 'transit', line, from, to, duration: dur };
+              });
+            }
+          }
+        } catch (e) {}
+      }
+    }
+
+    return {
+      bike: { min: bikeMin, km: bikeKm },
+      walk: { min: walkMin, km: walkKm },
+      transit: { min: transitMin, legs: transitLegs }
+    };
+  }
+
+  function renderReturnCommuteContent(ev, eventIdx) {
     const returnContainer = document.getElementById('detail-return-content');
     if (!returnContainer) return;
 
-    const home = HOMEBOARD_CONFIG.location;
-    if (!home.latitude || !home.longitude) {
-      returnContainer.innerHTML = 'Home coordinates not set';
+    const cacheKey = `return_${ev.location}`;
+    const returnData = _returnCommuteCache[cacheKey];
+    if (!returnData) {
+      returnContainer.innerHTML = '<span class="detail-loading">Calculating return route...</span>';
       return;
     }
 
@@ -1863,214 +2183,67 @@ const Calendar = (() => {
     const allowBike = isModeAllowed(placeConfig, 'bike');
     const allowTransit = isModeAllowed(placeConfig, 'transit');
 
-    try {
-      const coords = await resolveEventCoordinates(ev, placeConfig);
-      if (!coords || !coords.lat || !coords.lon) {
-        returnContainer.innerHTML = 'Could not resolve location coordinates';
-        return;
-      }
-
-      const destLat = coords.lat;
-      const destLon = coords.lon;
-
-      const distFromHome = getDistanceKm(home.latitude, home.longitude, destLat, destLon);
-      if (distFromHome > 60) {
-        const returnBox = document.querySelector('.bento-return');
-        if (returnBox) returnBox.remove();
-        return;
-      }
-
-      const returnTime = ev.end || (ev.start ? new Date(ev.start.getTime() + 60 * 60000) : new Date());
-      const now = new Date();
-      const startTime = returnTime > now ? returnTime : now;
-
-      // Check return cache first
-      const cacheKey = `ret_${actualIdx}_${destLat}_${destLon}`;
-      let returnData = _returnCommuteCache[cacheKey];
-
-      if (!returnData) {
-        returnData = { bike: {}, walk: {}, transit: {} };
-
-        // 1. Bike return
-        if (allowBike) {
-          try {
-            const bikeUrl = `https://router.project-osrm.org/route/v1/cycling/${destLon},${destLat};${home.longitude},${home.latitude}?overview=false`;
-            const res = await fetch(bikeUrl);
-            if (res.ok) {
-              const data = await res.json();
-              if (data.code === 'Ok' && data.routes.length) {
-                const distM = data.routes[0].distance;
-                const speed = ((HOMEBOARD_CONFIG.commute && HOMEBOARD_CONFIG.commute.bikeSpeed) || 13) * 1000 / 60;
-                returnData.bike = {
-                  min: Math.round(distM / speed),
-                  km: (distM / 1000).toFixed(1)
-                };
-              }
-            }
-          } catch (e) {}
-        }
-
-        // 2. Walk return
-        if (allowWalk) {
-          try {
-            const walkUrl = `https://router.project-osrm.org/route/v1/foot/${destLon},${destLat};${home.longitude},${home.latitude}?overview=false`;
-            const res = await fetch(walkUrl);
-            if (res.ok) {
-              const data = await res.json();
-              if (data.code === 'Ok' && data.routes.length) {
-                const distM = data.routes[0].distance;
-                const speed = ((HOMEBOARD_CONFIG.commute && HOMEBOARD_CONFIG.commute.walkSpeed) || 5) * 1000 / 60;
-                returnData.walk = {
-                  min: Math.round(distM / speed),
-                  km: (distM / 1000).toFixed(1)
-                };
-              }
-            }
-          } catch (e) {}
-        }
-
-        // 3. Transit return via HAFAS
-        if (allowTransit) {
-          const hafasKey = HOMEBOARD_CONFIG.departures?.hafasAccessId;
-          if (hafasKey) {
-            try {
-              const hafasUrl = `https://vbb.demo.hafas.cloud/api/fahrinfo/latest/trip?` +
-                `accessId=${hafasKey}` +
-                `&originCoordLat=${destLat}&originCoordLong=${destLon}` +
-                `&destCoordLat=${home.latitude}&destCoordLong=${home.longitude}` +
-                `&format=json&numF=3&rtMode=FULL`;
-              const hRes = await fetch(hafasUrl);
-              if (hRes.ok) {
-                const hData = await hRes.json();
-                const trips = hData.Trip || [];
-                if (trips.length > 0) {
-                  const trip = trips[0];
-                  let legs = trip.LegList?.Leg || [];
-                  if (!Array.isArray(legs)) legs = [legs];
-                  const transitLegs = legs.map(leg => {
-                    const name = (leg.name || '').trim();
-                    const dur = parsePTDuration(leg.duration);
-                    const from = (leg.Origin?.name || '').replace(' (Berlin)', '').replace(' Bhf', '');
-                    const to = (leg.Destination?.name || '').replace(' (Berlin)', '').replace(' Bhf', '');
-                    if (!name || name === 'Fußweg' || leg.type === 'WALK') {
-                      return { type: 'walk', duration: dur };
-                    }
-                    return { type: 'transit', line: name, from, to, duration: dur };
-                  });
-                  returnData.transit = {
-                    min: parsePTDuration(trip.duration),
-                    legs: transitLegs
-                  };
-                }
-              }
-            } catch (e) {}
-          }
-        }
-
-        _returnCommuteCache[cacheKey] = returnData;
-      }
-
-      renderReturnCommuteContent(ev, actualIdx, destLat, destLon);
-    } catch (err) {
-      returnContainer.innerHTML = 'Failed to load return commute';
-    }
-  }
-
-    function renderReturnCommuteContent(ev, actualIdx, destLat, destLon) {
-    const returnContainer = document.getElementById('detail-return-content');
-    if (!returnContainer) return;
-
-    const placeConfig = getPlaceConfig(ev);
-    const allowWalk = isModeAllowed(placeConfig, 'walk');
-    const allowBike = isModeAllowed(placeConfig, 'bike');
-    const allowTransit = isModeAllowed(placeConfig, 'transit');
-
-    if (!destLat || !destLon) {
-      if (placeConfig && (placeConfig.latitude || placeConfig.lat) && (placeConfig.longitude || placeConfig.lon)) {
-        destLat = parseFloat(placeConfig.latitude || placeConfig.lat);
-        destLon = parseFloat(placeConfig.longitude || placeConfig.lon);
-      } else {
-        const cached = sessionStorage.getItem(`geo_${ev.location}`);
-        if (cached) {
-          const coords = JSON.parse(cached);
-          destLat = coords.lat;
-          destLon = coords.lon;
-        }
-      }
-    }
-
-    const cacheKey = `ret_${actualIdx}_${destLat}_${destLon}`;
-    const returnData = _returnCommuteCache[cacheKey];
-    if (!returnData) return;
-
-    const returnTime = ev.end || (ev.start ? new Date(ev.start.getTime() + 60 * 60000) : new Date());
-    const now = new Date();
-    const startTime = returnTime > now ? returnTime : now;
-
-    // Determine chosen return mode
-    let selectedMode = _returnModeOverrides[actualIdx];
-    if (!selectedMode) {
-      if (allowBike && returnData.bike.min) selectedMode = 'bike';
-      else if (allowTransit && returnData.transit.min) selectedMode = 'transit';
-      else if (allowWalk && returnData.walk.min) selectedMode = 'walk';
-      else selectedMode = 'bike';
-    }
+    const defaultReturnMode = (returnData.bike?.min && allowBike) ? 'bike' : (returnData.transit?.min && allowTransit) ? 'transit' : (returnData.walk?.min && allowWalk) ? 'walk' : 'bike';
+    const selectedMode = _returnModeOverrides[eventIdx] || defaultReturnMode;
 
     const returnNavHtml = `
-      <div class="bento-route-nav">
-        ${allowBike && returnData.bike.min ? `<button class="bento-mode-tab ${selectedMode === 'bike' ? 'active' : ''}" onclick="Calendar.selectReturnMode(${actualIdx}, 'bike')">🚲 ${returnData.bike.min}m</button>` : ''}
-        ${allowTransit && returnData.transit.min ? `<button class="bento-mode-tab ${selectedMode === 'transit' ? 'active' : ''}" onclick="Calendar.selectReturnMode(${actualIdx}, 'transit')">🚇 ${returnData.transit.min}m</button>` : ''}
-        ${allowWalk && returnData.walk.min ? `<button class="bento-mode-tab ${selectedMode === 'walk' ? 'active' : ''}" onclick="Calendar.selectReturnMode(${actualIdx}, 'walk')">🚶 ${returnData.walk.min}m</button>` : ''}
+      <div class="detail-mode-nav">
+        ${allowBike && returnData.bike?.min ? `<button class="detail-mode-btn ${selectedMode === 'bike' ? 'active' : ''}" onclick="Calendar.selectReturnMode(${eventIdx}, 'bike')">🚲 ${returnData.bike.min}m</button>` : ''}
+        ${allowTransit && returnData.transit?.min ? `<button class="detail-mode-btn ${selectedMode === 'transit' ? 'active' : ''}" onclick="Calendar.selectReturnMode(${eventIdx}, 'transit')">🚇 ${returnData.transit.min}m</button>` : ''}
+        ${allowWalk && returnData.walk?.min ? `<button class="detail-mode-btn ${selectedMode === 'walk' ? 'active' : ''}" onclick="Calendar.selectReturnMode(${eventIdx}, 'walk')">🚶 ${returnData.walk.min}m</button>` : ''}
       </div>`;
 
     let returnBodyHtml = '';
+    const now = new Date();
+    const startTime = (ev.end && ev.end > now) ? ev.end : now;
+
     if (selectedMode === 'transit' && returnData.transit && returnData.transit.min) {
       if (returnData.transit.legs && returnData.transit.legs.length > 0) {
         const steps = returnData.transit.legs.map(leg => {
           if (leg.type === 'walk') {
-            return `<div class="bento-step">
-              <span class="bento-step-icon">🚶</span>
-              <div class="bento-step-content">
-                <span class="bento-step-title">Fußweg</span>
-                <span class="bento-step-meta">${leg.duration} min</span>
+            return `<div class="detail-step">
+              <span class="detail-step-icon">🚶</span>
+              <div class="detail-step-content">
+                <span class="detail-step-title">Fußweg nach Hause</span>
+                <span class="detail-step-meta">${leg.duration} min</span>
               </div>
             </div>`;
           }
           const style = window.getTransitLineStyle ? window.getTransitLineStyle(leg.line) : { bg: 'var(--surface-hover)', fg: 'var(--text)' };
-          return `<div class="bento-step">
-            <span class="bento-step-icon"><span class="transit-badge" style="background:${style.bg};color:${style.fg};border-color:${style.bg}">${leg.line}</span></span>
-            <div class="bento-step-content">
-              <span class="bento-step-title">${leg.from || 'Start'} → ${leg.to || 'Ziel'}</span>
-              <span class="bento-step-meta">${leg.duration} min${leg.delay > 0 ? ` <span class="bento-step-delay">+${leg.delay}m</span>` : ''}</span>
+          return `<div class="detail-step">
+            <span class="detail-step-icon"><span class="transit-badge" style="background:${style.bg};color:${style.fg};border-color:${style.bg}">${leg.line}</span></span>
+            <div class="detail-step-content">
+              <span class="detail-step-title">${leg.from || 'Start'} → ${leg.to || 'Zuhause'}</span>
+              <span class="detail-step-meta">${leg.duration} min${leg.delay > 0 ? ` <span class="detail-step-delay">+${leg.delay}m</span>` : ''}</span>
             </div>
           </div>`;
         }).join('');
-        returnBodyHtml = `<div class="bento-stepper">${steps}</div>`;
+        returnBodyHtml = `<div class="detail-stepper">${steps}</div>`;
       } else {
-        returnBodyHtml = `<div class="bento-route-summary"><span class="bento-step-icon">🚇</span><div><strong>${returnData.transit.min} min</strong> ÖPNV-Fahrt nach Hause</div></div>`;
+        returnBodyHtml = `<div class="detail-route-simple"><span class="detail-step-icon">🚇</span><div><strong>${returnData.transit.min} min</strong> ÖPNV-Fahrt nach Hause</div></div>`;
       }
-    } else if (selectedMode === 'bike' && returnData.bike.min) {
+    } else if (selectedMode === 'bike' && returnData.bike && returnData.bike.min) {
       const eta = new Date(startTime.getTime() + returnData.bike.min * 60000);
       const etaStr = `${eta.getHours().toString().padStart(2,'0')}:${eta.getMinutes().toString().padStart(2,'0')}`;
-      returnBodyHtml = `<div class="bento-route-summary">
-        <span class="bento-step-icon">🚲</span>
+      returnBodyHtml = `<div class="detail-route-simple">
+        <span class="detail-step-icon">🚲</span>
         <div>
           <strong>${returnData.bike.min} min</strong> Fahrrad (${returnData.bike.km} km)
-          <div class="bento-submeta">Rückkehr ca. ${etaStr}</div>
+          <div class="detail-route-sub">Rückkehr ca. ${etaStr}</div>
         </div>
       </div>`;
-    } else if (selectedMode === 'walk' && returnData.walk.min) {
+    } else if (selectedMode === 'walk' && returnData.walk && returnData.walk.min) {
       const eta = new Date(startTime.getTime() + returnData.walk.min * 60000);
       const etaStr = `${eta.getHours().toString().padStart(2,'0')}:${eta.getMinutes().toString().padStart(2,'0')}`;
-      returnBodyHtml = `<div class="bento-route-summary">
-        <span class="bento-step-icon">🚶</span>
+      returnBodyHtml = `<div class="detail-route-simple">
+        <span class="detail-step-icon">🚶</span>
         <div>
           <strong>${returnData.walk.min} min</strong> Fußweg (${returnData.walk.km} km)
-          <div class="bento-submeta">Rückkehr ca. ${etaStr}</div>
+          <div class="detail-route-sub">Rückkehr ca. ${etaStr}</div>
         </div>
       </div>`;
     } else {
-      returnBodyHtml = `<div class="detail-return-line">Keine Route für diesen Modus verfügbar.</div>`;
+      returnBodyHtml = `<div class="detail-route-simple">Keine Route für diesen Modus verfügbar.</div>`;
     }
 
     returnContainer.innerHTML = returnNavHtml + returnBodyHtml;
@@ -2097,5 +2270,5 @@ const Calendar = (() => {
     return Math.round((dt2 - dt1) / 60000);
   }
 
-  return { init, switchDay, selectMode, selectModeAndRefreshDetail, showEventDetail, closeEventDetail, navigateEventDetail, selectReturnMode, toggleQR, switchQrTarget, copyEventDetails, toggleCategoryPicker, overrideEventCategory };
+  return { init, switchDay, selectMode, selectModeAndRefreshDetail, showEventDetail, showEventDetailByIdx, closeEventDetail, closeDetailModal, navigateEventDetail, selectOriginAndRefresh, selectReturnMode, toggleQR, switchQrTarget, copyEventDetails, toggleCategoryPicker, overrideEventCategory };
 })();
