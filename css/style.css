@@ -1536,7 +1536,37 @@ body {
   min-width: 90px;
   text-align: center;
   justify-content: center;
+  align-items: center;
+  display: inline-flex;
   font-size: 0.75rem;
+}
+.bday-action-btn svg {
+  width: 15px;
+  height: 15px;
+  display: inline-block;
+  vertical-align: -2px;
+  margin-right: 5px;
+  flex-shrink: 0;
+}
+.bday-action-btn-wa {
+  background: rgba(37, 211, 102, 0.12) !important;
+  color: #25D366 !important;
+  border-color: rgba(37, 211, 102, 0.3) !important;
+}
+.bday-action-btn-wa:hover {
+  background: rgba(37, 211, 102, 0.22) !important;
+  border-color: rgba(37, 211, 102, 0.5) !important;
+  transform: translateY(-1px);
+}
+.bday-action-btn-ig {
+  background: rgba(228, 64, 95, 0.12) !important;
+  color: #E4405F !important;
+  border-color: rgba(228, 64, 95, 0.3) !important;
+}
+.bday-action-btn-ig:hover {
+  background: rgba(228, 64, 95, 0.22) !important;
+  border-color: rgba(228, 64, 95, 0.5) !important;
+  transform: translateY(-1px);
 }
 .bday-contact-grid {
   display: grid;
