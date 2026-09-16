@@ -3,12 +3,15 @@
  * - Morning Schedule Aware:
  *   - Current day before 09:30 AM (or targetArrivalToday): shows route arriving <= 09:30 AM
  *   - After 09:30 AM or on weekends: shows next workday (tomorrow or Monday) departing >= 06:00 AM (or targetDepartureNextDay)
+ * - Interactive Mode Toggle (Bike vs Transit, with click-to-select like Calendar card)
  * - Transit: VBB HAFAS API (primary) or Transitous (fallback)
  * - Bike: OSRM speed-based route calculation with schedule times
  */
 const Commute = (() => {
   let refreshInterval;
   let cachedResults = [];
+  let _destModeOverrides = {};
+  let _lastSchedule = null;
 
   function init() {
     const config = HOMEBOARD_CONFIG.commute;
@@ -78,6 +81,15 @@ const Commute = (() => {
     };
   }
 
+  function selectMode(destIdx, mode, evt) {
+    if (evt) {
+      evt.preventDefault();
+      evt.stopPropagation();
+    }
+    _destModeOverrides[destIdx] = mode;
+    render(_lastSchedule);
+  }
+
   async function fetchAll() {
     const config = HOMEBOARD_CONFIG.commute;
     if (!config || !config.destinations) return;
@@ -87,6 +99,7 @@ const Commute = (() => {
       : HOMEBOARD_CONFIG.location;
 
     const schedule = getTargetSchedule(config);
+    _lastSchedule = schedule;
 
     cachedResults = await Promise.all(
       config.destinations.map(dest => fetchRoute(origin, dest, schedule))
@@ -252,16 +265,27 @@ const Commute = (() => {
       headerLabel.textContent = (window.i18n && typeof window.i18n === 'function') ? window.i18n('commute') : 'Arbeitsweg';
     }
 
-    const sched = schedule || getTargetSchedule(HOMEBOARD_CONFIG.commute || {});
+    const sched = schedule || _lastSchedule || getTargetSchedule(HOMEBOARD_CONFIG.commute || {});
     let html = '';
 
-    for (const r of cachedResults) {
-      const labelLower = r.label.toLowerCase();
-      const isDigitalCampus = labelLower.includes('digitalcampus');
-      const isEuref = labelLower.includes('euref');
+    cachedResults.forEach((r, idx) => {
+      const hasTransit = !!(r.transit && r.transit > 0);
+      const hasBike = !!(r.bike && r.bike > 0);
+
+      // Default preferred mode: bike if available, else transit
+      const userPref = _destModeOverrides[idx];
+      const selectedMode = userPref || (hasBike ? 'bike' : 'transit');
+
+      // Mode toggle pills in header if both are available
+      const modeNavHtml = (hasBike && hasTransit) ? `
+        <div class="commute-mode-nav">
+          <button class="commute-mode-btn ${selectedMode === 'bike' ? 'active' : ''}" onclick="Commute.selectMode(${idx}, 'bike', event)" title="Fahrrad-Route bevorzugen">🚲</button>
+          <button class="commute-mode-btn ${selectedMode === 'transit' ? 'active' : ''}" onclick="Commute.selectMode(${idx}, 'transit', event)" title="ÖPNV-Route bevorzugen">🚇</button>
+        </div>
+      ` : '';
 
       let transitHtml = '';
-      if (!isEuref && r.transit) {
+      if (hasTransit) {
         let legsHtml = '';
         if (r.transitLegs && r.transitLegs.length > 0) {
           const parts = r.transitLegs.map(leg => {
@@ -273,15 +297,17 @@ const Commute = (() => {
           });
           legsHtml = ` · ${parts.join('<span class="commute-leg-sep">·</span>')}`;
         }
-        transitHtml = `<div class="commute-route-line">
+        const isPref = selectedMode === 'transit';
+        transitHtml = `<div class="commute-route-line ${isPref ? 'commute-route-preferred' : ''}" onclick="Commute.selectMode(${idx}, 'transit', event)">
           <span class="commute-route-left">🚋 <strong>${r.transit} min</strong>${legsHtml}</span>
           <span class="commute-route-right">${r.transitDep ? `Abf ${r.transitDep}` : ''}${r.transitArr ? ` · Ank ${r.transitArr}` : ''}</span>
         </div>`;
       }
 
       let bikeHtml = '';
-      if (!isDigitalCampus && r.bike) {
-        bikeHtml = `<div class="commute-route-line">
+      if (hasBike) {
+        const isPref = selectedMode === 'bike';
+        bikeHtml = `<div class="commute-route-line ${isPref ? 'commute-route-preferred' : ''}" onclick="Commute.selectMode(${idx}, 'bike', event)">
           <span class="commute-route-left">🚲 <strong>${r.bike} min</strong> · ${r.bikeKm || '--'} km</span>
           <span class="commute-route-right">${r.bikeDep ? `Abf ${r.bikeDep}` : ''}${r.bikeArr ? ` · Ank ${r.bikeArr}` : ''}</span>
         </div>`;
@@ -289,16 +315,19 @@ const Commute = (() => {
 
       html += `<div class="commute-dest">
         <div class="commute-header-row">
-          <span class="commute-dest-title">${r.label}</span>
+          <div class="commute-header-left">
+            <span class="commute-dest-title">${r.label}</span>
+            ${modeNavHtml}
+          </div>
           <span class="commute-schedule-badge">${sched.badgeText}</span>
         </div>
         ${transitHtml}
         ${bikeHtml}
       </div>`;
-    }
+    });
 
     container.innerHTML = html;
   }
 
-  return { init };
+  return { init, selectMode };
 })();
