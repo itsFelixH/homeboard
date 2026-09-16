@@ -91,6 +91,7 @@ const Calendar = (() => {
       const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const icsText = await res.text();
+      window._calendarCache = icsText;
       renderMultiDay(icsText);
     } catch (err) {
       console.error('Calendar fetch failed:', err);
