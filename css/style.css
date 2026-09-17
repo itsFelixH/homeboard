@@ -477,38 +477,38 @@ body {
 #event-detail-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.68);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 99999;
   padding: 1rem;
-  animation: modalFadeIn 0.18s ease-out;
+  animation: modalFadeIn 0.15s ease-out;
 }
 
 @keyframes modalFadeIn {
-  from { opacity: 0; transform: scale(0.97); }
+  from { opacity: 0; transform: scale(0.98); }
   to { opacity: 1; transform: scale(1); }
 }
 
 .event-detail-card {
   position: relative;
-  background: var(--card-bg, #1e293b);
-  border: 1px solid var(--border);
+  background: var(--surface, #18181b);
+  border: 1px solid var(--border, #27272a);
   border-radius: var(--radius, 14px);
   padding: 1.2rem 1.4rem;
-  max-width: 420px;
+  max-width: 440px;
   width: 100%;
-  color: var(--text-1, #f1f5f9);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 25px rgba(0, 0, 0, 0.2);
+  color: var(--text, #fafafa);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
   max-height: 88vh;
   overflow-y: auto;
   scrollbar-width: thin;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
 
 /* Modal Card Header */
@@ -520,15 +520,20 @@ body {
   padding-bottom: 8px;
   margin-bottom: 2px;
 }
-.detail-modal-title {
+.detail-header-left {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 0.82rem;
+  gap: 8px;
+}
+.detail-modal-icon {
+  font-size: 1.05rem;
+  line-height: 1;
+}
+.detail-modal-title {
+  font-size: 0.92rem;
   font-weight: 600;
-  color: var(--text-2);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  color: var(--text);
+  letter-spacing: 0.02em;
 }
 .detail-header-nav {
   display: flex;
@@ -552,9 +557,9 @@ body {
   user-select: none;
 }
 .detail-nav-btn:hover:not(:disabled) {
-  color: var(--text-1);
-  background: var(--accent-dim);
-  border-color: var(--accent);
+  color: var(--text);
+  background: var(--border);
+  border-color: var(--text-3);
 }
 .detail-nav-btn:disabled {
   opacity: 0.3;
@@ -583,18 +588,17 @@ body {
   margin-left: 2px;
 }
 .detail-close-btn:hover {
-  color: var(--text-1);
-  background: var(--accent-dim);
-  border-color: var(--accent);
-  transform: rotate(90deg);
+  color: var(--text);
+  background: var(--border);
+  border-color: var(--text-3);
 }
 
-/* Event Hero Section (Styled like an elevated event-item) */
+/* Event Hero Section */
 .detail-hero-section {
-  padding: 8px 12px;
-  border-left: 3.5px solid var(--event-accent, var(--accent));
+  padding: 10px 12px;
+  border-left: 3px solid var(--border);
   border-radius: 0 8px 8px 0;
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0.03) 0%, transparent 100%);
+  background: var(--surface-hover);
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -607,8 +611,8 @@ body {
 }
 .detail-title {
   font-size: 1.05rem;
-  font-weight: 700;
-  color: var(--text-1);
+  font-weight: 600;
+  color: var(--text);
   line-height: 1.3;
 }
 .detail-time-line {
@@ -619,7 +623,7 @@ body {
   color: var(--text-2);
 }
 .detail-time-text {
-  color: var(--accent);
+  color: var(--text);
   font-weight: 600;
 }
 .detail-location-line {
@@ -636,20 +640,20 @@ body {
   font-weight: 500;
 }
 .detail-location-line a:hover {
-  color: var(--accent);
+  color: var(--text);
   text-decoration: underline;
 }
 
 /* Section Box matching Card Design */
 .detail-section-box {
-  background: var(--surface-hover, rgba(255, 255, 255, 0.03));
+  background: var(--surface-hover);
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 10px 12px;
 }
 .detail-section-title {
-  font-size: 0.68rem;
-  font-weight: 700;
+  font-size: 0.72rem;
+  font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--text-3);
@@ -667,11 +671,11 @@ body {
 }
 .detail-origin-tab {
   flex: 1;
-  padding: 4px 8px;
+  padding: 5px 8px;
   border-radius: 6px;
   font-size: 0.7rem;
   font-weight: 600;
-  background: var(--card-bg);
+  background: var(--surface);
   border: 1px solid var(--border);
   color: var(--text-3);
   cursor: pointer;
@@ -682,12 +686,12 @@ body {
   text-overflow: ellipsis;
 }
 .detail-origin-tab:hover {
-  color: var(--text-1);
+  color: var(--text);
 }
 .detail-origin-tab.active {
-  background: var(--accent-dim);
-  color: var(--accent);
-  border-color: var(--accent);
+  background: var(--surface-hover);
+  color: var(--text);
+  border-color: var(--border);
 }
 
 /* Mode Switcher Nav */
@@ -702,7 +706,7 @@ body {
   border-radius: 6px;
   font-size: 0.72rem;
   font-weight: 600;
-  background: var(--card-bg);
+  background: var(--surface);
   border: 1px solid var(--border);
   color: var(--text-3);
   cursor: pointer;
@@ -710,12 +714,12 @@ body {
   text-align: center;
 }
 .detail-mode-btn:hover {
-  color: var(--text-1);
+  color: var(--text);
 }
 .detail-mode-btn.active {
-  background: var(--accent-dim);
-  color: var(--accent);
-  border-color: var(--accent);
+  background: var(--surface-hover);
+  color: var(--text);
+  border-color: var(--border);
 }
 
 /* Stepper & Route Info */
@@ -746,7 +750,7 @@ body {
   gap: 6px;
 }
 .detail-step-title {
-  color: var(--text-1);
+  color: var(--text);
   font-weight: 500;
 }
 .detail-step-meta {
@@ -759,7 +763,7 @@ body {
 }
 .detail-route-simple {
   font-size: 0.76rem;
-  color: var(--text-1);
+  color: var(--text);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -784,7 +788,7 @@ body {
 .detail-dep-time {
   font-size: 1.3rem;
   font-weight: 700;
-  color: var(--text-1);
+  color: var(--text);
   font-variant-numeric: tabular-nums;
   line-height: 1.1;
 }
@@ -814,22 +818,21 @@ body {
   transition: all 0.12s ease;
   cursor: pointer;
   border: 1px solid var(--border);
-  background: var(--surface-hover);
-  color: var(--text-1);
+  background: var(--surface);
+  color: var(--text);
   white-space: nowrap;
 }
 .detail-action-btn:hover {
-  background: var(--border);
-  transform: translateY(-1px);
+  background: var(--surface-hover);
+  border-color: var(--border);
 }
 .detail-action-primary {
-  background: var(--accent);
-  color: var(--bg, #0f172a);
-  border-color: var(--accent);
+  background: var(--surface-hover);
+  color: var(--text);
+  border-color: var(--border);
 }
 .detail-action-primary:hover {
-  filter: brightness(1.1);
-  background: var(--accent);
+  background: var(--border);
 }
 .detail-action-btn.copied {
   background: rgba(34, 197, 94, 0.2) !important;
