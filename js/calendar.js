@@ -92,6 +92,9 @@ const Calendar = (() => {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const icsText = await res.text();
       window._calendarCache = icsText;
+      if (window.Holiday?.refresh) {
+        try { window.Holiday.refresh(icsText); } catch (e) {}
+      }
       renderMultiDay(icsText);
     } catch (err) {
       console.error('Calendar fetch failed:', err);
@@ -1951,17 +1954,21 @@ const Calendar = (() => {
     }
 
     const textToCopy = lines.join('\n');
-    navigator.clipboard.writeText(textToCopy).then(() => {
-      if (btn) {
-        const origText = btn.innerHTML;
-        btn.innerHTML = '✓ Kopiert!';
-        btn.classList.add('copied');
-        setTimeout(() => {
-          btn.innerHTML = origText;
-          btn.classList.remove('copied');
-        }, 1800);
-      }
-    }).catch(() => {});
+    if (window.copyToClipboard) {
+      window.copyToClipboard(textToCopy, btn, '✓ Kopiert!');
+    } else if (navigator.clipboard) {
+      navigator.clipboard.writeText(textToCopy).then(() => {
+        if (btn) {
+          const origText = btn.innerHTML;
+          btn.innerHTML = '✓ Kopiert!';
+          btn.classList.add('copied');
+          setTimeout(() => {
+            btn.innerHTML = origText;
+            btn.classList.remove('copied');
+          }, 1800);
+        }
+      }).catch(() => {});
+    }
   }
 
   function selectReturnMode(idx, mode) {
