@@ -69,24 +69,12 @@ const Holiday = (() => {
     try {
       let icsText = window._calendarCache;
       if (!icsText && icsUrl) {
-        const url = /proxy?url=;
+        const url = `/proxy?url=${encodeURIComponent(icsUrl)}`;
         const res = await fetch(url);
-        if (!res.ok) throw new Error(HTTP );
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         icsText = await res.text();
         window._calendarCache = icsText;
       }
-      const vacations = findNextVacations(icsText);
-
-      if (vacations.length > 0) {
-        renderAll(vacations);
-      } else {
-        showFallback();
-      }
-    } catch (err) {
-      console.error('Countdown calendar fetch failed:', err);
-      showFallback();
-    }
-  }
       const vacations = findNextVacations(icsText);
 
       if (vacations.length > 0) {
