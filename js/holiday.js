@@ -25,7 +25,20 @@ const Holiday = (() => {
   }
 
   async function getCustomNames() {
-    return (await State.get(STATE_KEY)) || {};
+    try {
+      if (window.State?.get) {
+        const stateRes = await Promise.race([
+          State.get(STATE_KEY),
+          new Promise(res => setTimeout(() => res(null), 300))
+        ]);
+        if (stateRes) return stateRes;
+      }
+    } catch (e) {}
+    try {
+      return JSON.parse(localStorage.getItem(STATE_KEY) || '{}');
+    } catch (e) {
+      return {};
+    }
   }
 
   async function saveCustomName(dateKey, name) {
@@ -307,18 +320,32 @@ const Holiday = (() => {
 
     if (!listContainer) return;
 
+    if (items.length === 0) {
+      listContainer.innerHTML = '<div class="vac-pack-empty">Keine Gegenstände. Füge neue hinzu oder setze die Standardliste zurück.</div>';
+      return;
+    }
+
     listContainer.innerHTML = items.map((item, i) => {
       const isChecked = !!checkedMap[item];
+      const safeItem = item.replace(/'/g, "\\'");
       return `
-        <div class="vac-pack-item-row ${isChecked ? 'checked' : ''}">
-          <label class="bento-check-item">
-            <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="Holiday.togglePackItem('${dateKey}', '${item.replace(/'/g, "\\'")}', this.checked)">
-            <span>${item}</span>
+        <div class="vac-pack-row ${isChecked ? 'checked' : ''}">
+          <label class="vac-pack-label">
+            <input type="checkbox" class="vac-pack-checkbox" ${isChecked ? 'checked' : ''} onchange="Holiday.togglePackItem('${dateKey}', '${safeItem}', this.checked)">
+            <span class="vac-pack-text">${item}</span>
           </label>
           <button class="vac-pack-del-btn" onclick="Holiday.deletePackItem('${dateKey}', ${i})" title="Löschen">✕</button>
         </div>
       `;
     }).join('');
+  }
+
+  function resetPackingList(dateKey) {
+    try {
+      localStorage.removeItem(`vac_pack_items_${dateKey}`);
+      localStorage.removeItem(`vac_pack_checked_${dateKey}`);
+    } catch (e) {}
+    renderPackingList(dateKey);
   }
 
   function togglePackItem(dateKey, itemText, checked) {
@@ -799,13 +826,29 @@ const Holiday = (() => {
     }
   }
 
+  function refresh(icsText) {
+    if (icsText) {
+      window._calendarCache = icsText;
+      const vacations = findNextVacations(icsText);
+      if (vacations.length > 0) {
+        renderAll(vacations);
+      } else {
+        showFallback();
+      }
+    } else {
+      fetchAndFind();
+    }
+  }
+
   return {
     init,
+    refresh,
     showVacationDetail,
     triggerEdit,
     togglePackItem,
     addCustomPackItem,
     deletePackItem,
+    resetPackingList,
     promptDocLink,
     savePlanningDocUrl,
     copyVacationDetails,
