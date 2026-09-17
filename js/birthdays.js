@@ -114,11 +114,13 @@ const Birthdays = (() => {
   }
 
   function extractBirthYear(b) {
+    // Only extract birth year if explicitly present in summary or description (e.g. "Max (1990)" or "Geburtsjahr: 1990")
+    // Never guess from DTSTART since Google Calendar annual recurrence sets DTSTART to event creation date
     const raw = `${b.summary || ''} ${b.description || ''}`;
     const m = raw.match(/(?:\(|\b)(19[2-9][0-9]|20[0-2][0-9])(?:\)|\b)/);
-    if (m) return parseInt(m[1]);
-    if (b.start && b.start.getFullYear() >= 1920 && b.start.getFullYear() <= new Date().getFullYear()) {
-      return b.start.getFullYear();
+    if (m) {
+      const yr = parseInt(m[1]);
+      if (yr >= 1920 && yr <= new Date().getFullYear()) return yr;
     }
     return null;
   }
@@ -192,22 +194,17 @@ const Birthdays = (() => {
   function extractContactLabels(b) {
     const labels = new Set();
     if (b.categories) {
-      b.categories.split(',').forEach(c => labels.add(c.trim()));
+      b.categories.split(/[,;]/).map(c => c.trim()).filter(Boolean).forEach(c => labels.add(c));
     }
-    const raw = `${b.description || ''} ${b.summary || ''}`.toLowerCase();
-    if (/familie|family|mama|papa|eltern|bruder|schwester|oma|opa|tante|onkel/i.test(raw)) labels.add('👨‍👩‍👧 Familie');
-    if (/freund|friend|kumpel|bestie/i.test(raw)) labels.add('🍻 Freund');
-    if (/arbeit|work|kollege|colleague|job|db systel/i.test(raw)) labels.add('💼 Arbeit');
-    if (/tanzen|dance|swing|salsa|tango/i.test(raw)) labels.add('💃 Tanzgruppe');
-    if (/sport|gym|fitness|training|cycling/i.test(raw)) labels.add('🏋️ Sport');
-
+    if (b.description) {
+      const match = b.description.match(/(?:labels|tags|kategorien|gruppen|categories):\s*([^\r\n]+)/i);
+      if (match) {
+        match[1].split(/[,;]/).map(c => c.trim()).filter(Boolean).forEach(c => labels.add(c));
+      }
+    }
     const nameKey = cleanPersonName(b.summary);
-    const cfgLabels = HOMEBOARD_CONFIG.birthdays?.labels?.[nameKey] || [];
+    const cfgLabels = HOMEBOARD_CONFIG.birthdays?.labels?.[nameKey] || HOMEBOARD_CONFIG.cards?.birthdays?.labels?.[nameKey] || [];
     cfgLabels.forEach(l => labels.add(l));
-    try {
-      const custom = JSON.parse(localStorage.getItem(`bday_labels_${nameKey}`) || '[]');
-      custom.forEach(l => labels.add(l));
-    } catch (e) {}
 
     return Array.from(labels);
   }
