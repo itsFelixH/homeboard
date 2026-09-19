@@ -264,11 +264,23 @@ const Holiday = (() => {
     '🏖️ Strandtuch & Kulturbeutel'
   ];
 
-  function getPackingItems(dateKey) {
+  function getPackingItems(dateKey, destinationOrSummary = '') {
     try {
       const saved = localStorage.getItem(`vac_pack_items_${dateKey}`);
       if (saved) return JSON.parse(saved);
     } catch (e) {}
+
+    // Check customChecklistTemplates matching destination / trip summary keywords
+    const templates = HOMEBOARD_CONFIG.countdown?.customChecklistTemplates || {};
+    const text = `${destinationOrSummary || ''} ${dateKey}`.toLowerCase();
+    for (const [category, items] of Object.entries(templates)) {
+      if (Array.isArray(items) && items.length > 0) {
+        if (text.includes(category.toLowerCase())) {
+          return [...items];
+        }
+      }
+    }
+
     return [...(HOMEBOARD_CONFIG.countdown?.defaultPackingList || DEFAULT_PACKING_ITEMS)];
   }
 
@@ -293,7 +305,7 @@ const Holiday = (() => {
   }
 
   function renderPackingList(dateKey) {
-    const items = getPackingItems(dateKey);
+    const items = getPackingItems(dateKey, destHint);
     const checkedMap = getPackedChecked(dateKey);
     const total = items.length;
     const packedCount = items.filter(it => checkedMap[it]).length;
@@ -347,7 +359,7 @@ const Holiday = (() => {
     const input = document.getElementById('vac-new-pack-item');
     if (!input || !input.value.trim()) return;
     const text = input.value.trim();
-    const items = getPackingItems(dateKey);
+    const items = getPackingItems(dateKey, destHint);
     items.push(text);
     savePackingItems(dateKey, items);
     input.value = '';
@@ -355,7 +367,7 @@ const Holiday = (() => {
   }
 
   function deletePackItem(dateKey, index) {
-    const items = getPackingItems(dateKey);
+    const items = getPackingItems(dateKey, destHint);
     const removed = items.splice(index, 1)[0];
     savePackingItems(dateKey, items);
     if (removed) {
@@ -550,7 +562,7 @@ const Holiday = (() => {
         ` : ''}
 
         <!-- Interactive Packing Checklist Section -->
-        ${showPackingList ? renderPackingListSection(dateKey) : ''}
+        ${showPackingList ? renderPackingListSection(dateKey, destLocation || label) : ''}
 
         <!-- Currency Converter Section -->
         ${showCurrency ? `
