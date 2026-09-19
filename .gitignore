@@ -20,8 +20,15 @@ Thumbs.db
 # Kiro
 .kiro/
 
-# Node (if you add tooling later)
+# Node
 node_modules/
+coverage/
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
 
 # Agent skills
 .github/skills/
+.agents/

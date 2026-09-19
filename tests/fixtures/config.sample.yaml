@@ -1,0 +1,65 @@
+location:
+  latitude: 52.52
+  longitude: 13.405
+  address: 'Alexanderplatz, 10178 Berlin'
+
+greeting:
+  name: 'Felix'
+
+cards:
+  weather:
+    enabled: true
+    units: celsius
+    refreshMinutes: 15
+    showClothing: true
+    showForecast: true
+    forecastDays: 4
+
+  rain:
+    enabled: true
+    refreshMinutes: 15
+
+  departures:
+    enabled: true
+    stationId: '900000024101'
+    maxDepartures: 8
+    showDelays: true
+    platformDisplay: true
+
+  calendar:
+    enabled: true
+    icsUrl: 'https://example.com/calendar.ics'
+    maxEvents: 5
+    showTomorrow: true
+    showCommute: true
+    showNavigation: true
+
+  birthdays:
+    enabled: true
+    icsUrl: 'https://example.com/birthdays.ics'
+    maxEntries: 5
+    lookaheadDays: 14
+    showZodiac: true
+    hideAge: false
+    actions: ['whatsapp', 'instagram', 'contacts', 'call']
+
+  countdown:
+    enabled: true
+    icsUrl: 'https://example.com/holidays.ics'
+    showPackingList: true
+    showWeather: true
+    showCurrency: true
+
+  news:
+    enabled: true
+    maxItems: 5
+
+  trash:
+    enabled: true
+    icsUrl: 'https://example.com/trash.ics'
+
+  packages:
+    enabled: true
+
+  plants:
+    enabled: true

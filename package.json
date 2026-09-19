@@ -1,0 +1,17 @@
+{
+  "name": "homeboard",
+  "version": "1.0.0",
+  "description": "Lightweight smart dashboard for wall-mounted displays and always-on tablets",
+  "main": "js/app.js",
+  "scripts": {
+    "test": "jest",
+    "test:backend": "python tests/server_test.py",
+    "test:all": "jest && python tests/server_test.py",
+    "test:coverage": "jest --coverage"
+  },
+  "devDependencies": {
+    "jest": "^30.4.2",
+    "jest-environment-jsdom": "^30.4.2",
+    "js-yaml": "^4.1.0"
+  }
+}

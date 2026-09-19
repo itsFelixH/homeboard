@@ -1,0 +1,67 @@
+{
+  "departures": [
+    {
+      "tripId": "1|12345|0|86|19092026",
+      "stop": {
+        "id": "900000024101",
+        "name": "S Savignyplatz (Berlin)"
+      },
+      "when": "2026-09-19T10:30:00+02:00",
+      "plannedWhen": "2026-09-19T10:28:00+02:00",
+      "delay": 120,
+      "platform": "2",
+      "plannedPlatform": "2",
+      "line": {
+        "type": "line",
+        "id": "s-bahn-s7",
+        "name": "S7",
+        "mode": "train",
+        "product": "suburban"
+      },
+      "direction": "Ahrensfelde",
+      "provenance": "Potsdam Hbf"
+    },
+    {
+      "tripId": "1|12346|0|86|19092026",
+      "stop": {
+        "id": "900000024101",
+        "name": "S Savignyplatz (Berlin)"
+      },
+      "when": "2026-09-19T10:33:00+02:00",
+      "plannedWhen": "2026-09-19T10:33:00+02:00",
+      "delay": 0,
+      "platform": "1",
+      "plannedPlatform": "1",
+      "line": {
+        "type": "line",
+        "id": "s-bahn-s3",
+        "name": "S3",
+        "mode": "train",
+        "product": "suburban"
+      },
+      "direction": "Spandau",
+      "provenance": "Erkner"
+    },
+    {
+      "tripId": "1|12347|0|86|19092026",
+      "stop": {
+        "id": "900000024101",
+        "name": "S Savignyplatz (Berlin)"
+      },
+      "when": "2026-09-19T10:38:00+02:00",
+      "plannedWhen": "2026-09-19T10:35:00+02:00",
+      "delay": 180,
+      "platform": "2",
+      "plannedPlatform": "2",
+      "line": {
+        "type": "line",
+        "id": "s-bahn-s9",
+        "name": "S9",
+        "mode": "train",
+        "product": "suburban"
+      },
+      "direction": "Flughafen BER",
+      "provenance": "Spandau"
+    }
+  ]
+}
