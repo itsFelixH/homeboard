@@ -1042,15 +1042,7 @@ body {
 .plants-water-btn-main { background: var(--accent-dim); border: 1px solid var(--border); border-radius: var(--radius, 10px); font-size: 1.3rem; padding: 8px 14px; cursor: pointer; transition: background 0.2s, border-color 0.2s; }
 .plants-water-btn-main:hover { background: var(--accent); border-color: var(--accent); }
 
-/* === EMAIL === */
-.email-content { display: flex; align-items: center; }
-.email-link { display: flex; align-items: center; gap: 12px; text-decoration: none; color: var(--text); padding: 8px; border-radius: var(--radius, 8px); transition: background 0.2s; width: 100%; }
-.email-link:hover { background: var(--accent-dim); }
-.email-count { font-size: 1.8rem; font-weight: 300; min-width: 40px; }
-.email-count-active { color: var(--accent); }
-.email-count-zero { color: var(--text-3); }
-.email-icon { font-size: 1.5rem; }
-.email-label { font-size: 0.78rem; color: var(--text-2); }
+
 
 /* === GITHUB === */
 .github-list { display: flex; flex-direction: column; gap: 2px; }
