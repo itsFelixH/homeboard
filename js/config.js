@@ -121,7 +121,7 @@ const ConfigLoader = (() => {
     const KNOWN_CARDS = new Set([
       'weather', 'rain', 'departures', 'commute', 'aqi', 'uv', 'pollen',
       'plants', 'calendar', 'birthdays', 'countdown', 'news', 'word',
-      'spell', 'history', 'trash', 'github', 'xkcd', 'packages', 'email', 'slideshow'
+      'spell', 'history', 'trash', 'github', 'xkcd', 'packages', 'slideshow'
     ]);
     Object.keys(cards).forEach(id => {
       if (!KNOWN_CARDS.has(id)) {
@@ -271,14 +271,6 @@ const ConfigLoader = (() => {
       username: ghCard.username || '',
       refreshMinutes: ghCard.refreshMinutes || 30,
       maxEvents: ghCard.maxEvents || 4
-    };
-
-    // --- Email ---
-    const emailCard = cards.email || {};
-    config.email = {
-      clientId: emailCard.clientId || '',
-      clientSecret: emailCard.clientSecret || '',
-      refreshMinutes: emailCard.refreshMinutes || 5
     };
 
     // --- AQI ---
