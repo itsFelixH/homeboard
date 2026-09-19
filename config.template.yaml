@@ -42,6 +42,8 @@ cards:
     # refreshSeconds: 30
     # durationMinutes: 30
     # maxResults: 5
+    # showDelays: true        # show real-time delay badges (+3 min) (default: true)
+    # platformDisplay: false  # show track/platform numbers (e.g. Gl. 3) (default: false)
     #
     # stops:
     #   - id: '900024203'
@@ -99,6 +101,7 @@ cards:
     #
     # Modal Options (Event Detail Popup)
     # showNavigation: true   # show Google Maps & transit navigation buttons
+    # defaultNavigationMode: transit # default Google Maps travel mode ('transit', 'bicycling', 'walking', 'driving')
     # showDescription: true  # show event description notes and links
     # showCategoryTag: true  # show category pill badge in modal
     # chainedRouteGapMinutes: 210 # max gap in minutes to route from previous event instead of home (default: 210 = 3.5h)
@@ -147,6 +150,7 @@ cards:
     #
     # Modal Options (Birthday Detail Popup)
     # showZodiac: true       # show Western Zodiac sign (e.g. ♎ Waage)
+    # hideAge: false          # hide age and milestone birthday badges in popup (default: false)
     # actions: ['whatsapp', 'instagram', 'contacts', 'call'] # quick action buttons to display
     # labels:               # Category badges per contact name
     #   'Max Mustermann': ['👨‍👩‍👧 Familie', '📍 Berlin']
@@ -172,6 +176,23 @@ cards:
     #
     # docs:                 # Google Docs / Sheets / Notion planning links per trip
     #   '2026-09-17': 'https://docs.google.com/document/d/your-trip-notes'
+    # customChecklistTemplates: # Category-specific packing lists (matched to trip keywords)
+    #   beach:
+    #     - 'Badehose / Bikini'
+    #     - 'Strandtuch'
+    #     - 'Sonnencreme & Sonnenbrille'
+    #     - 'Schnorchel & Taucherbrille'
+    #   hiking:
+    #     - 'Wanderschuhe'
+    #     - 'Regenjacke & Funktionskleidung'
+    #     - 'Trinkflasche'
+    #     - 'Erste-Hilfe-Set & Blasenpflaster'
+    #   city:
+    #     - 'Bequeme Sneaker'
+    #     - 'Powerbank'
+    #     - 'Regenschirm'
+    #     - 'City Pass / Tickets'
+    #
     # defaultPackingList:   # custom default checklist items template
     #   - 'Reisepass / Personalausweis'
     #   - 'Krankenversicherungskarte'
