@@ -1,9 +1,10 @@
 /**
- * Commute module - shows transit + bike time to multiple work locations
+ * Commute module - shows bike + transit time to multiple work locations
  * - Morning Schedule Aware:
  *   - Current day before 09:30 AM (or targetArrivalToday): shows route arriving <= 09:30 AM
- *   - After 09:30 AM or on weekends: shows next workday (tomorrow or Monday) departing >= 06:00 AM (or targetDepartureNextDay)
+ *   - After 09:30 AM or on weekends: shows next workday (tomorrow or Monday) arriving <= 08:30 AM (or targetArrivalNextDay)
  * - Interactive Mode Toggle (Bike vs Transit, with click-to-select like Calendar card)
+ * - Visuals aligned with Calendar transit routes (Bike first, pill badges, 'los um' departure times)
  * - Transit: VBB HAFAS API (primary) or Transitous (fallback)
  * - Bike: OSRM speed-based route calculation with schedule times
  */
@@ -27,7 +28,9 @@ const Commute = (() => {
   function getTargetSchedule(config) {
     const now = new Date();
     const targetArrivalToday = config.targetArrivalToday || '09:30';
-    const targetDepartureNextDay = config.targetDepartureNextDay || '06:00';
+    // Default next day arrival time is 08:30 (or targetArrivalNextDay from config)
+    const targetArrivalNextDay = config.targetArrivalNextDay || '08:30';
+    const targetDepartureNextDay = config.targetDepartureNextDay || null;
     const skipWeekends = config.skipWeekends !== false;
 
     const [arrH, arrM] = targetArrivalToday.split(':').map(Number);
@@ -44,9 +47,9 @@ const Commute = (() => {
         targetDate: now,
         targetTime: targetArrivalToday,
         isArrival: true,
-        dayLabel: lang === 'de' ? 'Heute' : 'Today',
-        scheduleLabel: lang === 'de' ? `Ankunft ≤ ${targetArrivalToday}` : `Arrive ≤ ${targetArrivalToday}`,
-        badgeText: lang === 'de' ? `Heute · Ankunft ≤ ${targetArrivalToday}` : `Today · Arrive ≤ ${targetArrivalToday}`
+        dayLabel: lang === 'de' ? 'Heute' : lang === 'es' ? 'Hoy' : 'Today',
+        scheduleLabel: lang === 'de' ? `Ankunft ≤ ${targetArrivalToday}` : lang === 'es' ? `Llegada ≤ ${targetArrivalToday}` : `Arrive ≤ ${targetArrivalToday}`,
+        badgeText: lang === 'de' ? `Heute · Ankunft ≤ ${targetArrivalToday}` : lang === 'es' ? `Hoy · Llegada ≤ ${targetArrivalToday}` : `Today · Arrive ≤ ${targetArrivalToday}`
       };
     }
 
@@ -58,27 +61,43 @@ const Commute = (() => {
       else if (dow === 0) daysToAdd = 1; // Sun -> Mon
     }
 
-    const nextDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysToAdd, 6, 0, 0, 0);
-    const nextDow = nextDate.getDay();
-    const dayNamesShort = lang === 'de'
-      ? ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa']
-      : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const nextDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysToAdd, 8, 30, 0, 0);
 
-    let dayLabel;
-    if (daysToAdd === 1 && (dow >= 1 && dow <= 4)) {
-      dayLabel = lang === 'de' ? 'Morgen' : 'Tomorrow';
-    } else {
-      dayLabel = dayNamesShort[nextDow];
-    }
+    // Format full weekday name with date (e.g. 'Montag, 22. Sep.')
+    const weekdayFull = nextDate.toLocaleDateString(lang === 'de' ? 'de-DE' : lang === 'es' ? 'es-ES' : 'en-US', { weekday: 'long' });
+    const dayMonth = nextDate.toLocaleDateString(lang === 'de' ? 'de-DE' : lang === 'es' ? 'es-ES' : 'en-US', { day: 'numeric', month: 'short' });
+    const fullDateLabel = `${weekdayFull}, ${dayMonth}`;
+
+    const isArrival = !targetDepartureNextDay;
+    const targetTime = isArrival ? targetArrivalNextDay : targetDepartureNextDay;
+
+    const actionText = isArrival
+      ? (lang === 'de' ? `Ankunft ≤ ${targetTime}` : lang === 'es' ? `Llegada ≤ ${targetTime}` : `Arrive ≤ ${targetTime}`)
+      : (lang === 'de' ? `Abfahrt ab ${targetTime}` : lang === 'es' ? `Salida desde ${targetTime}` : `Depart ≥ ${targetTime}`);
 
     return {
       targetDate: nextDate,
-      targetTime: targetDepartureNextDay,
-      isArrival: false,
-      dayLabel,
-      scheduleLabel: lang === 'de' ? `Abfahrt ab ${targetDepartureNextDay}` : `Depart from ${targetDepartureNextDay}`,
-      badgeText: `${dayLabel} · ${lang === 'de' ? `Abfahrt ab ${targetDepartureNextDay}` : `Depart from ${targetDepartureNextDay}`}`
+      targetTime: targetTime,
+      isArrival: isArrival,
+      dayLabel: fullDateLabel,
+      scheduleLabel: actionText,
+      badgeText: `${fullDateLabel} · ${actionText}`
     };
+  }
+
+  function formatLeaveHint(depStr, targetDate, lang) {
+    if (!depStr) return '';
+    const now = new Date();
+    const isToday = targetDate && targetDate.toDateString() === now.toDateString();
+    if (isToday) {
+      const [dh, dm] = depStr.split(':').map(Number);
+      const depTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), dh, dm, 0, 0);
+      const diffMin = Math.round((depTime - now) / 60000);
+      if (diffMin > 0 && diffMin <= 30) {
+        return lang === 'de' ? `in ${diffMin} min` : lang === 'es' ? `en ${diffMin} min` : `in ${diffMin} min`;
+      }
+    }
+    return lang === 'de' ? `los um ${depStr}` : lang === 'es' ? `salir a las ${depStr}` : `leave at ${depStr}`;
   }
 
   function selectMode(destIdx, mode, evt) {
@@ -266,6 +285,7 @@ const Commute = (() => {
     }
 
     const sched = schedule || _lastSchedule || getTargetSchedule(HOMEBOARD_CONFIG.commute || {});
+    const lang = (window.Lang && typeof window.Lang.get === 'function') ? window.Lang.get() : 'de';
     let html = '';
 
     cachedResults.forEach((r, idx) => {
@@ -276,7 +296,7 @@ const Commute = (() => {
       const userPref = _destModeOverrides[idx];
       const selectedMode = userPref || (hasBike ? 'bike' : 'transit');
 
-      // Mode toggle pills in header if both are available
+      // Mode toggle pills in header if both are available (Bike first, Transit second)
       const modeNavHtml = (hasBike && hasTransit) ? `
         <div class="commute-mode-nav">
           <button class="commute-mode-btn ${selectedMode === 'bike' ? 'active' : ''}" onclick="Commute.selectMode(${idx}, 'bike', event)" title="Fahrrad-Route bevorzugen">🚲</button>
@@ -284,6 +304,19 @@ const Commute = (() => {
         </div>
       ` : '';
 
+      // 1. Bike Route (Displayed First)
+      let bikeHtml = '';
+      if (hasBike) {
+        const isPref = selectedMode === 'bike';
+        const leaveHint = formatLeaveHint(r.bikeDep, sched.targetDate, lang);
+        const leaveBadge = leaveHint ? `<span class="commute-route-right">${leaveHint}</span>` : '';
+        bikeHtml = `<div class="commute-route-line ${isPref ? 'commute-route-preferred' : ''}" onclick="Commute.selectMode(${idx}, 'bike', event)">
+          <span class="commute-route-left">🚲 <strong>${r.bike} min</strong> · ${r.bikeKm || '--'} km</span>
+          ${leaveBadge}
+        </div>`;
+      }
+
+      // 2. Transit Route (Displayed Second)
       let transitHtml = '';
       if (hasTransit) {
         let legsHtml = '';
@@ -298,18 +331,11 @@ const Commute = (() => {
           legsHtml = ` · ${parts.join('<span class="commute-leg-sep">·</span>')}`;
         }
         const isPref = selectedMode === 'transit';
+        const leaveHint = formatLeaveHint(r.transitDep, sched.targetDate, lang);
+        const leaveBadge = leaveHint ? `<span class="commute-route-right">${leaveHint}</span>` : '';
         transitHtml = `<div class="commute-route-line ${isPref ? 'commute-route-preferred' : ''}" onclick="Commute.selectMode(${idx}, 'transit', event)">
-          <span class="commute-route-left">🚋 <strong>${r.transit} min</strong>${legsHtml}</span>
-          <span class="commute-route-right">${r.transitDep ? `Abf ${r.transitDep}` : ''}${r.transitArr ? ` · Ank ${r.transitArr}` : ''}</span>
-        </div>`;
-      }
-
-      let bikeHtml = '';
-      if (hasBike) {
-        const isPref = selectedMode === 'bike';
-        bikeHtml = `<div class="commute-route-line ${isPref ? 'commute-route-preferred' : ''}" onclick="Commute.selectMode(${idx}, 'bike', event)">
-          <span class="commute-route-left">🚲 <strong>${r.bike} min</strong> · ${r.bikeKm || '--'} km</span>
-          <span class="commute-route-right">${r.bikeDep ? `Abf ${r.bikeDep}` : ''}${r.bikeArr ? ` · Ank ${r.bikeArr}` : ''}</span>
+          <span class="commute-route-left">🚇 <strong>${r.transit} min</strong>${legsHtml}</span>
+          ${leaveBadge}
         </div>`;
       }
 
@@ -321,8 +347,8 @@ const Commute = (() => {
           </div>
           <span class="commute-schedule-badge">${sched.badgeText}</span>
         </div>
-        ${transitHtml}
         ${bikeHtml}
+        ${transitHtml}
       </div>`;
     });
 
