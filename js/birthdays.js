@@ -11,6 +11,7 @@ const Birthdays = (() => {
   let _birthdaysList = [];
   let _currentModalIdx = -1;
   let _modalKeyHandler = null;
+  let _autoCloseTimer = null;
 
   function init() {
     const config = HOMEBOARD_CONFIG.birthdays;
@@ -351,10 +352,15 @@ const Birthdays = (() => {
 
     
 
+    const animClass = `modal-anim-${modalCfg.animation || 'scale'}`;
+    const noBlurClass = modalCfg.backdropBlur === false ? 'modal-no-blur' : '';
+
     const overlay = document.createElement('div');
     overlay.id = 'birthday-detail-overlay';
+    if (noBlurClass) overlay.className = noBlurClass;
+
     overlay.innerHTML = `
-      <div class="event-detail-card birthday-detail-card">
+      <div class="event-detail-card birthday-detail-card ${animClass}">
         <div class="detail-modal-header">
           <span class="detail-modal-title">🎉 Geburtstag</span>
           <div class="detail-header-nav">
@@ -462,6 +468,19 @@ const Birthdays = (() => {
       window.addEventListener('keydown', _modalKeyHandler);
     }
 
+    // Auto-close on inactivity
+    const autoCloseSec = modalCfg.autoCloseSeconds || 0;
+    if (autoCloseSec > 0) {
+      function resetTimer() {
+        if (_autoCloseTimer) clearTimeout(_autoCloseTimer);
+        _autoCloseTimer = setTimeout(closeModal, autoCloseSec * 1000);
+      }
+      resetTimer();
+      overlay.addEventListener('pointerdown', resetTimer);
+      overlay.addEventListener('touchstart', resetTimer);
+      overlay.addEventListener('keydown', resetTimer);
+    }
+
     document.body.appendChild(overlay);
 
 
@@ -494,6 +513,10 @@ const Birthdays = (() => {
   function closeModal() {
     const existing = document.getElementById('birthday-detail-overlay');
     if (existing) existing.remove();
+    if (_autoCloseTimer) {
+      clearTimeout(_autoCloseTimer);
+      _autoCloseTimer = null;
+    }
     if (_modalKeyHandler) {
       window.removeEventListener('keydown', _modalKeyHandler);
       _modalKeyHandler = null;
