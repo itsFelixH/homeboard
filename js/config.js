@@ -111,6 +111,9 @@ const ConfigLoader = (() => {
     config.modals = {
       closeOnBackdrop: rawModals.closeOnBackdrop !== false,
       keyboardNav: rawModals.keyboardNav !== false,
+      autoCloseSeconds: typeof rawModals.autoCloseSeconds === 'number' ? rawModals.autoCloseSeconds : (rawModals.autoCloseSeconds ? parseInt(rawModals.autoCloseSeconds) : 0),
+      animation: rawModals.animation || 'scale',
+      backdropBlur: rawModals.backdropBlur !== false,
       ...rawModals
     };
 
