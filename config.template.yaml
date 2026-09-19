@@ -251,16 +251,6 @@ cards:
     enabled: true
     # dhlApiKey: ''         # optional: DHL API key for live status
     # refreshMinutes: 30
-
-  email:
-    enabled: true
-    clientId: ''            # Google Cloud OAuth2 Client ID
-    clientSecret: ''        # Google Cloud OAuth2 Client Secret
-    # refreshMinutes: 5
-    # Setup: Google Cloud Console > APIs > Gmail API > Credentials > OAuth2 Client
-    # Set redirect URI to: http://localhost:7070/auth/gmail/callback
-    # Then click "Connect Gmail" on the dashboard to authorize
-
   slideshow:
     enabled: true
     # images: []            # empty = random placeholders
