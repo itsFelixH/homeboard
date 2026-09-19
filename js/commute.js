@@ -3,7 +3,7 @@
  * - Morning Schedule Aware:
  *   - Current day before 09:30 AM (or targetArrivalToday): shows route arriving <= 09:30 AM
  *   - After 09:30 AM or on weekends: shows next workday (tomorrow or Monday) arriving <= 08:30 AM (or targetArrivalNextDay)
- * - Interactive Mode Toggle (Bike vs Transit, with click-to-select like Calendar card)
+ * - Interactive Mode Toggle (Bike vs Transit, click-to-select with dynamic reordering)
  * - Visuals aligned with Calendar transit routes (Bike first, pill badges, 'los um' departure times)
  * - Transit: VBB HAFAS API (primary) or Transitous (fallback)
  * - Bike: OSRM speed-based route calculation with schedule times
@@ -28,7 +28,6 @@ const Commute = (() => {
   function getTargetSchedule(config) {
     const now = new Date();
     const targetArrivalToday = config.targetArrivalToday || '09:30';
-    // Default next day arrival time is 08:30 (or targetArrivalNextDay from config)
     const targetArrivalNextDay = config.targetArrivalNextDay || '08:30';
     const targetDepartureNextDay = config.targetDepartureNextDay || null;
     const skipWeekends = config.skipWeekends !== false;
@@ -106,6 +105,9 @@ const Commute = (() => {
       evt.stopPropagation();
     }
     _destModeOverrides[destIdx] = mode;
+    try {
+      sessionStorage.setItem(`homeboard_commute_mode_${destIdx}`, mode);
+    } catch (e) {}
     render(_lastSchedule);
   }
 
@@ -292,8 +294,10 @@ const Commute = (() => {
       const hasTransit = !!(r.transit && r.transit > 0);
       const hasBike = !!(r.bike && r.bike > 0);
 
-      // Default preferred mode: bike if available, else transit
-      const userPref = _destModeOverrides[idx];
+      // Default preferred mode: saved session override, or memory override, or default to bike (if available) else transit
+      let savedMode = null;
+      try { savedMode = sessionStorage.getItem(`homeboard_commute_mode_${idx}`); } catch (e) {}
+      const userPref = _destModeOverrides[idx] || savedMode;
       const selectedMode = userPref || (hasBike ? 'bike' : 'transit');
 
       // Mode toggle pills in header if both are available (Bike first, Transit second)
@@ -304,19 +308,19 @@ const Commute = (() => {
         </div>
       ` : '';
 
-      // 1. Bike Route (Displayed First)
+      // 1. Bike Route Line
       let bikeHtml = '';
       if (hasBike) {
         const isPref = selectedMode === 'bike';
         const leaveHint = formatLeaveHint(r.bikeDep, sched.targetDate, lang);
         const leaveBadge = leaveHint ? `<span class="commute-route-right">${leaveHint}</span>` : '';
-        bikeHtml = `<div class="commute-route-line ${isPref ? 'commute-route-preferred' : ''}" onclick="Commute.selectMode(${idx}, 'bike', event)">
+        bikeHtml = `<div class="commute-route-line ${isPref ? 'commute-route-preferred' : ''}" onclick="Commute.selectMode(${idx}, 'bike', event)" title="Fahrrad-Route auswählen">
           <span class="commute-route-left">🚲 <strong>${r.bike} min</strong> · ${r.bikeKm || '--'} km</span>
           ${leaveBadge}
         </div>`;
       }
 
-      // 2. Transit Route (Displayed Second)
+      // 2. Transit Route Line
       let transitHtml = '';
       if (hasTransit) {
         let legsHtml = '';
@@ -333,11 +337,16 @@ const Commute = (() => {
         const isPref = selectedMode === 'transit';
         const leaveHint = formatLeaveHint(r.transitDep, sched.targetDate, lang);
         const leaveBadge = leaveHint ? `<span class="commute-route-right">${leaveHint}</span>` : '';
-        transitHtml = `<div class="commute-route-line ${isPref ? 'commute-route-preferred' : ''}" onclick="Commute.selectMode(${idx}, 'transit', event)">
+        transitHtml = `<div class="commute-route-line ${isPref ? 'commute-route-preferred' : ''}" onclick="Commute.selectMode(${idx}, 'transit', event)" title="ÖPNV-Route auswählen">
           <span class="commute-route-left">🚇 <strong>${r.transit} min</strong>${legsHtml}</span>
           ${leaveBadge}
         </div>`;
       }
+
+      // Dynamic Reordering: The selected/preferred mode is rendered on top!
+      const routesHtml = (selectedMode === 'transit')
+        ? `${transitHtml}${bikeHtml}`
+        : `${bikeHtml}${transitHtml}`;
 
       html += `<div class="commute-dest">
         <div class="commute-header-row">
@@ -347,8 +356,7 @@ const Commute = (() => {
           </div>
           <span class="commute-schedule-badge">${sched.badgeText}</span>
         </div>
-        ${bikeHtml}
-        ${transitHtml}
+        ${routesHtml}
       </div>`;
     });
 
