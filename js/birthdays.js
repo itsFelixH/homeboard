@@ -274,10 +274,11 @@ const Birthdays = (() => {
     // Age calculation & milestone
     const now = new Date();
     const birthYear = extractBirthYear(b);
+    const hideAge = bdayCfg.hideAge === true;
     let ageStr = '';
     let isMilestone = false;
 
-    if (birthYear) {
+    if (birthYear && !hideAge) {
       const currentYear = now.getFullYear();
       const turningAge = currentYear - birthYear;
       if (turningAge > 0 && turningAge < 120) {
