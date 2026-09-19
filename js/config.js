@@ -169,6 +169,7 @@ const ConfigLoader = (() => {
     // --- Calendar ---
     const calCard = cards.calendar || {};
     config.calendar = {
+      defaultNavigationMode: calCard.defaultNavigationMode || 'transit',
       showNavigation: calCard.showNavigation !== false,
       showDescription: calCard.showDescription !== false,
       showCategoryTag: calCard.showCategoryTag !== false,
@@ -188,6 +189,7 @@ const ConfigLoader = (() => {
     // --- Birthdays ---
     const bdayCard = cards.birthdays || {};
     config.birthdays = {
+      hideAge: bdayCard.hideAge === true,
       showZodiac: bdayCard.showZodiac !== false,
       actions: bdayCard.actions || ['whatsapp', 'instagram', 'contacts', 'call'],
       enabled: bdayCard.enabled !== false,
@@ -210,6 +212,8 @@ const ConfigLoader = (() => {
     // --- Departures ---
     const depCard = cards.departures || {};
     config.departures = {
+      showDelays: depCard.showDelays !== false,
+      platformDisplay: depCard.platformDisplay === true,
       stopId: depCard.stopId || '',
       stops: depCard.stops || [],
       durationMinutes: depCard.durationMinutes || 30,
@@ -221,6 +225,7 @@ const ConfigLoader = (() => {
     // --- Countdown ---
     const countCard = cards.countdown || {};
     config.countdown = {
+      customChecklistTemplates: countCard.customChecklistTemplates || {},
       showPackingList: countCard.showPackingList !== false,
       showWeather: countCard.showWeather !== false,
       showCurrency: countCard.showCurrency !== false,
