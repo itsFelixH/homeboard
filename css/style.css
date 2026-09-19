@@ -1395,6 +1395,41 @@ body {
 }
 
 /* Birthday Action Buttons */
+
+  /* Birthday Action Buttons - Compact Icon Only */
+  .bday-actions-icon-only {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .bday-icon-btn {
+    flex: 0 0 auto !important;
+    min-width: 38px !important;
+    width: 38px !important;
+    height: 38px !important;
+    padding: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: var(--radius, 8px) !important;
+    background: var(--surface-hover) !important;
+    border: 1px solid var(--border) !important;
+    color: var(--text-2) !important;
+    transition: all 0.15s ease !important;
+  }
+  .bday-icon-btn:hover {
+    background: var(--surface) !important;
+    color: var(--accent) !important;
+    border-color: var(--accent) !important;
+    transform: var(--hover-transform, translateY(-1px));
+  }
+  .bday-icon-btn svg {
+    width: 17px !important;
+    height: 17px !important;
+    margin: 0 !important;
+    vertical-align: middle !important;
+  }
+
 .bday-quick-actions-bar {
   display: flex;
   gap: 6px;
