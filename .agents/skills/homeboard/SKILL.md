@@ -54,7 +54,6 @@ Homeboard is a lightweight, zero-framework single-page dashboard designed for wa
 | `github.js` | Recent public commit and PR activity feed | GitHub REST API |
 | `xkcd.js` | Latest XKCD webcomic with interactive navigation | XKCD API via Python proxy |
 | `packages.js` | Package tracking with local persistence | DHL, Hermes, DPD APIs + `localStorage` |
-| `email.js` | Unread email badge count | Gmail IMAP / API |
 | `plants.js` | Plant watering tracker with reminders | Local state storage |
 | `slideshow.js` | Rotating photo display gallery | Local images / Media folder |
 | `themes.js` | Dynamic theme switcher and CSS variable injector | `themes/*.yaml` |
