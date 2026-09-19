@@ -69,7 +69,8 @@ cards:
     # showBike: true
     # showTransit: true
     # targetArrivalToday: '09:30'       # latest morning arrival time for current day (before 09:30)
-    # targetDepartureNextDay: '06:00'   # earliest morning departure time for next day (after 09:30)
+    # targetArrivalNextDay: '08:30'     # morning arrival time for next workday (after 09:30 or weekends)
+    # targetDepartureNextDay: null      # optional override for departure time instead of arrival
     # skipWeekends: true                # target Monday morning when viewing on Fri afternoon or weekends
     # bikeSpeedFactor: 1.5  # multiply OSRM time (1.0=fast, 1.5=realistic)
     # origin:               # defaults to location above if not set
