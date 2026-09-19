@@ -72,7 +72,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     github:     { className: 'card-github',     init: () => GitHub.init() },
     xkcd:       { className: 'card-xkcd',       init: () => XKCD.init() },
     packages:   { className: 'card-packages',   init: () => Packages.init() },
-    email:      { className: 'card-email',      init: () => Email.init() },
     slideshow:  { className: 'card-slideshow',  init: () => Slideshow.init() }
   };
 
