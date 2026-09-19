@@ -153,6 +153,7 @@ cards:
     enabled: true
     icsUrl: ''              # Separate ICS calendar for birthdays
     # refreshMinutes: 60
+    # maxEntries: 5         # maximum upcoming birthdays to display on card (default: 5)
     # lookaheadDays: 14     # days ahead to display upcoming birthdays (default: 14)
     # milestones: [18, 20, 25, 30, 40, 50, 60, 70, 80, 90, 100] # ages highlighted as milestone jubilees
     #
