@@ -16,7 +16,7 @@ let HOMEBOARD_CONFIG = {};
 
 const ConfigLoader = (() => {
   const CACHE_KEY = 'homeboard_config_cache';
-  const CACHE_VERSION = 5;
+  const CACHE_VERSION = 6;
 
   async function load() {
     let yamlText = null;
@@ -106,6 +106,14 @@ const ConfigLoader = (() => {
     // --- Cards section (preserved as-is for app.js card management) ---
     config.cards = cards;
 
+    // --- Global Modals Options ---
+    const rawModals = raw.modals || {};
+    config.modals = {
+      closeOnBackdrop: rawModals.closeOnBackdrop !== false,
+      keyboardNav: rawModals.keyboardNav !== false,
+      ...rawModals
+    };
+
     // --- Warn about unknown card IDs ---
     const KNOWN_CARDS = new Set([
       'weather', 'rain', 'departures', 'commute', 'aqi', 'uv', 'pollen',
@@ -161,6 +169,9 @@ const ConfigLoader = (() => {
     // --- Calendar ---
     const calCard = cards.calendar || {};
     config.calendar = {
+      showNavigation: calCard.showNavigation !== false,
+      showDescription: calCard.showDescription !== false,
+      showCategoryTag: calCard.showCategoryTag !== false,
       icsUrl: calCard.icsUrl || '',
       maxEvents: calCard.maxEvents || 5,
       refreshMinutes: calCard.refreshMinutes || 30,
@@ -177,6 +188,9 @@ const ConfigLoader = (() => {
     // --- Birthdays ---
     const bdayCard = cards.birthdays || {};
     config.birthdays = {
+      showZodiac: bdayCard.showZodiac !== false,
+      showCityWeather: bdayCard.showCityWeather !== false,
+      actions: bdayCard.actions || ['whatsapp', 'instagram', 'contacts', 'call'],
       enabled: bdayCard.enabled !== false,
       icsUrl: bdayCard.icsUrl || '',
       refreshMinutes: bdayCard.refreshMinutes || 60,
@@ -209,6 +223,9 @@ const ConfigLoader = (() => {
     // --- Countdown ---
     const countCard = cards.countdown || {};
     config.countdown = {
+      showPackingList: countCard.showPackingList !== false,
+      showWeather: countCard.showWeather !== false,
+      showCurrency: countCard.showCurrency !== false,
       enabled: countCard.enabled !== false,
       date: countCard.date || '',
       label: countCard.label || 'Vacation',
