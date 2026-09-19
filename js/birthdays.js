@@ -260,6 +260,9 @@ const Birthdays = (() => {
     if (existing) existing.remove();
     if (_modalKeyHandler) window.removeEventListener('keydown', _modalKeyHandler);
 
+    const bdayCfg = HOMEBOARD_CONFIG.birthdays || {};
+    const modalCfg = HOMEBOARD_CONFIG.modals || {};
+
     const name = cleanPersonName(b.summary);
     const firstName = name.split(' ')[0];
     const totalBday = _birthdaysList.length;
@@ -279,7 +282,7 @@ const Birthdays = (() => {
       const turningAge = currentYear - birthYear;
       if (turningAge > 0 && turningAge < 120) {
         ageStr = `Wird ${turningAge} Jahre alt`;
-        const milestoneList = HOMEBOARD_CONFIG.birthdays?.milestones || [18, 20, 25, 30, 40, 50, 60, 70, 80, 90, 100];
+        const milestoneList = bdayCfg.milestones || [18, 20, 25, 30, 40, 50, 60, 70, 80, 90, 100];
         if (milestoneList.includes(turningAge)) {
           isMilestone = true;
           ageStr += ` · 🎂 Runder Geburtstag!`;
@@ -298,14 +301,59 @@ const Birthdays = (() => {
     else if (b.daysUntil === 1) whenDetail = `Morgen (${dowName}, ${dateFormatted})`;
     else whenDetail = `In ${b.daysUntil} Tagen (${dowName}, ${dateFormatted})`;
 
-    // Western Sternzeichen
-    const zodiac = getZodiac(b.start);
+    // Western Sternzeichen (configurable)
+    const showZodiac = bdayCfg.showZodiac !== false;
+    const zodiac = showZodiac ? getZodiac(b.start) : null;
 
-    // Labels & Categories
+    // Contact Labels & Categories
     const labels = extractContactLabels(b);
     const labelsHtml = labels.length > 0
       ? `<div class="bday-labels-wrap">${labels.map(l => `<span class="bday-label-pill">${l}</span>`).join('')}</div>`
       : '';
+
+    // Configurable action buttons
+    const allowedActions = bdayCfg.actions || ['whatsapp', 'instagram', 'contacts', 'call'];
+    const showWa = allowedActions.includes('whatsapp');
+    const showIg = allowedActions.includes('instagram') && info.igUrl;
+    const showContacts = allowedActions.includes('contacts');
+    const showCall = allowedActions.includes('call') && info.phone;
+
+    let actionsHtml = '';
+    if (showWa || showIg || showContacts || showCall) {
+      actionsHtml = `
+        <div class="bday-quick-actions-bar">
+          ${showWa ? (info.waUrl ? `
+            <a href="${info.waUrl}" target="_blank" class="detail-action-btn bday-action-btn bday-action-btn-wa">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+              WhatsApp
+            </a>
+          ` : `
+            <a href="https://wa.me/?text=${encodeURIComponent(`Alles Gute zum Geburtstag, ${firstName}! 🎉🎂`)}" target="_blank" class="detail-action-btn bday-action-btn bday-action-btn-wa">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+              WhatsApp
+            </a>
+          `) : ''}
+          ${showIg ? `
+            <a href="${info.igUrl}" target="_blank" class="detail-action-btn bday-action-btn bday-action-btn-ig">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+              Instagram
+            </a>
+          ` : ''}
+          ${showContacts ? `
+            <a href="${info.contactUrl}" target="_blank" class="detail-action-btn bday-action-btn">
+              👤 Google Kontakte
+            </a>
+          ` : ''}
+          ${showCall ? `
+            <a href="tel:${info.phone}" class="detail-action-btn bday-action-btn">
+              📞 Anrufen
+            </a>
+          ` : ''}
+        </div>
+      `;
+    }
+
+    const showCityWeather = bdayCfg.showCityWeather !== false;
 
     const overlay = document.createElement('div');
     overlay.id = 'birthday-detail-overlay';
@@ -335,33 +383,7 @@ const Birthdays = (() => {
         </div>
 
         <!-- Quick Contact Actions Bar -->
-        <div class="bday-quick-actions-bar">
-          ${info.waUrl ? `
-            <a href="${info.waUrl}" target="_blank" class="detail-action-btn bday-action-btn bday-action-btn-wa">
-              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-              WhatsApp
-            </a>
-          ` : `
-            <a href="https://wa.me/?text=${encodeURIComponent(`Alles Gute zum Geburtstag, ${firstName}! 🎉🎂`)}" target="_blank" class="detail-action-btn bday-action-btn bday-action-btn-wa">
-              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-              WhatsApp
-            </a>
-          `}
-          ${info.igUrl ? `
-            <a href="${info.igUrl}" target="_blank" class="detail-action-btn bday-action-btn bday-action-btn-ig">
-              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
-              Instagram
-            </a>
-          ` : ''}
-          <a href="${info.contactUrl}" target="_blank" class="detail-action-btn bday-action-btn">
-            👤 Google Kontakte
-          </a>
-          ${info.phone ? `
-            <a href="tel:${info.phone}" class="detail-action-btn bday-action-btn">
-              📞 Anrufen
-            </a>
-          ` : ''}
-        </div>
+        ${actionsHtml}
 
         <!-- Contact Information & Metadata -->
         <div class="detail-section-box">
@@ -390,7 +412,7 @@ const Birthdays = (() => {
                 <span class="bday-meta-icon">📍</span>
                 <div>
                   <strong>${info.city}</strong>
-                  <div class="bday-meta-sub" id="bday-city-weather">Wetter wird geladen...</div>
+                  <div class="bday-meta-sub" id="bday-city-weather">${showCityWeather ? 'Wetter wird geladen...' : 'Wohnort'}</div>
                 </div>
               </div>
             ` : ''}
@@ -427,23 +449,27 @@ const Birthdays = (() => {
       </div>
     `;
 
+    const closeOnBackdrop = modalCfg.closeOnBackdrop !== false;
     overlay.addEventListener('click', (e) => {
-      if (e.target === overlay || e.target.classList.contains('detail-close-btn')) {
+      if (e.target.classList.contains('detail-close-btn') || (closeOnBackdrop && e.target === overlay)) {
         closeModal();
       }
     });
 
-    _modalKeyHandler = (e) => {
-      if (e.key === 'Escape') closeModal();
-      else if (e.key === 'ArrowLeft') navigateModal(-1);
-      else if (e.key === 'ArrowRight') navigateModal(1);
-    };
-    window.addEventListener('keydown', _modalKeyHandler);
+    const enableKeyboardNav = modalCfg.keyboardNav !== false;
+    if (enableKeyboardNav) {
+      _modalKeyHandler = (e) => {
+        if (e.key === 'Escape') closeModal();
+        else if (e.key === 'ArrowLeft') navigateModal(-1);
+        else if (e.key === 'ArrowRight') navigateModal(1);
+      };
+      window.addEventListener('keydown', _modalKeyHandler);
+    }
 
     document.body.appendChild(overlay);
 
-    // If city is specified, fetch its local weather
-    if (info.city) {
+    // If city is specified and weather preview enabled, fetch local weather
+    if (info.city && showCityWeather) {
       fetchCityWeather(info.city);
     }
   }
@@ -506,4 +532,5 @@ const Birthdays = (() => {
   }
 
   return { init, showBirthdayDetail, copyWishQuick, navigateModal, closeModal };
+
 })();
