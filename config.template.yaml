@@ -19,6 +19,14 @@ location:
 greeting:
   name: ''
 
+# Global Popup Modal Settings
+# modals:
+#   closeOnBackdrop: true   # click outside modal closes popup
+#   keyboardNav: true       # Esc to close, Left/Right arrow keys to navigate
+#   autoCloseSeconds: 60    # auto-close modal after inactive seconds (0 or false to disable)
+#   animation: scale        # animation style: 'scale', 'fade', 'slide-up', 'none'
+#   backdropBlur: true      # blur effect on background overlay (true / false)
+
 # Cards — order = display order. All settings for a card go here.
 cards:
 
