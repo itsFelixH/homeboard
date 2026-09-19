@@ -14,7 +14,8 @@ describe('ConfigLoader & getTransitLineStyle', () => {
     const yamlSample = fs.readFileSync(path.join(__dirname, 'fixtures/config.sample.yaml'), 'utf8');
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
-      text: async () => yamlSample
+      text: async () => yamlSample,
+      json: async () => ({})
     });
 
     await ConfigLoader.load();
@@ -32,7 +33,7 @@ describe('ConfigLoader & getTransitLineStyle', () => {
     const yamlSample = fs.readFileSync(path.join(__dirname, 'fixtures/config.sample.yaml'), 'utf8');
     global.fetch = jest.fn()
       .mockResolvedValueOnce({ ok: false, status: 404 })
-      .mockResolvedValueOnce({ ok: true, text: async () => yamlSample });
+      .mockResolvedValueOnce({ ok: true, text: async () => yamlSample, json: async () => ({}) });
 
     await ConfigLoader.load();
 
@@ -43,7 +44,7 @@ describe('ConfigLoader & getTransitLineStyle', () => {
   test('uses sessionStorage cache if version matches', async () => {
     const yamlSample = fs.readFileSync(path.join(__dirname, 'fixtures/config.sample.yaml'), 'utf8');
     sessionStorage.setItem('homeboard_config_cache', JSON.stringify({
-      version: 4,
+      version: 6,
       text: yamlSample
     }));
 

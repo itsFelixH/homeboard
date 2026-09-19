@@ -69,6 +69,6 @@ describe('Calendar Module', () => {
     Calendar.init();
 
     const list = document.getElementById('event-list');
-    expect(list.textContent).toContain('Keine Termine heute');
+    expect(list.textContent).toContain('Set icsUrl in config');
   });
 });
