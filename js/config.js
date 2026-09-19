@@ -189,14 +189,12 @@ const ConfigLoader = (() => {
     const bdayCard = cards.birthdays || {};
     config.birthdays = {
       showZodiac: bdayCard.showZodiac !== false,
-      showCityWeather: bdayCard.showCityWeather !== false,
       actions: bdayCard.actions || ['whatsapp', 'instagram', 'contacts', 'call'],
       enabled: bdayCard.enabled !== false,
       icsUrl: bdayCard.icsUrl || '',
       refreshMinutes: bdayCard.refreshMinutes || 60,
       lookaheadDays: bdayCard.lookaheadDays || 14,
       milestones: bdayCard.milestones || [18, 20, 25, 30, 40, 50, 60, 70, 80, 90, 100],
-      whatsappTemplate: bdayCard.whatsappTemplate || '',
       labels: bdayCard.labels || {},
       cities: bdayCard.cities || {},
       ...bdayCard
