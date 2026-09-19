@@ -96,6 +96,11 @@ cards:
     # showTomorrow: true
     # showCommute: true     # bike/transit time for events with locations
     # bufferMinutes: 5      # default pre-event buffer time (minutes)
+    #
+    # Modal Options (Event Detail Popup)
+    # showNavigation: true   # show Google Maps & transit navigation buttons
+    # showDescription: true  # show event description notes and links
+    # showCategoryTag: true  # show category pill badge in modal
     # chainedRouteGapMinutes: 210 # max gap in minutes to route from previous event instead of home (default: 210 = 3.5h)
     # showCategories: true  # show category badges & colored accent stripes
     # hidePatterns: []      # regex patterns to filter events
@@ -140,6 +145,11 @@ cards:
     # lookaheadDays: 14     # days ahead to display upcoming birthdays (default: 14)
     # milestones: [18, 20, 25, 30, 40, 50, 60, 70, 80, 90, 100] # ages highlighted as milestone jubilees
     # whatsappTemplate: 'Liebe/r {name}, alles Liebe und Gute zum Geburtstag! Ich wünsche dir ein fantastisches neues Lebensjahr, viel Gesundheit und Glück! 🎂🎉'
+    #
+    # Modal Options (Birthday Detail Popup)
+    # showZodiac: true       # show Western Zodiac sign (e.g. ♎ Waage)
+    # showCityWeather: true  # show live weather for contact's residential city
+    # actions: ['whatsapp', 'instagram', 'contacts', 'call'] # quick action buttons to display
     # labels:               # Category badges per contact name
     #   'Max Mustermann': ['👨‍👩‍👧 Familie', '📍 Berlin']
     #   'Sarah Becker': ['💼 Arbeit', '💃 Sport']
@@ -156,6 +166,12 @@ cards:
     #   '2026-09-17': 'Barcelona Trip'
     # destinations:         # explicit destination overrides for live weather/currency/timezone
     #   '2026-09-17': 'Barcelona'
+    #
+    # Modal Options (Vacation & Trip Detail Popup)
+    # showPackingList: true  # show interactive packing checklist
+    # showWeather: true      # show destination weather forecast
+    # showCurrency: true     # show local currency converter
+    #
     # docs:                 # Google Docs / Sheets / Notion planning links per trip
     #   '2026-09-17': 'https://docs.google.com/document/d/your-trip-notes'
     # defaultPackingList:   # custom default checklist items template
