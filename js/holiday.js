@@ -442,8 +442,11 @@ const Holiday = (() => {
     if (_countdownTimer) clearInterval(_countdownTimer);
     if (_modalKeyHandler) window.removeEventListener('keydown', _modalKeyHandler);
 
+    const countCfg = HOMEBOARD_CONFIG.countdown || {};
+    const modalCfg = HOMEBOARD_CONFIG.modals || {};
+
     const customNames = await getCustomNames();
-    const configNames = HOMEBOARD_CONFIG.countdown?.names || {};
+    const configNames = countCfg.names || {};
     const dateKey = makeDateKey(vac.start);
     const label = customNames[dateKey] || configNames[dateKey] || vac.summary || 'Urlaub';
 
@@ -458,339 +461,149 @@ const Holiday = (() => {
     if (vac.end) {
       const endStr = vac.end.toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' });
       rangeStr = `${startStr} – ${endStr}`;
-      durationDays = Math.round((vac.end - vac.start) / (1000 * 60 * 60 * 24));
+      durationDays = Math.max(1, Math.round((vac.end - vac.start) / (1000 * 60 * 60 * 24)));
     }
 
-    // Destination determination & banner backdrop
-    const destinationQuery = HOMEBOARD_CONFIG.countdown?.destinations?.[dateKey] || extractDestination(label, vac.location, vac.description);
-    const bannerInfo = getDestinationBanner(destinationQuery || label);
-
-    const gmapsUrl = destinationQuery
-      ? `https://maps.google.com/?q=${encodeURIComponent(destinationQuery)}`
-      : `https://calendar.google.com/calendar/r/week/${vac.start.getFullYear()}/${vac.start.getMonth()+1}/${vac.start.getDate()}`;
-    const calWeekUrl = `https://calendar.google.com/calendar/r/week/${vac.start.getFullYear()}/${vac.start.getMonth()+1}/${vac.start.getDate()}`;
+    // Destination determination
+    const configDests = countCfg.destinations || {};
+    const destLocation = configDests[dateKey] || extractDestination(vac.location, vac.summary, label);
+    const bannerMeta = getDestinationBanner(destLocation || label);
 
     // Planning Doc URL
-    const docUrl = getPlanningDocUrl(dateKey, vac.description);
+    const docUrl = getPlanningDocUrl(dateKey);
+
+    // Modal Config Options
+    const showWeather = countCfg.showWeather !== false;
+    const showPackingList = countCfg.showPackingList !== false;
+    const showCurrency = countCfg.showCurrency !== false;
 
     const overlay = document.createElement('div');
     overlay.id = 'vacation-detail-overlay';
     overlay.innerHTML = `
       <div class="event-detail-card vacation-detail-card">
         <div class="detail-modal-header">
-          <span class="detail-modal-title">🌴 Urlaubs-Countdown</span>
+          <span class="detail-modal-title">✈️ Urlaubs- & Reiseplaner</span>
           <div class="detail-header-nav">
             ${totalVac > 1 ? `
-              <button class="detail-nav-btn" ${!hasPrev ? 'disabled' : ''} onclick="Holiday.navigateModal(-1)" title="Vorheriger Urlaub (←)">‹</button>
+              <button class="detail-nav-btn" ${!hasPrev ? 'disabled' : ''} onclick="Holiday.navigateModal(-1)" title="Vorherige Reise (◀)">&lt;</button>
               <span class="detail-nav-count">${idx + 1}/${totalVac}</span>
-              <button class="detail-nav-btn" ${!hasNext ? 'disabled' : ''} onclick="Holiday.navigateModal(1)" title="Nächster Urlaub (→)">›</button>
+              <button class="detail-nav-btn" ${!hasNext ? 'disabled' : ''} onclick="Holiday.navigateModal(1)" title="Nächste Reise (▶)">&gt;</button>
             ` : ''}
             <button class="detail-close-btn" aria-label="Close" onclick="Holiday.closeModal()" title="Schließen (Esc)">✕</button>
           </div>
         </div>
 
-        <!-- Scenic Hero Banner Section -->
-        <div class="detail-hero-section vacation-scenic-hero" style="background: ${bannerInfo.gradient}; --event-accent: #06b6d4;">
-          <div class="detail-title-row">
-            <span class="detail-title">${label}</span>
-            <span class="event-cat-tag">${bannerInfo.icon} Urlaub</span>
-          </div>
-          <div class="detail-time-line">
-            <span class="detail-time-text">${rangeStr}${durationDays > 0 ? ` (${durationDays} Tage)` : ''}</span>
-          </div>
-          ${destinationQuery ? `<div class="detail-location-line">📍 <a href="${gmapsUrl}" target="_blank">${destinationQuery}</a></div>` : ''}
-        </div>
-
-        <!-- Live Ticking Countdown Box -->
-        <div class="detail-section-box countdown-live-box">
-          <div class="detail-section-title">
-            <span>⏳ Live Countdown</span>
-            <span class="detail-dep-pill dep-calm" id="vac-status-pill">Warten</span>
-          </div>
-          <div class="countdown-timer-digits" id="vac-timer-digits">
-            <div class="countdown-digit-cell"><span class="digit-val" id="vd-days">0</span><span class="digit-lbl">Tage</span></div>
-            <div class="countdown-digit-cell"><span class="digit-val" id="vd-hours">0</span><span class="digit-lbl">Std</span></div>
-            <div class="countdown-digit-cell"><span class="digit-val" id="vd-mins">0</span><span class="digit-lbl">Min</span></div>
-            <div class="countdown-digit-cell"><span class="digit-val" id="vd-secs">0</span><span class="digit-lbl">Sek</span></div>
-          </div>
-        </div>
-
-        <!-- Destination Weather & Timezone Box -->
-        ${destinationQuery ? `
-          <div class="detail-section-box" id="vac-weather-box">
-            <div class="detail-section-title">
-              <span>☀️ Reiseziel Info & Klima (${destinationQuery})</span>
+        <!-- Destination Hero Banner -->
+        <div class="vac-hero-banner" style="background: ${bannerMeta.gradient};">
+          <div class="vac-hero-top">
+            <span class="vac-hero-icon">${bannerMeta.icon}</span>
+            <div class="vac-hero-titles">
+              <span class="vac-hero-destination">${label}</span>
+              <span class="vac-hero-sub">${destLocation ? destLocation + ' · ' : ''}${rangeStr}${durationDays ? ` (${durationDays} Tage)` : ''}</span>
             </div>
-            <div id="vac-weather-content"><span class="detail-loading">Wetterdaten & Währung werden geladen...</span></div>
           </div>
-        ` : ''}
+          <div class="vac-live-countdown" id="vac-modal-live-countdown">
+            <span class="vac-cd-box"><strong id="vac-cd-days">--</strong><small>Tage</small></span>
+            <span class="vac-cd-sep">:</span>
+            <span class="vac-cd-box"><strong id="vac-cd-hours">--</strong><small>Std</small></span>
+            <span class="vac-cd-sep">:</span>
+            <span class="vac-cd-box"><strong id="vac-cd-mins">--</strong><small>Min</small></span>
+            <span class="vac-cd-sep">:</span>
+            <span class="vac-cd-box"><strong id="vac-cd-secs">--</strong><small>Sek</small></span>
+          </div>
+        </div>
 
-        <!-- Google Docs / Sheets Planning Document -->
-        <div class="detail-section-box" id="vac-doc-container">
+        <!-- Planning Document Link Section -->
+        <div class="detail-section-box">
           <div class="detail-section-title">
-            <span>📄 Reiseplanung & Dokumente</span>
+            <span>📝 Planungsdokument (Google Docs / Notion)</span>
           </div>
-          <div class="vac-doc-row">
+          <div id="vac-doc-container">
             ${docUrl ? `
-              <a href="${docUrl}" target="_blank" class="detail-action-btn detail-action-primary vac-doc-btn">
-                📄 Google Docs / Sheets öffnen ↗
-              </a>
-              <button class="vac-doc-edit-btn" onclick="Holiday.promptDocLink('${dateKey}', '${docUrl.replace(/'/g, "\\'")}')" title="Link bearbeiten">✏️</button>
+              <div class="vac-doc-active-box">
+                <a href="${docUrl}" target="_blank" class="detail-action-btn detail-action-primary vac-doc-btn">
+                  <span>📄 Dokument öffnen</span>
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                </a>
+                <button class="detail-action-btn vac-doc-edit-btn" onclick="Holiday.promptDocLink('${dateKey}', '${docUrl.replace(/'/g, "\'")}')" title="Link bearbeiten">✏️</button>
+              </div>
             ` : `
-              <button class="detail-action-btn vac-doc-add-btn" onclick="Holiday.promptDocLink('${dateKey}', '')">
-                ➕ Google Docs / Sheets Link verknüpfen
-              </button>
+              <div class="vac-doc-placeholder-box">
+                <button class="detail-action-btn vac-doc-add-btn" onclick="Holiday.promptDocLink('${dateKey}', '')">
+                  + Link zu Google Docs / Sheets / Notion hinzufügen
+                </button>
+              </div>
             `}
           </div>
         </div>
 
-        <!-- Customizable Packing Checklist -->
-        <div class="detail-section-box bento-checklist-tile">
-          <div class="detail-section-title">
-            <span>🧳 Packliste (<span id="vac-pack-prog-label">0/0</span>)</span>
+        <!-- Destination Weather Forecast Section -->
+        ${showWeather ? `
+          <div class="detail-section-box" id="vac-weather-container">
+            <div class="detail-section-title">
+              <span>🌤️ Wetter & Klima (${destLocation})</span>
+            </div>
+            <div class="vac-weather-forecast-row" id="vac-weather-forecast-list">
+              <div class="detail-notes-empty">Wetterdaten werden geladen...</div>
+            </div>
           </div>
-          <div class="vac-pack-progress-track"><div class="vac-pack-progress-bar" id="vac-pack-prog-bar" style="width: 0%;"></div></div>
-          <div class="vac-packing-list-container" id="vac-packing-items"></div>
-          <div class="vac-pack-add-row">
-            <input type="text" id="vac-new-pack-item" class="vac-pack-input" placeholder="+ Neuer Gegenstand..." onkeydown="if(event.key==='Enter') Holiday.addCustomPackItem('${dateKey}')" />
-            <button class="detail-action-btn" onclick="Holiday.addCustomPackItem('${dateKey}')">➕ Hinzufügen</button>
+        ` : ''}
+
+        <!-- Interactive Packing Checklist Section -->
+        ${showPackingList ? renderPackingListSection(dateKey) : ''}
+
+        <!-- Currency Converter Section -->
+        ${showCurrency ? `
+          <div class="detail-section-box" id="vac-currency-container" style="display: none;">
+            <div class="detail-section-title">
+              <span>💱 Lokale Währung & Wechselkurs</span>
+            </div>
+            <div id="vac-currency-content" class="vac-currency-box"></div>
           </div>
-        </div>
+        ` : ''}
 
         <!-- Actions Bar -->
         <div class="detail-actions-bar">
-          <a href="${calWeekUrl}" target="_blank" class="detail-action-btn">
-            📅 Google Kalender
-          </a>
-          <a href="${gmapsUrl}" target="_blank" class="detail-action-btn">
-            📍 Maps
-          </a>
-          <button class="detail-action-btn" onclick="Holiday.copyVacationDetails(${idx}, this)">
-            📋 Kopieren
+          <button class="detail-action-btn" onclick="Holiday.copyVacationDetails('${dateKey}', '${label.replace(/'/g, "\'")}', '${rangeStr}', '${destLocation.replace(/'/g, "\'")}', this)">
+            📋 Reiseplan kopieren
+          </button>
+          <button class="detail-action-btn" onclick="Holiday.closeModal()">
+            Schließen
           </button>
         </div>
       </div>
     `;
 
+    const closeOnBackdrop = modalCfg.closeOnBackdrop !== false;
     overlay.addEventListener('click', (e) => {
-      if (e.target === overlay || e.target.classList.contains('detail-close-btn')) {
+      if (e.target.classList.contains('detail-close-btn') || (closeOnBackdrop && e.target === overlay)) {
         closeModal();
       }
     });
 
-    _modalKeyHandler = (e) => {
-      if (e.key === 'Escape') closeModal();
-      else if (e.key === 'ArrowLeft') navigateModal(-1);
-      else if (e.key === 'ArrowRight') navigateModal(1);
-    };
-    window.addEventListener('keydown', _modalKeyHandler);
+    const enableKeyboardNav = modalCfg.keyboardNav !== false;
+    if (enableKeyboardNav) {
+      _modalKeyHandler = (e) => {
+        if (e.key === 'Escape') closeModal();
+        else if (e.key === 'ArrowLeft') navigateModal(-1);
+        else if (e.key === 'ArrowRight') navigateModal(1);
+      };
+      window.addEventListener('keydown', _modalKeyHandler);
+    }
 
     document.body.appendChild(overlay);
 
-    // Render interactive packing list
-    renderPackingList(dateKey);
+    // Start precision live countdown timer
+    updateLiveCountdown(vac.start);
+    _countdownTimer = setInterval(() => updateLiveCountdown(vac.start), 1000);
 
-    // Start live ticking timer
-    updateLiveTimer(vac.start);
-    _countdownTimer = setInterval(() => updateLiveTimer(vac.start), 1000);
-
-    // Fetch destination weather, timezone & currency
-    if (destinationQuery) {
-      fetchDestinationDetails(destinationQuery);
+    // Fetch live weather & currency
+    if (showWeather && destLocation) {
+      fetchDestinationWeather(destLocation, vac.start);
     }
-  }
-
-  function updateLiveTimer(targetDate) {
-    const now = new Date();
-    const diffMs = targetDate - now;
-
-    const daysEl = document.getElementById('vd-days');
-    const hoursEl = document.getElementById('vd-hours');
-    const minsEl = document.getElementById('vd-mins');
-    const secsEl = document.getElementById('vd-secs');
-    const pillEl = document.getElementById('vac-status-pill');
-
-    if (!daysEl || !hoursEl || !minsEl || !secsEl) return;
-
-    if (diffMs <= 0) {
-      daysEl.textContent = '0';
-      hoursEl.textContent = '0';
-      minsEl.textContent = '0';
-      secsEl.textContent = '0';
-      if (pillEl) {
-        pillEl.className = 'detail-dep-pill dep-urgent';
-        pillEl.textContent = '🎉 Urlaub läuft!';
-      }
-      return;
+    if (showCurrency && destLocation) {
+      fetchDestinationCurrency(destLocation);
     }
-
-    const totalSecs = Math.floor(diffMs / 1000);
-    const days = Math.floor(totalSecs / 86400);
-    const hours = Math.floor((totalSecs % 86400) / 3600);
-    const mins = Math.floor((totalSecs % 3600) / 60);
-    const secs = totalSecs % 60;
-
-    daysEl.textContent = days;
-    hoursEl.textContent = String(hours).padStart(2, '0');
-    minsEl.textContent = String(mins).padStart(2, '0');
-    secsEl.textContent = String(secs).padStart(2, '0');
-
-    if (pillEl) {
-      if (days === 0) {
-        pillEl.className = 'detail-dep-pill dep-urgent';
-        pillEl.textContent = '⚡ Geht heute los!';
-      } else if (days === 1) {
-        pillEl.className = 'detail-dep-pill dep-soon';
-        pillEl.textContent = '🧳 Morgen!';
-      } else if (days <= 7) {
-        pillEl.className = 'detail-dep-pill dep-soon';
-        pillEl.textContent = `in ${days} Tagen`;
-      } else {
-        pillEl.className = 'detail-dep-pill dep-calm';
-        pillEl.textContent = `in ${days} Tagen`;
-      }
-    }
-  }
-
-  async function fetchDestinationDetails(query) {
-    const weatherBox = document.getElementById('vac-weather-content');
-    if (!weatherBox) return;
-
-    try {
-      const geoUrl = `/proxy?url=${encodeURIComponent(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=1&language=de&format=json`)}`;
-      const geoRes = await fetch(geoUrl);
-      if (!geoRes.ok) throw new Error('Geo failed');
-      const geoData = await geoRes.json();
-      if (!geoData.results || !geoData.results.length) {
-        weatherBox.innerHTML = '<div class="detail-route-simple">Ort konnte nicht lokalisiert werden.</div>';
-        return;
-      }
-
-      const place = geoData.results[0];
-      const lat = place.latitude;
-      const lon = place.longitude;
-      const country = place.country || '';
-      const countryCode = (place.country_code || '').toUpperCase();
-      const timezone = place.timezone || 'auto';
-
-      const meteoUrl = `/proxy?url=${encodeURIComponent(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&timezone=${timezone}`)}`;
-      const mRes = await fetch(meteoUrl);
-      if (!mRes.ok) throw new Error('Weather failed');
-      const mData = await mRes.json();
-      const cur = mData.current;
-
-      const codeIcons = {
-        0: '☀️', 1: '🌤️', 2: '⛅', 3: '☁️',
-        45: '🌫️', 48: '🌫️',
-        51: '🌦️', 53: '🌦️', 55: '🌧️',
-        61: '🌧️', 63: '🌧️', 65: '🌧️',
-        71: '🌨️', 73: '🌨️', 75: '❄️',
-        80: '🌦️', 81: '🌧️', 82: '🌧️',
-        95: '⛈️'
-      };
-      const icon = codeIcons[cur.weather_code] || '🌤️';
-
-      // Timezone & Local Time
-      let destLocalTimeStr = '';
-      let timeDiffStr = '';
-      try {
-        const destDate = new Date();
-        const destFmt = new Intl.DateTimeFormat('de-DE', { timeZone: timezone, hour: '2-digit', minute: '2-digit' }).format(destDate);
-        const localFmt = new Intl.DateTimeFormat('de-DE', { hour: '2-digit', minute: '2-digit' }).format(destDate);
-        destLocalTimeStr = `${destFmt} Uhr`;
-        
-        const destHour = parseInt(destFmt.split(':')[0]);
-        const localHour = parseInt(localFmt.split(':')[0]);
-        const diffH = destHour - localHour;
-        if (diffH !== 0) {
-          timeDiffStr = ` (${diffH > 0 ? '+' : ''}${diffH}h)`;
-        }
-      } catch (e) {}
-
-      // Currency Check
-      let currencyHtml = '';
-      const currencyMap = {
-        US: 'USD', GB: 'GBP', JP: 'JPY', CH: 'CHF', PL: 'PLN', CZ: 'CZK',
-        SE: 'SEK', DK: 'DKK', NO: 'NOK', AU: 'AUD', CA: 'CAD', TH: 'THB'
-      };
-      const targetCur = currencyMap[countryCode];
-      if (targetCur) {
-        try {
-          const fxRes = await fetch(`https://api.frankfurter.app/latest?from=EUR&to=${targetCur}`);
-          if (fxRes.ok) {
-            const fxData = await fxRes.json();
-            const rate = fxData.rates[targetCur];
-            if (rate) {
-              currencyHtml = `<div class="vac-meta-line">💱 <strong>10 € = ${(10 * rate).toFixed(targetCur === 'JPY' ? 0 : 2)} ${targetCur}</strong></div>`;
-            }
-          }
-        } catch (e) {}
-      } else {
-        currencyHtml = `<div class="vac-meta-line">💶 <strong>Euro-Zone</strong> · Keine Wechselgebühr</div>`;
-      }
-
-      weatherBox.innerHTML = `
-        <div class="vac-weather-grid">
-          <div class="vac-weather-main">
-            <span class="vac-weather-icon">${icon}</span>
-            <div>
-              <span class="vac-weather-temp">${Math.round(cur.temperature_2m)}°C</span>
-              <span class="vac-weather-feel">Gefühlt ${Math.round(cur.apparent_temperature)}°C</span>
-            </div>
-          </div>
-          <div class="vac-weather-details">
-            <div>📍 <strong>${place.name}${country ? ', ' + country : ''}</strong></div>
-            ${destLocalTimeStr ? `<div>🕒 Ortszeit: <strong>${destLocalTimeStr}</strong>${timeDiffStr}</div>` : ''}
-            ${currencyHtml}
-          </div>
-        </div>
-      `;
-    } catch (e) {
-      weatherBox.innerHTML = '<div class="detail-route-simple">Wetter- und Reisedaten konnten nicht geladen werden.</div>';
-    }
-  }
-
-  function extractDestination(label, location, desc) {
-    if (location && location.trim()) {
-      return location.split(',')[0].trim();
-    }
-    const text = `${label || ''} ${desc || ''}`;
-    const clean = text
-      .replace(/urlaub/gi, '')
-      .replace(/vacation/gi, '')
-      .replace(/reise/gi, '')
-      .replace(/trip/gi, '')
-      .replace(/sommer/gi, '')
-      .replace(/winter/gi, '')
-      .replace(/herbst/gi, '')
-      .replace(/ferien/gi, '')
-      .trim();
-
-    if (clean.length > 2) return clean.split(/[-–—/]/)[0].trim();
-    return null;
-  }
-
-  function copyVacationDetails(idx, btn) {
-    const vac = _vacationsList[idx];
-    if (!vac) return;
-
-    const startStr = vac.start.toLocaleDateString('de-DE', { day: 'numeric', month: 'long', year: 'numeric' });
-    const lines = [
-      `🌴 ${vac.summary || 'Urlaub'}`,
-      `📅 Start: ${startStr}`
-    ];
-    if (vac.end) {
-      lines.push(`📅 Ende: ${vac.end.toLocaleDateString('de-DE', { day: 'numeric', month: 'long', year: 'numeric' })}`);
-    }
-    if (vac.location) lines.push(`📍 ${vac.location}`);
-
-    navigator.clipboard.writeText(lines.join('\n')).then(() => {
-      if (btn) {
-        const orig = btn.innerHTML;
-        btn.innerHTML = '✓ Kopiert!';
-        setTimeout(() => { btn.innerHTML = orig; }, 1800);
-      }
-    }).catch(() => {});
   }
 
   function navigateModal(direction) {
