@@ -233,6 +233,7 @@ const ConfigLoader = (() => {
     // --- Countdown ---
     const countCard = cards.countdown || {};
     config.countdown = {
+      icsUrl: countCard.icsUrl || calCard.icsUrl || '',
       customChecklistTemplates: countCard.customChecklistTemplates || {},
       showPackingList: countCard.showPackingList !== false,
       showWeather: countCard.showWeather !== false,
