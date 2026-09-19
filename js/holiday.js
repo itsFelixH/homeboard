@@ -102,15 +102,19 @@ const Holiday = (() => {
         event = {};
       } else if (line === 'END:VEVENT' && event) {
         if (event.summary && event.start) {
-          const rawKw = HOMEBOARD_CONFIG.countdown?.keywords || HOMEBOARD_CONFIG.countdown?.keyword || 'Urlaub';
+          const rawKw = HOMEBOARD_CONFIG.countdown?.keywords || HOMEBOARD_CONFIG.countdown?.keyword || ['Urlaub', 'Vacation', 'Reise', 'Trip', 'Holiday', 'Ferien'];
           const keywords = Array.isArray(rawKw) ? rawKw : [rawKw];
-          if (keywords.some(kw => event.summary.toLowerCase().includes(kw.toLowerCase()))) {
-            const eventMidnight = new Date(
+          const summLower = event.summary.toLowerCase();
+          if (keywords.some(kw => summLower.includes(kw.toLowerCase()))) {
+            const startMidnight = new Date(
               event.start.getFullYear(),
               event.start.getMonth(),
               event.start.getDate()
             );
-            if (eventMidnight >= todayMidnight) {
+            const endMidnight = event.end
+              ? new Date(event.end.getFullYear(), event.end.getMonth(), event.end.getDate())
+              : startMidnight;
+            if (endMidnight >= todayMidnight) {
               candidates.push(event);
             }
           }
