@@ -80,6 +80,7 @@ const Departures = (() => {
           direction: (dep.direction || '').replace(' (Berlin)', '').replace(' Bhf', ''),
           time: dep.rtTime || dep.time || '',
           delay: calculateDelay(dep.time, dep.rtTime),
+          platform: dep.rtPlatform || dep.platform || dep.track || '',
           lineColor: style.bg,
           lineTextColor: style.fg
         };
@@ -118,6 +119,7 @@ const Departures = (() => {
           direction: (dep.direction || '').replace(' (Berlin)', '').replace(' Bhf', ''),
           time: formatTimeISO(dep.when || dep.plannedWhen),
           delay: dep.delay ? Math.round(dep.delay / 60) : 0,
+          platform: dep.platform || dep.plannedPlatform || '',
           lineColor: style.bg,
           lineTextColor: style.fg
         };
@@ -284,16 +286,21 @@ const Departures = (() => {
       return;
     }
 
+    const config = HOMEBOARD_CONFIG.departures || {};
+    const showDelays = config.showDelays !== false;
+    const platformDisplay = config.platformDisplay === true || stop.platformDisplay === true;
     const walkMin = stop.walkMinutes || 0;
+
     tbody.innerHTML = filtered.map(dep => {
-      const delay = dep.delay > 0 ? `<span class="dep-delay">+${dep.delay}</span>` : '';
+      const delay = (showDelays && dep.delay > 0) ? `<span class="dep-delay">+${dep.delay}</span>` : '';
+      const platform = (platformDisplay && dep.platform) ? `<span class="dep-platform" style="font-size:0.68rem;opacity:0.7;margin-left:4px;">Gl. ${dep.platform}</span>` : '';
       const relTime = formatRelativeTime(dep.time);
       if (relTime === null) return ''; // past, skip
       const mins = getRelativeMinutes(dep.time);
       const dimClass = (walkMin > 0 && mins <= walkMin + 2) ? ' dep-dim' : '';
       return `<tr class="${dimClass}">
         <td><span class="transit-badge" style="background:${dep.lineColor};color:${dep.lineTextColor || '#ffffff'}" title="${dep.line} → ${dep.direction}">${dep.line}</span></td>
-        <td class="dep-direction">${dep.direction}</td>
+        <td class="dep-direction">${dep.direction}${platform}</td>
         <td class="dep-time" title="${dep.delay > 0 ? 'Planned: ' + dep.time.slice(0,5) + ', +' + dep.delay + ' min delay' : 'On time'}">${relTime}</td>
         <td>${delay}</td>
       </tr>`;
@@ -308,16 +315,21 @@ const Departures = (() => {
       return;
     }
 
+    const config = HOMEBOARD_CONFIG.departures || {};
+    const showDelays = config.showDelays !== false;
+    const platformDisplay = config.platformDisplay === true || stop.platformDisplay === true;
     const walkMin = stop.walkMinutes || 0;
+
     container.innerHTML = `<table class="departures-table"><tbody>${filtered.map(dep => {
-      const delay = dep.delay > 0 ? `<span class="dep-delay">+${dep.delay}</span>` : '';
+      const delay = (showDelays && dep.delay > 0) ? `<span class="dep-delay">+${dep.delay}</span>` : '';
+      const platform = (platformDisplay && dep.platform) ? `<span class="dep-platform" style="font-size:0.68rem;opacity:0.7;margin-left:4px;">Gl. ${dep.platform}</span>` : '';
       const relTime = formatRelativeTime(dep.time);
       if (relTime === null) return '';
       const mins = getRelativeMinutes(dep.time);
       const dimClass = (walkMin > 0 && mins <= walkMin + 2) ? ' dep-dim' : '';
       return `<tr class="${dimClass}">
         <td><span class="transit-badge" style="background:${dep.lineColor};color:${dep.lineTextColor || '#ffffff'}" title="${dep.line} → ${dep.direction}">${dep.line}</span></td>
-        <td class="dep-direction">${dep.direction}</td>
+        <td class="dep-direction">${dep.direction}${platform}</td>
         <td class="dep-time" title="${dep.delay > 0 ? 'Planned: ' + dep.time.slice(0,5) + ', +' + dep.delay + ' min delay' : 'On time'}">${relTime}</td>
         <td>${delay}</td>
       </tr>`;
