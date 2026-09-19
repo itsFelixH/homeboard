@@ -1542,7 +1542,8 @@ const Calendar = (() => {
     const commuteData = (commuteDataFull && commuteDataFull[activeOrigin]) ? commuteDataFull[activeOrigin] : (commuteDataFull && commuteDataFull.home ? commuteDataFull.home : commuteDataFull);
 
     const activeMode = actualIdx !== -1 ? (_eventModeOverrides[actualIdx] || (commuteData ? (commuteData.bike?.min ? 'bike' : commuteData.transit?.min ? 'transit' : 'walk') : 'bicycling')) : 'bicycling';
-    const gMode = activeMode === 'bike' ? 'bicycling' : activeMode === 'walk' ? 'walking' : 'transit';
+    const defaultNavMode = calConfig.defaultNavigationMode || 'transit';
+    const gMode = activeMode === 'bike' ? 'bicycling' : activeMode === 'walk' ? 'walking' : activeMode === 'transit' ? 'transit' : defaultNavMode;
 
     const homeAddr = HOMEBOARD_CONFIG.location.address || `${HOMEBOARD_CONFIG.location.latitude},${HOMEBOARD_CONFIG.location.longitude}`;
     const originAddr = (activeOrigin === 'prev' && hasValidPrev) ? prevEv.location : homeAddr;
