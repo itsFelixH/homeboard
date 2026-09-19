@@ -1,11 +1,10 @@
 /**
  * Birthdays module - shows upcoming birthdays from ICS feed
- * - Full celebration modal with exact age calculation, milestone recognition
- * - Relationship & contact labels (Family, Friends, Work, etc.)
+ * - Simplified modal with exact contact details & quick action buttons
+ * - Direct WhatsApp, Instagram, Google Contacts, and Call integration
+ * - Contact labels (from Google Contacts / config)
  * - City / Location badge with local weather preview
- * - Western Zodiac Sternzeichen & Chinese Zodiac Animal
- * - Quick contact action buttons (WhatsApp, Instagram, Google Contacts, Call)
- * - Permanent gift ideas & notes per person (stored in localStorage)
+ * - Western Zodiac Sternzeichen
  */
 const Birthdays = (() => {
   let refreshInterval;
@@ -114,8 +113,6 @@ const Birthdays = (() => {
   }
 
   function extractBirthYear(b) {
-    // Only extract birth year if explicitly present in summary or description (e.g. "Max (1990)" or "Geburtsjahr: 1990")
-    // Never guess from DTSTART since Google Calendar annual recurrence sets DTSTART to event creation date
     const raw = `${b.summary || ''} ${b.description || ''}`;
     const m = raw.match(/(?:\(|\b)(19[2-9][0-9]|20[0-2][0-9])(?:\)|\b)/);
     if (m) {
@@ -130,30 +127,23 @@ const Birthdays = (() => {
     const m = date.getMonth() + 1;
     const d = date.getDate();
 
-    if ((m === 3 && d >= 21) || (m === 4 && d <= 20)) return { sign: 'Widder', icon: '♈', dates: '21.03. – 20.04.' };
-    if ((m === 4 && d >= 21) || (m === 5 && d <= 20)) return { sign: 'Stier', icon: '♉', dates: '21.04. – 20.05.' };
-    if ((m === 5 && d >= 21) || (m === 6 && d <= 21)) return { sign: 'Zwillinge', icon: '♊', dates: '21.05. – 21.06.' };
-    if ((m === 6 && d >= 22) || (m === 7 && d <= 22)) return { sign: 'Krebs', icon: '♋', dates: '22.06. – 22.07.' };
-    if ((m === 7 && d >= 23) || (m === 8 && d <= 23)) return { sign: 'Löwe', icon: '♌', dates: '23.07. – 23.08.' };
-    if ((m === 8 && d >= 24) || (m === 9 && d <= 23)) return { sign: 'Jungfrau', icon: '♍', dates: '24.08. – 23.09.' };
-    if ((m === 9 && d >= 24) || (m === 10 && d <= 23)) return { sign: 'Waage', icon: '♎', dates: '24.09. – 23.10.' };
-    if ((m === 10 && d >= 24) || (m === 11 && d <= 22)) return { sign: 'Skorpion', icon: '♏', dates: '24.10. – 22.11.' };
-    if ((m === 11 && d >= 23) || (m === 12 && d <= 21)) return { sign: 'Schütze', icon: '♐', dates: '23.11. – 21.12.' };
-    if ((m === 12 && d >= 22) || (m === 1 && d <= 20)) return { sign: 'Steinbock', icon: '♑', dates: '22.12. – 20.01.' };
-    if ((m === 1 && d >= 21) || (m === 2 && d <= 19)) return { sign: 'Wassermann', icon: '♒', dates: '21.01. – 19.02.' };
-    return { sign: 'Fische', icon: '♓', dates: '20.02. – 20.03.' };
-  }
-
-  function getChineseZodiac(birthYear) {
-    if (!birthYear) return null;
-    const animals = ['Ratte 🐀', 'Büffel 🐂', 'Tiger 🐅', 'Hase 🐇', 'Drache 🐉', 'Schlange 🐍', 'Pferd 🐎', 'Ziege 🐐', 'Affe 🐒', 'Hahn 🐓', 'Hund 🐕', 'Schwein 🐖'];
-    const idx = (birthYear - 4) % 12;
-    return animals[idx >= 0 ? idx : idx + 12];
+    if ((m === 3 && d >= 21) || (m === 4 && d <= 20)) return { sign: 'Widder', icon: '♈', dates: '21.03. - 20.04.' };
+    if ((m === 4 && d >= 21) || (m === 5 && d <= 20)) return { sign: 'Stier', icon: '♉', dates: '21.04. - 20.05.' };
+    if ((m === 5 && d >= 21) || (m === 6 && d <= 21)) return { sign: 'Zwillinge', icon: '♊', dates: '21.05. - 21.06.' };
+    if ((m === 6 && d >= 22) || (m === 7 && d <= 22)) return { sign: 'Krebs', icon: '♋', dates: '22.06. - 22.07.' };
+    if ((m === 7 && d >= 23) || (m === 8 && d <= 23)) return { sign: 'Löwe', icon: '♌', dates: '23.07. - 23.08.' };
+    if ((m === 8 && d >= 24) || (m === 9 && d <= 23)) return { sign: 'Jungfrau', icon: '♍', dates: '24.08. - 23.09.' };
+    if ((m === 9 && d >= 24) || (m === 10 && d <= 23)) return { sign: 'Waage', icon: '♎', dates: '24.09. - 23.10.' };
+    if ((m === 10 && d >= 24) || (m === 11 && d <= 22)) return { sign: 'Skorpion', icon: '♏', dates: '24.10. - 22.11.' };
+    if ((m === 11 && d >= 23) || (m === 12 && d <= 21)) return { sign: 'Schütze', icon: '♐', dates: '23.11. - 21.12.' };
+    if ((m === 12 && d >= 22) || (m === 1 && d <= 20)) return { sign: 'Steinbock', icon: '♑', dates: '22.12. - 20.01.' };
+    if ((m === 1 && d >= 21) || (m === 2 && d <= 19)) return { sign: 'Wassermann', icon: '♒', dates: '21.01. - 19.02.' };
+    return { sign: 'Fische', icon: '♓', dates: '20.02. - 20.03.' };
   }
 
   function extractContactInfo(b) {
     const desc = b.description || '';
-    const text = desc.replace(/\\n/g, '\n').replace(/\\,/g, ',');
+    const text = desc.replace(/\n/g, '\n').replace(/\,/g, ',');
 
     // Phone
     const phoneMatch = text.match(/(?:tel:|phone:|mobil:|handy:|\+)[\s0-9()+-]{7,}/i) || text.match(/https?:\/\/wa\.me\/([0-9]+)/);
@@ -176,7 +166,7 @@ const Birthdays = (() => {
     const email = mailMatch ? mailMatch[0] : '';
 
     // Google Contacts URL
-    const contactUrlMatch = text.match(/https?:\/\/contacts\.google\.com\/[^\s\\)]+/);
+    const contactUrlMatch = text.match(/https?:\/\/contacts\.google\.com\/[^\s\)]+/);
     const contactUrl = contactUrlMatch ? contactUrlMatch[0] : `https://contacts.google.com/search/${encodeURIComponent(cleanPersonName(b.summary))}`;
 
     // City / Location
@@ -283,8 +273,6 @@ const Birthdays = (() => {
     const birthYear = extractBirthYear(b);
     let ageStr = '';
     let isMilestone = false;
-    let daysLived = null;
-    let chineseZodiac = null;
 
     if (birthYear) {
       const currentYear = now.getFullYear();
@@ -294,14 +282,9 @@ const Birthdays = (() => {
         const milestoneList = HOMEBOARD_CONFIG.birthdays?.milestones || [18, 20, 25, 30, 40, 50, 60, 70, 80, 90, 100];
         if (milestoneList.includes(turningAge)) {
           isMilestone = true;
-          ageStr += ` · 🍾 Runder Geburtstag!`;
+          ageStr += ` · 🎂 Runder Geburtstag!`;
         }
       }
-      if (b.start) {
-        const birthFull = new Date(birthYear, b.start.getMonth(), b.start.getDate());
-        daysLived = Math.floor((now - birthFull) / (1000 * 60 * 60 * 24));
-      }
-      chineseZodiac = getChineseZodiac(birthYear);
     }
 
     // Birthday date & day of week
@@ -321,23 +304,20 @@ const Birthdays = (() => {
     // Labels & Categories
     const labels = extractContactLabels(b);
     const labelsHtml = labels.length > 0
-      ? `<div class="bday-labels-row">${labels.map(l => `<span class="bday-label-chip">${l}</span>`).join('')}</div>`
+      ? `<div class="bday-labels-wrap">${labels.map(l => `<span class="bday-label-pill">${l}</span>`).join('')}</div>`
       : '';
-
-    // Permanent Notes per person in localStorage
-    const savedNotes = localStorage.getItem(`bday_notes_${name}`) || '';
 
     const overlay = document.createElement('div');
     overlay.id = 'birthday-detail-overlay';
     overlay.innerHTML = `
       <div class="event-detail-card birthday-detail-card">
         <div class="detail-modal-header">
-          <span class="detail-modal-title">🎂 Geburtstagsdetails</span>
+          <span class="detail-modal-title">🎉 Geburtstag</span>
           <div class="detail-header-nav">
             ${totalBday > 1 ? `
-              <button class="detail-nav-btn" ${!hasPrev ? 'disabled' : ''} onclick="Birthdays.navigateModal(-1)" title="Vorheriger Geburtstag (←)">‹</button>
+              <button class="detail-nav-btn" ${!hasPrev ? 'disabled' : ''} onclick="Birthdays.navigateModal(-1)" title="Vorheriger Geburtstag (◀)">&lt;</button>
               <span class="detail-nav-count">${idx + 1}/${totalBday}</span>
-              <button class="detail-nav-btn" ${!hasNext ? 'disabled' : ''} onclick="Birthdays.navigateModal(1)" title="Nächster Geburtstag (→)">›</button>
+              <button class="detail-nav-btn" ${!hasNext ? 'disabled' : ''} onclick="Birthdays.navigateModal(1)" title="Nächster Geburtstag (▶)">&gt;</button>
             ` : ''}
             <button class="detail-close-btn" aria-label="Close" onclick="Birthdays.closeModal()" title="Schließen (Esc)">✕</button>
           </div>
@@ -346,16 +326,15 @@ const Birthdays = (() => {
         <div class="detail-hero-section" style="--event-accent: #f43f5e;">
           <div class="detail-title-row">
             <span class="detail-title">${name}</span>
-            <span class="event-cat-tag">🎂 Geburtstag</span>
           </div>
           <div class="detail-time-line">
             <span class="detail-time-text">${whenDetail}</span>
           </div>
-          ${ageStr ? `<div class="detail-age-badge ${isMilestone ? 'milestone-glow' : ''}">✨ ${ageStr}</div>` : ''}
+          ${ageStr ? `<div class="detail-age-badge ${isMilestone ? 'milestone-glow' : ''}">${ageStr}</div>` : ''}
           ${labelsHtml}
         </div>
 
-        <!-- Quick Contact Actions Bar (WhatsApp, Instagram, Contacts, Call) -->
+        <!-- Quick Contact Actions Bar -->
         <div class="bday-quick-actions-bar">
           ${info.waUrl ? `
             <a href="${info.waUrl}" target="_blank" class="detail-action-btn bday-action-btn bday-action-btn-wa">
@@ -363,7 +342,7 @@ const Birthdays = (() => {
               WhatsApp
             </a>
           ` : `
-            <a href="https://wa.me/?text=${encodeURIComponent(`Alles Gute zum Geburtstag, ${firstName}! 🎂🎉`)}" target="_blank" class="detail-action-btn bday-action-btn bday-action-btn-wa">
+            <a href="https://wa.me/?text=${encodeURIComponent(`Alles Gute zum Geburtstag, ${firstName}! 🎉🎂`)}" target="_blank" class="detail-action-btn bday-action-btn bday-action-btn-wa">
               <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
               WhatsApp
             </a>
@@ -375,7 +354,7 @@ const Birthdays = (() => {
             </a>
           ` : ''}
           <a href="${info.contactUrl}" target="_blank" class="detail-action-btn bday-action-btn">
-            👤 Kontakte
+            👤 Google Kontakte
           </a>
           ${info.phone ? `
             <a href="tel:${info.phone}" class="detail-action-btn bday-action-btn">
@@ -406,15 +385,6 @@ const Birthdays = (() => {
                 </div>
               </div>
             ` : ''}
-            ${chineseZodiac ? `
-              <div class="bday-meta-cell">
-                <span class="bday-meta-icon">🏮</span>
-                <div>
-                  <strong>${chineseZodiac}</strong>
-                  <div class="bday-meta-sub">Chinesisches Sternzeichen</div>
-                </div>
-              </div>
-            ` : ''}
             ${info.city ? `
               <div class="bday-meta-cell" id="bday-city-cell">
                 <span class="bday-meta-icon">📍</span>
@@ -437,34 +407,17 @@ const Birthdays = (() => {
               <div class="bday-meta-cell">
                 <span class="bday-meta-icon">✉️</span>
                 <div>
-                  <strong>${info.email}</strong>
+                  <strong><a href="mailto:${info.email}" style="color: inherit; text-decoration: none;">${info.email}</a></strong>
                   <div class="bday-meta-sub">E-Mail Adresse</div>
                 </div>
               </div>
             ` : ''}
-            ${daysLived ? `
-              <div class="bday-meta-cell">
-                <span class="bday-meta-icon">⏳</span>
-                <div>
-                  <strong>${daysLived.toLocaleString('de-DE')} Tage</strong>
-                  <div class="bday-meta-sub">Lebenszeit auf der Erde</div>
-                </div>
-              </div>
-            ` : ''}
           </div>
-        </div>
-
-        <!-- Permanent Gift Ideas & Memory Notepad -->
-        <div class="detail-section-box">
-          <div class="detail-section-title">
-            <span>🎁 Geschenkideen & Notizen (Dauerhaft gespeichert)</span>
-          </div>
-          <textarea class="bday-notes-input" placeholder="Geschenkideen, Vorlieben, Kleidergrößen oder Notizen für ${firstName} eintragen..." oninput="Birthdays.saveNotes('${name.replace(/'/g, "\\'")}', this.value)">${savedNotes}</textarea>
         </div>
 
         <!-- Actions Bar -->
         <div class="detail-actions-bar">
-          <button class="detail-action-btn" onclick="Birthdays.copyWishQuick('${firstName.replace(/'/g, "\\'")}', this)">
+          <button class="detail-action-btn" onclick="Birthdays.copyWishQuick('${firstName.replace(/'/g, "\'")}', this)">
             📋 Glückwunsch kopieren
           </button>
           <button class="detail-action-btn" onclick="Birthdays.closeModal()">
@@ -519,22 +472,20 @@ const Birthdays = (() => {
     }
   }
 
-  function saveNotes(name, text) {
-    try {
-      localStorage.setItem(`bday_notes_${name}`, text);
-    } catch (e) {}
-  }
-
   function copyWishQuick(firstName, btn) {
     const customTpl = HOMEBOARD_CONFIG.birthdays?.whatsappTemplate;
-    const text = customTpl ? customTpl.replace('{name}', firstName) : `Liebe/r ${firstName}, alles Liebe und Gute zum Geburtstag! Ich wünsche dir ein fantastisches neues Lebensjahr, viel Gesundheit und Glück! Lass dich heute ordentlich feiern! 🎂🎉🍾`;
-    navigator.clipboard.writeText(text).then(() => {
-      if (btn) {
-        const orig = btn.innerHTML;
-        btn.innerHTML = '✓ Text kopiert!';
-        setTimeout(() => { btn.innerHTML = orig; }, 1800);
-      }
-    }).catch(() => {});
+    const text = customTpl ? customTpl.replace('{name}', firstName) : `Liebe/r ${firstName}, alles Liebe und Gute zum Geburtstag! Ich wünsche dir ein fantastisches neues Lebensjahr, viel Gesundheit und Glück! Lass dich heute ordentlich feiern! 🎉🎂`;
+    if (typeof window.copyToClipboard === 'function') {
+      window.copyToClipboard(text, btn, 'Wunsch kopiert! ✓');
+    } else if (navigator.clipboard) {
+      navigator.clipboard.writeText(text).then(() => {
+        if (btn) {
+          const orig = btn.innerHTML;
+          btn.innerHTML = '✓ Text kopiert!';
+          setTimeout(() => { btn.innerHTML = orig; }, 1800);
+        }
+      }).catch(() => {});
+    }
   }
 
   function navigateModal(direction) {
@@ -554,5 +505,5 @@ const Birthdays = (() => {
     }
   }
 
-  return { init, showBirthdayDetail, saveNotes, copyWishQuick, navigateModal, closeModal };
+  return { init, showBirthdayDetail, copyWishQuick, navigateModal, closeModal };
 })();
