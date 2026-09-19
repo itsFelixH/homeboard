@@ -178,26 +178,27 @@ See `config.template.yaml` for the full list of options with comments.
 
 ### Per-card settings reference
 
-| Card | Settings |
-|------|----------|
-| weather | `units`, `refreshMinutes`, `showClothing`, `showForecast`, `forecastDays` |
-| rain | `refreshMinutes`, `forecastHours` |
-| departures | `refreshSeconds`, `durationMinutes`, `maxResults` |
-| commute | `refreshMinutes`, `showBike`, `showTransit`, `bikeSpeedFactor` |
-| aqi | `refreshMinutes` |
-| uv | `refreshMinutes` |
-| pollen | `refreshMinutes`, `types` |
-| plants | `warningDays` |
-| calendar | `maxEvents`, `refreshMinutes`, `showTomorrow`, `showCommute`, `showCategories`, `bufferMinutes`, `categories`, `places`, `hidePatterns` |
-| birthdays | `refreshMinutes`, `lookaheadDays` |
-| countdown | `maxVacations`, `keyword` |
-| news | `refreshMinutes`, `perPage`, `cycleSeconds`, `defaultCategory` |
-| word | *(none)* |
-| spell | `cycleSeconds` |
-| history | `minYear` |
-| trash | `refreshHours`, `previewDays` |
-| github | `refreshMinutes`, `maxEvents` |
-| xkcd | *(none)* |
+| Section / Card | Settings |
+|----------------|----------|
+| **modals** (global) | `closeOnBackdrop`, `keyboardNav`, `autoCloseSeconds`, `animation` (`scale`, `fade`, `slide-up`, `none`), `backdropBlur` |
+| **weather** | `units`, `refreshMinutes`, `showClothing`, `showForecast`, `forecastDays` |
+| **rain** | `refreshMinutes`, `forecastHours` |
+| **departures** | `refreshSeconds`, `durationMinutes`, `maxResults`, `showDelays`, `platformDisplay` |
+| **commute** | `refreshMinutes`, `showBike`, `showTransit`, `bikeSpeedFactor`, `targetArrivalToday`, `targetDepartureNextDay` |
+| **aqi** | `refreshMinutes` |
+| **uv** | `refreshMinutes` |
+| **pollen** | `refreshMinutes`, `types` |
+| **plants** | `warningDays` |
+| **calendar** | `maxEvents`, `refreshMinutes`, `showTomorrow`, `showCommute`, `showCategories`, `bufferMinutes`, `showNavigation`, `defaultNavigationMode`, `showDescription`, `showCategoryTag`, `categories`, `places`, `hidePatterns` |
+| **birthdays** | `maxEntries`, `lookaheadDays`, `showZodiac`, `hideAge`, `actions`, `labels`, `cities` |
+| **countdown** | `maxVacations`, `keywords`, `showPackingList`, `showWeather`, `showCurrency`, `customChecklistTemplates`, `defaultPackingList`, `docs`, `destinations` |
+| **news** | `refreshMinutes`, `perPage`, `cycleSeconds`, `defaultCategory` |
+| **word** | *(none)* |
+| **spell** | `cycleSeconds` |
+| **history** | `minYear` |
+| **trash** | `refreshHours`, `previewDays` |
+| **github** | `refreshMinutes`, `maxEvents` |
+| **xkcd** | *(none)* |
 | packages | `refreshMinutes` |
 | email | `refreshMinutes` |
 | slideshow | `intervalSeconds` |
