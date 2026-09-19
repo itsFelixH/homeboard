@@ -1495,6 +1495,7 @@ const Calendar = (() => {
 
   let _currentDetailIdx = -1;
   let _modalKeyHandler = null;
+  let _autoCloseTimer = null;
 
   function showEventDetail(ev) {
     if (!ev) return;
@@ -1881,6 +1882,10 @@ const Calendar = (() => {
   function closeEventDetail() {
     const existing = document.getElementById('event-detail-overlay');
     if (existing) existing.remove();
+    if (_autoCloseTimer) {
+      clearTimeout(_autoCloseTimer);
+      _autoCloseTimer = null;
+    }
     if (_modalKeyHandler) {
       window.removeEventListener('keydown', _modalKeyHandler);
       _modalKeyHandler = null;
