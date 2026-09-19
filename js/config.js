@@ -192,6 +192,7 @@ const ConfigLoader = (() => {
     // --- Birthdays ---
     const bdayCard = cards.birthdays || {};
     config.birthdays = {
+      maxEntries: bdayCard.maxEntries !== undefined ? bdayCard.maxEntries : 5,
       hideAge: bdayCard.hideAge === true,
       showZodiac: bdayCard.showZodiac !== false,
       actions: bdayCard.actions || ['whatsapp', 'instagram', 'contacts', 'call'],
