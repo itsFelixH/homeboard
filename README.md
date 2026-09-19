@@ -24,7 +24,6 @@ A clean, self-hosted apartment dashboard for a wall-mounted tablet or always-on 
 - **GitHub** — recent public activity feed
 - **XKCD** — latest comic with navigation
 - **Package Tracking** — DHL/Hermes/DPD with localStorage persistence
-- **Email** — Gmail unread count
 - **Plants** — watering tracker with reminder
 - **Moon Phase** — calculated, no API needed
 - **Slideshow** — rotating photo display
@@ -169,8 +168,6 @@ trash:
 github:
   username: your-username
 
-email:
-  address: you@gmail.com
   appPassword: ''           # Google App Password (not your regular password)
 ```
 
@@ -200,7 +197,6 @@ See `config.template.yaml` for the full list of options with comments.
 | **github** | `refreshMinutes`, `maxEvents` |
 | **xkcd** | *(none)* |
 | packages | `refreshMinutes` |
-| email | `refreshMinutes` |
 | slideshow | `intervalSeconds` |
 
 ### Getting your Google Calendar ICS URL
@@ -343,7 +339,6 @@ homeboard/
 │   ├── trash.js            # Trash pickup schedule
 │   ├── packages.js         # Package tracking (localStorage)
 │   ├── plants.js           # Plant watering tracker
-│   ├── email.js            # Gmail unread count
 │   ├── github.js           # GitHub activity feed
 │   ├── xkcd.js             # XKCD comic viewer
 │   ├── moon.js             # Moon phase calculation
