@@ -1515,6 +1515,10 @@ const Calendar = (() => {
 
     // Configurable gap threshold (minutes) for automatic chained routing default (default: 210 = 3.5h)
     const calConfig = HOMEBOARD_CONFIG.calendar || {};
+    const modalConfig = HOMEBOARD_CONFIG.modals || {};
+    const showNavigation = calConfig.showNavigation !== false;
+    const showDescription = calConfig.showDescription !== false;
+    const showCategoryTag = calConfig.showCategoryTag !== false;
     const maxChainedGapMin = calConfig.chainedRouteGapMinutes 
       ?? calConfig.chained_route_gap_min 
       ?? (calConfig.chainedRouteMaxGapHours ? calConfig.chainedRouteMaxGapHours * 60 : 210);
@@ -1569,7 +1573,7 @@ const Calendar = (() => {
     }
 
     const { category, icon, color, dimBg } = getEventCategoryAndColor(ev);
-    const catBadge = category ? `<span class="event-cat-tag bento-cat-clickable" onclick="Calendar.toggleCategoryPicker(event)" title="Kategorie ändern">${icon ? icon + ' ' : ''}${category} ▾</span>` : `<span class="event-cat-tag bento-cat-empty bento-cat-clickable" onclick="Calendar.toggleCategoryPicker(event)" title="Kategorie zuweisen">+ Kategorie ▾</span>`;
+    const catBadge = showCategoryTag ? (category ? `<span class="event-cat-tag bento-cat-clickable" onclick="Calendar.toggleCategoryPicker(event)" title="Kategorie ändern">${icon ? icon + ' ' : ''}${category} ▾</span>` : `<span class="event-cat-tag bento-cat-empty bento-cat-clickable" onclick="Calendar.toggleCategoryPicker(event)" title="Kategorie zuweisen">+ Kategorie ▾</span>`) : '';
 
     const now = new Date();
 
@@ -1656,7 +1660,15 @@ const Calendar = (() => {
     // 2. Smart Packing Checklist
     const gearHints = getCategoryGearHints(category, ev.summary, placeConfig);
     const checklistHtml = gearHints && gearHints.length > 0
-      ? `<div class="detail-section-box bento-checklist-tile">
+      ? `${showDescription && ev.description ? `
+          <div class="detail-section-box">
+            <div class="detail-section-title">
+              <span>📝 Beschreibung</span>
+            </div>
+            <div class="detail-notes-text" style="font-size: 0.8rem; color: var(--text-2); white-space: pre-wrap; line-height: 1.4; word-break: break-word;">${ev.description.replace(/\\n/g, '\n').replace(/\\,/g, ',')}</div>
+          </div>
+        ` : ''}
+        <div class="detail-section-box bento-checklist-tile">
           <div class="detail-section-title">
             <span>🎒 Packliste & Vorbereitung</span>
           </div>
@@ -1841,18 +1853,22 @@ const Calendar = (() => {
         ${actionsHtml}
       </div>`;
 
+    const closeOnBackdrop = modalConfig.closeOnBackdrop !== false;
     overlay.addEventListener('click', (e) => {
-      if (e.target === overlay || e.target.classList.contains('detail-close-btn')) {
+      if (e.target.classList.contains('detail-close-btn') || (closeOnBackdrop && e.target === overlay)) {
         closeEventDetail();
       }
     });
 
-    _modalKeyHandler = (e) => {
-      if (e.key === 'Escape') closeEventDetail();
-      else if (e.key === 'ArrowLeft') navigateEventDetail(-1);
-      else if (e.key === 'ArrowRight') navigateEventDetail(1);
-    };
-    window.addEventListener('keydown', _modalKeyHandler);
+    const enableKeyboardNav = modalConfig.keyboardNav !== false;
+    if (enableKeyboardNav) {
+      _modalKeyHandler = (e) => {
+        if (e.key === 'Escape') closeEventDetail();
+        else if (e.key === 'ArrowLeft') navigateEventDetail(-1);
+        else if (e.key === 'ArrowRight') navigateEventDetail(1);
+      };
+      window.addEventListener('keydown', _modalKeyHandler);
+    }
 
     document.body.appendChild(overlay);
 
