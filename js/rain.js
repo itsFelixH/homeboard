@@ -4,6 +4,7 @@
  */
 const Rain = (() => {
   let refreshInterval;
+  let _cachedHourly = null;
 
   function init() {
     const { latitude, longitude } = HOMEBOARD_CONFIG.location;
@@ -38,6 +39,7 @@ const Rain = (() => {
 
   function render(data) {
     const hourly = data.hourly;
+    _cachedHourly = hourly;
     if (!hourly || !hourly.time) return;
 
     const now = new Date();
@@ -147,5 +149,27 @@ const Rain = (() => {
     setTimeout(() => tip.remove(), 3000);
   }
 
-  return { init, showDetail };
+  function getRainAt(date) {
+    if (!_cachedHourly || !_cachedHourly.time) return null;
+    const targetMs = new Date(date).getTime();
+    let bestIdx = -1;
+    let minDiff = Infinity;
+    for (let i = 0; i < _cachedHourly.time.length; i++) {
+      const t = new Date(_cachedHourly.time[i]).getTime();
+      const diff = Math.abs(t - targetMs);
+      if (diff < minDiff && diff <= 3 * 3600 * 1000) {
+        minDiff = diff;
+        bestIdx = i;
+      }
+    }
+    if (bestIdx !== -1) {
+      return {
+        precipitation: _cachedHourly.precipitation ? _cachedHourly.precipitation[bestIdx] : 0,
+        probability: _cachedHourly.precipitation_probability ? _cachedHourly.precipitation_probability[bestIdx] : 0
+      };
+    }
+    return null;
+  }
+
+  return { init, showDetail, getRainAt };
 })();

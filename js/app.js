@@ -1,3 +1,41 @@
+
+// Universal clipboard copy helper (supports HTTP fallback)
+window.copyToClipboard = function(text, btn, successLabel = 'Kopiert! ✓') {
+  function showSuccess() {
+    if (!btn) return;
+    const orig = btn.innerHTML;
+    btn.innerHTML = `<span style="color: #10b981; font-weight: 600;">${successLabel}</span>`;
+    setTimeout(() => { btn.innerHTML = orig; }, 2000);
+  }
+
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text).then(showSuccess).catch(() => {
+      fallbackCopy(text, showSuccess);
+    });
+  } else {
+    fallbackCopy(text, showSuccess);
+  }
+
+  function fallbackCopy(str, cb) {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = str;
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      ta.style.top = '0';
+      ta.setAttribute('readonly', '');
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      const successful = document.execCommand('copy');
+      document.body.removeChild(ta);
+      if (successful && cb) cb();
+    } catch (err) {
+      console.warn('[Homeboard] Clipboard copy failed:', err);
+    }
+  }
+};
+
 /**
  * Homeboard - App initializer
  *
@@ -34,7 +72,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     github:     { className: 'card-github',     init: () => GitHub.init() },
     xkcd:       { className: 'card-xkcd',       init: () => XKCD.init() },
     packages:   { className: 'card-packages',   init: () => Packages.init() },
-    email:      { className: 'card-email',      init: () => Email.init() },
     slideshow:  { className: 'card-slideshow',  init: () => Slideshow.init() }
   };
 

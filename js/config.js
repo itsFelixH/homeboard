@@ -16,7 +16,7 @@ let HOMEBOARD_CONFIG = {};
 
 const ConfigLoader = (() => {
   const CACHE_KEY = 'homeboard_config_cache';
-  const CACHE_VERSION = 4;
+  const CACHE_VERSION = 6;
 
   async function load() {
     let yamlText = null;
@@ -106,11 +106,22 @@ const ConfigLoader = (() => {
     // --- Cards section (preserved as-is for app.js card management) ---
     config.cards = cards;
 
+    // --- Global Modals Options ---
+    const rawModals = raw.modals || {};
+    config.modals = {
+      closeOnBackdrop: rawModals.closeOnBackdrop !== false,
+      keyboardNav: rawModals.keyboardNav !== false,
+      autoCloseSeconds: typeof rawModals.autoCloseSeconds === 'number' ? rawModals.autoCloseSeconds : (rawModals.autoCloseSeconds ? parseInt(rawModals.autoCloseSeconds) : 0),
+      animation: rawModals.animation || 'scale',
+      backdropBlur: rawModals.backdropBlur !== false,
+      ...rawModals
+    };
+
     // --- Warn about unknown card IDs ---
     const KNOWN_CARDS = new Set([
       'weather', 'rain', 'departures', 'commute', 'aqi', 'uv', 'pollen',
       'plants', 'calendar', 'birthdays', 'countdown', 'news', 'word',
-      'spell', 'history', 'trash', 'github', 'xkcd', 'packages', 'email', 'slideshow'
+      'spell', 'history', 'trash', 'github', 'xkcd', 'packages', 'slideshow'
     ]);
     Object.keys(cards).forEach(id => {
       if (!KNOWN_CARDS.has(id)) {
@@ -154,6 +165,10 @@ const ConfigLoader = (() => {
       refreshMinutes: commuteCard.refreshMinutes || 10,
       showBike: commuteCard.showBike !== false,
       showTransit: commuteCard.showTransit !== false,
+      targetArrivalToday: commuteCard.targetArrivalToday || '09:30',
+      targetArrivalNextDay: commuteCard.targetArrivalNextDay || '08:30',
+      targetDepartureNextDay: commuteCard.targetDepartureNextDay || null,
+      skipWeekends: commuteCard.skipWeekends !== false,
       bikeSpeed: commuteCard.bikeSpeed || 13,
       walkSpeed: commuteCard.walkSpeed || 5
     };
@@ -161,20 +176,38 @@ const ConfigLoader = (() => {
     // --- Calendar ---
     const calCard = cards.calendar || {};
     config.calendar = {
+      defaultNavigationMode: calCard.defaultNavigationMode || 'transit',
+      showNavigation: calCard.showNavigation !== false,
+      showDescription: calCard.showDescription !== false,
+      showCategoryTag: calCard.showCategoryTag !== false,
       icsUrl: calCard.icsUrl || '',
       maxEvents: calCard.maxEvents || 5,
       refreshMinutes: calCard.refreshMinutes || 30,
       showTomorrow: calCard.showTomorrow !== false,
       showCommute: calCard.showCommute !== false,
-      hidePatterns: calCard.hidePatterns || []
+      showCategories: calCard.showCategories !== false,
+      hidePatterns: calCard.hidePatterns || [],
+      bufferMinutes: calCard.bufferMinutes !== undefined ? calCard.bufferMinutes : 5,
+      categoryColors: calCard.categoryColors || {},
+      categories: calCard.categories || raw.categories || {},
+      places: calCard.places || calCard.locations || raw.places || raw.locations || []
     };
 
     // --- Birthdays ---
     const bdayCard = cards.birthdays || {};
     config.birthdays = {
+      maxEntries: bdayCard.maxEntries !== undefined ? bdayCard.maxEntries : 5,
+      hideAge: bdayCard.hideAge === true,
+      showZodiac: bdayCard.showZodiac !== false,
+      actions: bdayCard.actions || ['whatsapp', 'instagram', 'contacts', 'call'],
+      enabled: bdayCard.enabled !== false,
       icsUrl: bdayCard.icsUrl || '',
       refreshMinutes: bdayCard.refreshMinutes || 60,
-      lookaheadDays: bdayCard.lookaheadDays || 7
+      lookaheadDays: bdayCard.lookaheadDays || 14,
+      milestones: bdayCard.milestones || [18, 20, 25, 30, 40, 50, 60, 70, 80, 90, 100],
+      labels: bdayCard.labels || {},
+      cities: bdayCard.cities || {},
+      ...bdayCard
     };
 
     // --- Slideshow ---
@@ -187,6 +220,8 @@ const ConfigLoader = (() => {
     // --- Departures ---
     const depCard = cards.departures || {};
     config.departures = {
+      showDelays: depCard.showDelays !== false,
+      platformDisplay: depCard.platformDisplay === true,
       stopId: depCard.stopId || '',
       stops: depCard.stops || [],
       durationMinutes: depCard.durationMinutes || 30,
@@ -198,11 +233,22 @@ const ConfigLoader = (() => {
     // --- Countdown ---
     const countCard = cards.countdown || {};
     config.countdown = {
+      icsUrl: countCard.icsUrl || calCard.icsUrl || '',
+      customChecklistTemplates: countCard.customChecklistTemplates || {},
+      showPackingList: countCard.showPackingList !== false,
+      showWeather: countCard.showWeather !== false,
+      showCurrency: countCard.showCurrency !== false,
+      enabled: countCard.enabled !== false,
       date: countCard.date || '',
       label: countCard.label || 'Vacation',
       names: countCard.names || {},
+      destinations: countCard.destinations || {},
+      docs: countCard.docs || {},
+      defaultPackingList: countCard.defaultPackingList || null,
       maxVacations: countCard.maxVacations || 3,
-      keyword: countCard.keyword || 'Urlaub'
+      keyword: countCard.keyword || 'Urlaub',
+      keywords: countCard.keywords || countCard.keyword || 'Urlaub',
+      ...countCard
     };
 
     // --- Trash ---
@@ -226,14 +272,6 @@ const ConfigLoader = (() => {
       username: ghCard.username || '',
       refreshMinutes: ghCard.refreshMinutes || 30,
       maxEvents: ghCard.maxEvents || 4
-    };
-
-    // --- Email ---
-    const emailCard = cards.email || {};
-    config.email = {
-      clientId: emailCard.clientId || '',
-      clientSecret: emailCard.clientSecret || '',
-      refreshMinutes: emailCard.refreshMinutes || 5
     };
 
     // --- AQI ---

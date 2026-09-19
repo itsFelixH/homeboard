@@ -24,7 +24,6 @@ A clean, self-hosted apartment dashboard for a wall-mounted tablet or always-on 
 - **GitHub** — recent public activity feed
 - **XKCD** — latest comic with navigation
 - **Package Tracking** — DHL/Hermes/DPD with localStorage persistence
-- **Email** — Gmail unread count
 - **Plants** — watering tracker with reminder
 - **Moon Phase** — calculated, no API needed
 - **Slideshow** — rotating photo display
@@ -169,8 +168,6 @@ trash:
 github:
   username: your-username
 
-email:
-  address: you@gmail.com
   appPassword: ''           # Google App Password (not your regular password)
 ```
 
@@ -178,28 +175,28 @@ See `config.template.yaml` for the full list of options with comments.
 
 ### Per-card settings reference
 
-| Card | Settings |
-|------|----------|
-| weather | `units`, `refreshMinutes`, `showClothing`, `showForecast`, `forecastDays` |
-| rain | `refreshMinutes`, `forecastHours` |
-| departures | `refreshSeconds`, `durationMinutes`, `maxResults` |
-| commute | `refreshMinutes`, `showBike`, `showTransit`, `bikeSpeedFactor` |
-| aqi | `refreshMinutes` |
-| uv | `refreshMinutes` |
-| pollen | `refreshMinutes`, `types` |
-| plants | `warningDays` |
-| calendar | `maxEvents`, `refreshMinutes`, `showTomorrow`, `showCommute`, `hidePatterns` |
-| birthdays | `refreshMinutes`, `lookaheadDays` |
-| countdown | `maxVacations`, `keyword` |
-| news | `refreshMinutes`, `perPage`, `cycleSeconds`, `defaultCategory` |
-| word | *(none)* |
-| spell | `cycleSeconds` |
-| history | `minYear` |
-| trash | `refreshHours`, `previewDays` |
-| github | `refreshMinutes`, `maxEvents` |
-| xkcd | *(none)* |
+| Section / Card | Settings |
+|----------------|----------|
+| **modals** (global) | `closeOnBackdrop`, `keyboardNav`, `autoCloseSeconds`, `animation` (`scale`, `fade`, `slide-up`, `none`), `backdropBlur` |
+| **weather** | `units`, `refreshMinutes`, `showClothing`, `showForecast`, `forecastDays` |
+| **rain** | `refreshMinutes`, `forecastHours` |
+| **departures** | `refreshSeconds`, `durationMinutes`, `maxResults`, `showDelays`, `platformDisplay` |
+| **commute** | `refreshMinutes`, `showBike`, `showTransit`, `bikeSpeedFactor`, `targetArrivalToday`, `targetDepartureNextDay` |
+| **aqi** | `refreshMinutes` |
+| **uv** | `refreshMinutes` |
+| **pollen** | `refreshMinutes`, `types` |
+| **plants** | `warningDays` |
+| **calendar** | `maxEvents`, `refreshMinutes`, `showTomorrow`, `showCommute`, `showCategories`, `bufferMinutes`, `showNavigation`, `defaultNavigationMode`, `showDescription`, `showCategoryTag`, `categories`, `places`, `hidePatterns` |
+| **birthdays** | `maxEntries`, `lookaheadDays`, `showZodiac`, `hideAge`, `actions`, `labels`, `cities` |
+| **countdown** | `maxVacations`, `keywords`, `showPackingList`, `showWeather`, `showCurrency`, `customChecklistTemplates`, `defaultPackingList`, `docs`, `destinations` |
+| **news** | `refreshMinutes`, `perPage`, `cycleSeconds`, `defaultCategory` |
+| **word** | *(none)* |
+| **spell** | `cycleSeconds` |
+| **history** | `minYear` |
+| **trash** | `refreshHours`, `previewDays` |
+| **github** | `refreshMinutes`, `maxEvents` |
+| **xkcd** | *(none)* |
 | packages | `refreshMinutes` |
-| email | `refreshMinutes` |
 | slideshow | `intervalSeconds` |
 
 ### Getting your Google Calendar ICS URL
@@ -250,6 +247,7 @@ docker compose up -d --build
 ## Interactive Features
 
 - **Departures** — arrows to switch between stops (S-Bahn, U-Bahn, Bus)
+- **Calendar** — interactive commute mode toggle (Walk / Bike / Transit), 1-tap Google Maps route & Return Home navigation, customizable smart category tags & subtle accent stripes, per-venue transport rules (`places:`), and arrival buffer timers
 - **Commute** — arrows to switch between destinations, shows live ETA
 - **Vacation** — click entry to open week in Google Calendar, click pencil to rename
 - **Birthdays** — click name to open Google Contacts, click social icons for messaging
@@ -341,7 +339,6 @@ homeboard/
 │   ├── trash.js            # Trash pickup schedule
 │   ├── packages.js         # Package tracking (localStorage)
 │   ├── plants.js           # Plant watering tracker
-│   ├── email.js            # Gmail unread count
 │   ├── github.js           # GitHub activity feed
 │   ├── xkcd.js             # XKCD comic viewer
 │   ├── moon.js             # Moon phase calculation
