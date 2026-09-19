@@ -165,6 +165,10 @@ const ConfigLoader = (() => {
       refreshMinutes: commuteCard.refreshMinutes || 10,
       showBike: commuteCard.showBike !== false,
       showTransit: commuteCard.showTransit !== false,
+      targetArrivalToday: commuteCard.targetArrivalToday || '09:30',
+      targetArrivalNextDay: commuteCard.targetArrivalNextDay || '08:30',
+      targetDepartureNextDay: commuteCard.targetDepartureNextDay || null,
+      skipWeekends: commuteCard.skipWeekends !== false,
       bikeSpeed: commuteCard.bikeSpeed || 13,
       walkSpeed: commuteCard.walkSpeed || 5
     };
