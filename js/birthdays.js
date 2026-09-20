@@ -334,15 +334,11 @@ const Birthdays = (() => {
     }).join('');
   }
 
-  async function showBirthdayDetail(idx) {
+  async function showBirthdayDetail(idx, navDirection = 0) {
     if (!_birthdaysList || !_birthdaysList[idx]) return;
     _currentModalIdx = idx;
     const b = _birthdaysList[idx];
-
-    const existing = document.getElementById('birthday-detail-overlay');
-    if (existing) existing.remove();
-    if (_autoCloseTimer) clearTimeout(_autoCloseTimer);
-    if (_modalKeyHandler) window.removeEventListener('keydown', _modalKeyHandler);
+    const existingOverlay = document.getElementById('birthday-detail-overlay');
 
     const bdayCfg = HOMEBOARD_CONFIG.birthdays || {};
     const modalCfg = HOMEBOARD_CONFIG.modals || {};
@@ -439,14 +435,14 @@ const Birthdays = (() => {
       `;
     }
 
-    const animClass = `modal-anim-${modalCfg.animation || 'scale'}`;
+    const animClass = navDirection > 0
+      ? 'modal-nav-next'
+      : navDirection < 0
+      ? 'modal-nav-prev'
+      : `modal-anim-${modalCfg.animation || 'scale'}`;
     const noBlurClass = modalCfg.backdropBlur === false ? 'modal-no-blur' : '';
 
-    const overlay = document.createElement('div');
-    overlay.id = 'birthday-detail-overlay';
-    if (noBlurClass) overlay.className = noBlurClass;
-
-    overlay.innerHTML = `
+    const cardHtml = `
       <div class="event-detail-card birthday-detail-card ${animClass}">
         <div class="detail-modal-header">
           <span class="detail-modal-title">Geburtstag</span>
@@ -535,44 +531,57 @@ const Birthdays = (() => {
       </div>
     `;
 
-    const closeOnBackdrop = modalCfg.closeOnBackdrop !== false;
-    overlay.addEventListener('click', (e) => {
-      if (e.target.classList.contains('detail-close-btn') || (closeOnBackdrop && e.target === overlay)) {
-        closeModal();
+    if (existingOverlay) {
+      existingOverlay.innerHTML = cardHtml;
+    } else {
+      if (_modalKeyHandler) {
+        window.removeEventListener('keydown', _modalKeyHandler);
+        _modalKeyHandler = null;
       }
-    });
+      const overlay = document.createElement('div');
+      overlay.id = 'birthday-detail-overlay';
+      if (noBlurClass) overlay.className = noBlurClass;
+      overlay.innerHTML = cardHtml;
 
-    const enableKeyboardNav = modalCfg.keyboardNav !== false;
-    if (enableKeyboardNav) {
-      _modalKeyHandler = (e) => {
-        if (e.key === 'Escape') closeModal();
-        else if (e.key === 'ArrowLeft') navigateModal(-1);
-        else if (e.key === 'ArrowRight') navigateModal(1);
-      };
-      window.addEventListener('keydown', _modalKeyHandler);
-    }
+      const closeOnBackdrop = modalCfg.closeOnBackdrop !== false;
+      overlay.addEventListener('click', (e) => {
+        if (e.target.classList.contains('detail-close-btn') || (closeOnBackdrop && e.target === overlay)) {
+          closeModal();
+        }
+      });
 
-    // Auto-close on inactivity
-    const autoCloseSec = modalCfg.autoCloseSeconds || 0;
-    if (autoCloseSec > 0) {
-      function resetTimer() {
-        if (_autoCloseTimer) clearTimeout(_autoCloseTimer);
-        _autoCloseTimer = setTimeout(closeModal, autoCloseSec * 1000);
+      const enableKeyboardNav = modalCfg.keyboardNav !== false;
+      if (enableKeyboardNav) {
+        _modalKeyHandler = (e) => {
+          if (e.key === 'Escape') closeModal();
+          else if (e.key === 'ArrowLeft') navigateModal(-1);
+          else if (e.key === 'ArrowRight') navigateModal(1);
+        };
+        window.addEventListener('keydown', _modalKeyHandler);
       }
-      resetTimer();
-      overlay.addEventListener('pointerdown', resetTimer);
-      overlay.addEventListener('touchstart', resetTimer);
-      overlay.addEventListener('keydown', resetTimer);
-    }
 
-    document.body.appendChild(overlay);
+      // Auto-close on inactivity
+      const autoCloseSec = modalCfg.autoCloseSeconds || 0;
+      if (autoCloseSec > 0) {
+        function resetTimer() {
+          if (_autoCloseTimer) clearTimeout(_autoCloseTimer);
+          _autoCloseTimer = setTimeout(closeModal, autoCloseSec * 1000);
+        }
+        resetTimer();
+        overlay.addEventListener('pointerdown', resetTimer);
+        overlay.addEventListener('touchstart', resetTimer);
+        overlay.addEventListener('keydown', resetTimer);
+      }
+
+      document.body.appendChild(overlay);
+    }
   }
 
   function navigateModal(direction) {
     if (_currentModalIdx === -1 || !_birthdaysList.length) return;
     const next = _currentModalIdx + direction;
     if (next >= 0 && next < _birthdaysList.length) {
-      showBirthdayDetail(next);
+      showBirthdayDetail(next, direction);
     }
   }
 
