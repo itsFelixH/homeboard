@@ -66,6 +66,11 @@
     expect(overlay.innerHTML).toContain('Sommerurlaub Italien');
     expect(overlay.innerHTML).toContain('Rom');
 
+    // Test navigating modal in-place without destroying overlay backdrop
+    Holiday.navigateModal(1);
+    const navOverlay = document.getElementById('vacation-detail-overlay');
+    expect(navOverlay).toBe(overlay);
+
     // Test closing modal
     Holiday.closeModal();
     expect(document.getElementById('vacation-detail-overlay')).toBeNull();
