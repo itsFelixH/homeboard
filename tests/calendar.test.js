@@ -71,4 +71,60 @@ describe('Calendar Module', () => {
     const list = document.getElementById('event-list');
     expect(list.textContent).toContain('Set icsUrl in config');
   });
+
+  test('navigates between calendar event details in-place without destroying overlay backdrop', async () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date(2026, 8, 20, 8, 0, 0));
+
+    const multiEventIcs = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'BEGIN:VEVENT',
+      'UID:e1@test.com',
+      'DTSTART:20260920T090000Z',
+      'DTEND:20260920T100000Z',
+      'SUMMARY:Morning Meeting',
+      'LOCATION:Office',
+      'END:VEVENT',
+      'BEGIN:VEVENT',
+      'UID:e2@test.com',
+      'DTSTART:20260920T140000Z',
+      'DTEND:20260920T150000Z',
+      'SUMMARY:Afternoon Sync',
+      'LOCATION:Office',
+      'END:VEVENT',
+      'END:VCALENDAR'
+    ].join('\r\n');
+
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      text: async () => multiEventIcs
+    });
+
+    Calendar.init();
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    Calendar.showEventDetailByIdx(0);
+    const initialOverlay = document.getElementById('event-detail-overlay');
+    expect(initialOverlay).not.toBeNull();
+    expect(initialOverlay.innerHTML).toContain('Morning Meeting');
+
+    Calendar.navigateEventDetail(1);
+    const nextOverlay = document.getElementById('event-detail-overlay');
+    expect(nextOverlay).toBe(initialOverlay);
+    expect(nextOverlay.innerHTML).toContain('Afternoon Sync');
+    expect(nextOverlay.querySelector('.modal-nav-next')).not.toBeNull();
+
+    Calendar.navigateEventDetail(-1);
+    const prevOverlay = document.getElementById('event-detail-overlay');
+    expect(prevOverlay).toBe(initialOverlay);
+    expect(prevOverlay.innerHTML).toContain('Morning Meeting');
+    expect(prevOverlay.querySelector('.modal-nav-prev')).not.toBeNull();
+
+    Calendar.closeEventDetail();
+    expect(document.getElementById('event-detail-overlay')).toBeNull();
+    jest.useRealTimers();
+  });
 });
