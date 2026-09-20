@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Birthdays module - shows upcoming birthdays from ICS feed
  * - Compact list with maxEntries config
  * - Filter out monthly overview events ("GEBURTSTAGE")
@@ -40,10 +40,19 @@ const Birthdays = (() => {
 
   function isOverviewEvent(summary) {
     if (!summary) return false;
-    const clean = summary.trim().toLowerCase();
-    return /^(?:geburtstage|geburtstagskalender|geburtstagsübersicht|übersicht|monatsübersicht|birthdays|all birthdays)/i.test(clean) || clean === 'geburtstage';
+    // Remove emojis, symbols, surrounding punctuation and extra whitespace
+    const clean = summary.replace(/^[\p{Extended_Pictographic}\p{Emoji_Presentation}\p{Emoji}\s\-_*!~#•·]+/gu, "")
+      .replace(/[\p{Extended_Pictographic}\p{Emoji_Presentation}\p{Emoji}\s\-_*!~#•·]+$/gu, "")
+      .trim().toLowerCase();
+    if (/^(?:geburtstage|geburtstagskalender|geburtstagsübersicht|übersicht|monatsübersicht|jahresübersicht|birthdays|all birthdays)(?:$|\s|:|-)/i.test(clean)) {
+      return true;
+    }
+    const pure = summary.replace(/[^\p{L}\p{N}]/gu, "").toLowerCase();
+    if (/^(?:geburtstage|geburtstagskalender|geburtstagsübersicht|monatsübersicht|birthdays|allbirthdays)$/i.test(pure)) {
+      return true;
+    }
+    return /\b(?:geburtstage|geburtstagskalender|geburtstagsübersicht|monatsübersicht)\b/i.test(summary);
   }
-
   function parseBirthdays(text) {
     const lines = text.replace(/\r\n /g, '').split(/\r?\n/);
     const now = new Date();
