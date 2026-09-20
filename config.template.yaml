@@ -1,4 +1,4 @@
-# ============================================================
+﻿# ============================================================
 # Homeboard Configuration
 # ============================================================
 # Copy this file to config.local.yaml and fill in your values.
@@ -81,6 +81,7 @@ cards:
     #   - label: Office
     #     latitude: 52.50
     #     longitude: 13.40
+    #     preferredMode: 'bike' # 'bike' or 'transit'
 
   aqi:
     enabled: true
