@@ -1497,14 +1497,9 @@ const Calendar = (() => {
   let _modalKeyHandler = null;
   let _autoCloseTimer = null;
 
-  function showEventDetail(ev) {
+  function showEventDetail(ev, navDirection = 0) {
     if (!ev) return;
-    const existing = document.getElementById('event-detail-overlay');
-    if (existing) existing.remove();
-    if (_modalKeyHandler) {
-      window.removeEventListener('keydown', _modalKeyHandler);
-      _modalKeyHandler = null;
-    }
+    const existingOverlay = document.getElementById('event-detail-overlay');
 
     const placeConfig = getPlaceConfig(ev);
     const actualIdx = _renderedEvents.indexOf(ev);
@@ -1818,10 +1813,15 @@ const Calendar = (() => {
         </div>`
       : '';
 
-    const overlay = document.createElement('div');
-    overlay.id = 'event-detail-overlay';
-    overlay.innerHTML = `
-      <div class="event-detail-card">
+    const animClass = navDirection > 0
+      ? 'modal-nav-next'
+      : navDirection < 0
+      ? 'modal-nav-prev'
+      : (modalConfig.animation ? `modal-anim-${modalConfig.animation}` : 'modal-anim-scale');
+    const noBlurClass = modalConfig.backdropBlur === false ? 'modal-no-blur' : '';
+
+    const cardHtml = `
+      <div class="event-detail-card ${animClass}">
         <div class="detail-modal-header">
           <span class="detail-modal-title">📅 Termindetails</span>
           <div class="detail-header-nav">
@@ -1855,24 +1855,37 @@ const Calendar = (() => {
         ${actionsHtml}
       </div>`;
 
-    const closeOnBackdrop = modalConfig.closeOnBackdrop !== false;
-    overlay.addEventListener('click', (e) => {
-      if (e.target.classList.contains('detail-close-btn') || (closeOnBackdrop && e.target === overlay)) {
-        closeEventDetail();
+    if (existingOverlay) {
+      existingOverlay.innerHTML = cardHtml;
+    } else {
+      if (_modalKeyHandler) {
+        window.removeEventListener('keydown', _modalKeyHandler);
+        _modalKeyHandler = null;
       }
-    });
+      const overlay = document.createElement('div');
+      overlay.id = 'event-detail-overlay';
+      if (noBlurClass) overlay.className = noBlurClass;
+      overlay.innerHTML = cardHtml;
 
-    const enableKeyboardNav = modalConfig.keyboardNav !== false;
-    if (enableKeyboardNav) {
-      _modalKeyHandler = (e) => {
-        if (e.key === 'Escape') closeEventDetail();
-        else if (e.key === 'ArrowLeft') navigateEventDetail(-1);
-        else if (e.key === 'ArrowRight') navigateEventDetail(1);
-      };
-      window.addEventListener('keydown', _modalKeyHandler);
+      const closeOnBackdrop = modalConfig.closeOnBackdrop !== false;
+      overlay.addEventListener('click', (e) => {
+        if (e.target.classList.contains('detail-close-btn') || (closeOnBackdrop && e.target === overlay)) {
+          closeEventDetail();
+        }
+      });
+
+      const enableKeyboardNav = modalConfig.keyboardNav !== false;
+      if (enableKeyboardNav) {
+        _modalKeyHandler = (e) => {
+          if (e.key === 'Escape') closeEventDetail();
+          else if (e.key === 'ArrowLeft') navigateEventDetail(-1);
+          else if (e.key === 'ArrowRight') navigateEventDetail(1);
+        };
+        window.addEventListener('keydown', _modalKeyHandler);
+      }
+
+      document.body.appendChild(overlay);
     }
-
-    document.body.appendChild(overlay);
 
     if (showReturn) {
       setTimeout(() => fetchReturnCommute(ev, actualIdx), 10);
@@ -1897,7 +1910,7 @@ const Calendar = (() => {
     if (_currentDetailIdx === -1 || !_renderedEvents.length) return;
     const nextIdx = _currentDetailIdx + direction;
     if (nextIdx >= 0 && nextIdx < _renderedEvents.length) {
-      showEventDetail(_renderedEvents[nextIdx]);
+      showEventDetail(_renderedEvents[nextIdx], direction);
     }
   }
 
