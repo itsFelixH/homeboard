@@ -215,17 +215,17 @@ const Holiday = (() => {
       let daysText, sublabel;
       const lang = (window.Lang && typeof window.Lang.get === 'function') ? window.Lang.get() : 'de';
       if (diffDays < 0) {
-        daysText = 'âœ”';
+        daysText = '✔';
         sublabel = (window.i18n && typeof window.i18n === 'function') ? window.i18n('countdown_started') : 'Bereits gestartet!';
       } else if (diffDays === 0) {
-        daysText = 'ðŸŽ‰';
+        daysText = '🎉';
         sublabel = (window.i18n && typeof window.i18n === 'function') ? window.i18n('countdown_today') : 'Heute!';
       } else if (diffDays === 1) {
         daysText = diffDays;
-        sublabel = lang === 'de' ? 'ðŸ§³ Koffer packen!' : lang === 'es' ? 'ðŸ§³ Â¡Hacer la maleta!' : 'ðŸ§³ Pack your bags!';
+        sublabel = lang === 'de' ? '🧳 Koffer packen!' : lang === 'es' ? '🧳 ¡Hacer la maleta!' : '🧳 Pack your bags!';
       } else if (diffDays <= 3) {
         daysText = diffDays;
-        sublabel = lang === 'de' ? 'â³ Bald gehts los!' : lang === 'es' ? 'â³ Â¡Casi es hora!' : 'â³ Almost there!';
+        sublabel = lang === 'de' ? '⏳ Bald gehts los!' : lang === 'es' ? '⏳ ¡Casi es hora!' : '⏳ Almost there!';
       } else {
         daysText = diffDays;
         sublabel = '';
@@ -240,10 +240,10 @@ const Holiday = (() => {
           <span class="countdown-days">${daysText}</span>
           <div class="countdown-meta">
             <span class="countdown-label" data-date-key="${dateKey}">${label}</span>
-            <span class="countdown-sublabel">${dateStr}${sublabel ? ' Â· ' + sublabel : ''}</span>
+            <span class="countdown-sublabel">${dateStr}${sublabel ? ' · ' + sublabel : ''}</span>
           </div>
         </div>
-        <button class="countdown-edit-btn" data-date-key="${dateKey}" title="Umbenennen" aria-label="Rename" onclick="Holiday.triggerEdit('${dateKey}', this, event)">âœï¸</button>
+        <button class="countdown-edit-btn" data-date-key="" title="Umbenennen" aria-label="Rename" onclick="Holiday.triggerEdit('', this, event)">✏️</button>
       </div>`;
     }).join('');
   }
@@ -259,15 +259,15 @@ const Holiday = (() => {
 
   // --- Packing List Management (localStorage persistent) ---
   const DEFAULT_PACKING_ITEMS = [
-    'ðŸ›‚ Reisepass / Personalausweis',
-    'ðŸŽŸï¸ Tickets & BuchungsbestÃ¤tigung',
-    'ðŸªª Auslandskrankenversicherung & Kreditkarte',
-    'ðŸ”Œ Powerbank & Ladekabel',
-    'ðŸ”Œ Reiseadapter & KopfhÃ¶rer',
-    'ðŸ§´ Sonnencreme & Sonnenbrille',
-    'ðŸ’Š Reiseapotheke & Pflaster',
-    'ðŸ©± Badesachen / Wanderschuhe',
-    'ðŸ–ï¸ Strandtuch & Kulturbeutel'
+    '🛂 Reisepass / Personalausweis',
+    '🎟️ Tickets & Buchungsbestätigung',
+    '🪪 Auslandskrankenversicherung & Kreditkarte',
+    '🔌 Powerbank & Ladekabel',
+    '🔌 Reiseadapter & Kopfhörer',
+    '🧴 Sonnencreme & Sonnenbrille',
+    '💊 Reiseapotheke & Pflaster',
+    '🩱 Badesachen / Wanderschuhe',
+    '🏖️ Strandtuch & Kulturbeutel'
   ];
 
   function getPackingItems(dateKey, destinationOrSummary = '') {
@@ -327,7 +327,7 @@ const Holiday = (() => {
     if (!listContainer) return;
 
     if (items.length === 0) {
-      listContainer.innerHTML = '<div class="vac-pack-empty">Keine GegenstÃ¤nde. FÃ¼ge neue hinzu oder setze die Standardliste zurÃ¼ck.</div>';
+      listContainer.innerHTML = '<div class="vac-pack-empty">Keine Gegenstände. Füge neue hinzu oder setze die Standardliste zurück.</div>';
       return;
     }
 
@@ -340,7 +340,7 @@ const Holiday = (() => {
             <input type="checkbox" class="vac-pack-checkbox" ${isChecked ? 'checked' : ''} onchange="Holiday.togglePackItem('${dateKey}', '${safeItem}', this.checked)">
             <span class="vac-pack-text">${item}</span>
           </label>
-          <button class="vac-pack-del-btn" onclick="Holiday.deletePackItem('${dateKey}', ${i})" title="LÃ¶schen">âœ•</button>
+          <button class="vac-pack-del-btn" onclick="Holiday.deletePackItem('${dateKey}', ${i})" title="Löschen">✕</button>
         </div>
       `;
     }).join('');
@@ -417,7 +417,7 @@ const Holiday = (() => {
 
     docBox.innerHTML = `
       <div class="vac-doc-input-box">
-        <input type="url" id="vac-doc-input-field" class="vac-doc-input" placeholder="Google Docs / Sheets Link einfÃ¼gen..." value="${currentUrl || ''}" />
+        <input type="url" id="vac-doc-input-field" class="vac-doc-input" placeholder="Google Docs / Sheets Link einfügen..." value="${currentUrl || ''}" />
         <button class="detail-action-btn detail-action-primary" onclick="Holiday.savePlanningDocUrl('${dateKey}', document.getElementById('vac-doc-input-field').value)">Speichern</button>
         <button class="detail-action-btn" onclick="Holiday.showVacationDetail(${_currentModalIdx})">Abbrechen</button>
       </div>
@@ -430,24 +430,24 @@ const Holiday = (() => {
   function getDestinationBanner(query) {
     const q = (query || '').toLowerCase();
     if (/mallorca|palma|balearen|strand|beach|ibiza|menorca/i.test(q)) {
-      return { gradient: 'linear-gradient(135deg, rgba(14, 165, 233, 0.25), rgba(245, 158, 11, 0.25))', icon: 'ðŸ–ï¸' };
+      return { gradient: 'linear-gradient(135deg, rgba(14, 165, 233, 0.25), rgba(245, 158, 11, 0.25))', icon: '🏖️' };
     }
     if (/spanien|spain|barcelona|madrid|andalusien|valencia/i.test(q)) {
-      return { gradient: 'linear-gradient(135deg, rgba(239, 68, 68, 0.25), rgba(245, 158, 11, 0.25))', icon: 'ðŸ‡ªðŸ‡¸' };
+      return { gradient: 'linear-gradient(135deg, rgba(239, 68, 68, 0.25), rgba(245, 158, 11, 0.25))', icon: '🇪🇸' };
     }
     if (/italien|italy|rom|rome|toscana|florenz|venedig|gardasee|sizilien/i.test(q)) {
-      return { gradient: 'linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(239, 68, 68, 0.25))', icon: 'ðŸ‡®ðŸ‡¹' };
+      return { gradient: 'linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(239, 68, 68, 0.25))', icon: '🇮🇹' };
     }
-    if (/alpen|alps|wandern|hiking|berge|tirol|schweiz|swiss|Ã¶sterreich|dolomiten/i.test(q)) {
-      return { gradient: 'linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(99, 102, 241, 0.25))', icon: 'ðŸ”ï¸' };
+    if (/alpen|alps|wandern|hiking|berge|tirol|schweiz|swiss|österreich|dolomiten/i.test(q)) {
+      return { gradient: 'linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(99, 102, 241, 0.25))', icon: '🏔️' };
     }
     if (/japan|tokio|tokyo|kyoto|osaka/i.test(q)) {
-      return { gradient: 'linear-gradient(135deg, rgba(244, 63, 94, 0.25), rgba(99, 102, 241, 0.25))', icon: 'ðŸ‡¯ðŸ‡µ' };
+      return { gradient: 'linear-gradient(135deg, rgba(244, 63, 94, 0.25), rgba(99, 102, 241, 0.25))', icon: '🇯🇵' };
     }
     if (/usa|new york|california|florida|hawaii|san francisco/i.test(q)) {
-      return { gradient: 'linear-gradient(135deg, rgba(59, 130, 246, 0.25), rgba(239, 68, 68, 0.25))', icon: 'ðŸ‡ºðŸ‡¸' };
+      return { gradient: 'linear-gradient(135deg, rgba(59, 130, 246, 0.25), rgba(239, 68, 68, 0.25))', icon: '🇺🇸' };
     }
-    return { gradient: 'linear-gradient(135deg, rgba(6, 182, 212, 0.25), rgba(168, 85, 247, 0.25))', icon: 'âœˆï¸' };
+    return { gradient: 'linear-gradient(135deg, rgba(6, 182, 212, 0.25), rgba(168, 85, 247, 0.25))', icon: '✈️' };
   }
 
   async function showVacationDetail(idx) {
@@ -478,7 +478,7 @@ const Holiday = (() => {
     let durationDays = 0;
     if (vac.end) {
       const endStr = vac.end.toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' });
-      rangeStr = `${startStr} â€“ ${endStr}`;
+      rangeStr = `${startStr} – ${endStr}`;
       durationDays = Math.max(1, Math.round((vac.end - vac.start) / (1000 * 60 * 60 * 24)));
     }
 
@@ -505,14 +505,14 @@ const Holiday = (() => {
     overlay.innerHTML = `
       <div class="event-detail-card vacation-detail-card ${animClass}">
         <div class="detail-modal-header">
-          <span class="detail-modal-title">âœˆï¸ Urlaubs- & Reiseplaner</span>
+          <span class="detail-modal-title">✈️ Urlaubs- & Reiseplaner</span>
           <div class="detail-header-nav">
             ${totalVac > 1 ? `
-              <button class="detail-nav-btn" ${!hasPrev ? 'disabled' : ''} onclick="Holiday.navigateModal(-1)" title="Vorherige Reise (â—€)">&lt;</button>
+              <button class="detail-nav-btn" ${!hasPrev ? 'disabled' : ''} onclick="Holiday.navigateModal(-1)" title="Vorherige Reise (◀)">&lt;</button>
               <span class="detail-nav-count">${idx + 1}/${totalVac}</span>
-              <button class="detail-nav-btn" ${!hasNext ? 'disabled' : ''} onclick="Holiday.navigateModal(1)" title="NÃ¤chste Reise (â–¶)">&gt;</button>
+              <button class="detail-nav-btn" ${!hasNext ? 'disabled' : ''} onclick="Holiday.navigateModal(1)" title="Nächste Reise (▶)">&gt;</button>
             ` : ''}
-            <button class="detail-close-btn" aria-label="Close" onclick="Holiday.closeModal()" title="SchlieÃŸen (Esc)">âœ•</button>
+            <button class="detail-close-btn" aria-label="Close" onclick="Holiday.closeModal()" title="Schließen (Esc)">✕</button>
           </div>
         </div>
 
@@ -522,7 +522,7 @@ const Holiday = (() => {
             <span class="vac-hero-icon">${bannerMeta.icon}</span>
             <div class="vac-hero-titles">
               <span class="vac-hero-destination">${label}</span>
-              <span class="vac-hero-sub">${destLocation ? destLocation + ' Â· ' : ''}${rangeStr}${durationDays ? ` (${durationDays} Tage)` : ''}</span>
+              <span class="vac-hero-sub">${destLocation ? destLocation + ' · ' : ''}${rangeStr}${durationDays ? ` (${durationDays} Tage)` : ''}</span>
             </div>
           </div>
           <div class="vac-live-countdown" id="vac-modal-live-countdown">
@@ -539,21 +539,21 @@ const Holiday = (() => {
         <!-- Planning Document Link Section -->
         <div class="detail-section-box">
           <div class="detail-section-title">
-            <span>ðŸ“ Planungsdokument (Google Docs / Notion)</span>
+            <span>📑 Planungsdokument (Google Docs / Notion)</span>
           </div>
           <div id="vac-doc-container">
             ${docUrl ? `
               <div class="vac-doc-active-box">
                 <a href="${docUrl}" target="_blank" class="detail-action-btn detail-action-primary vac-doc-btn">
-                  <span>ðŸ“„ Dokument Ã¶ffnen</span>
+                  <span>📄 Dokument öffnen</span>
                   <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
                 </a>
-                <button class="detail-action-btn vac-doc-edit-btn" onclick="Holiday.promptDocLink('${dateKey}', '${docUrl.replace(/'/g, "\'")}')" title="Link bearbeiten">âœï¸</button>
+                <button class="detail-action-btn vac-doc-edit-btn" onclick="Holiday.promptDocLink('', '')" title="Link bearbeiten">✏️</button>
               </div>
             ` : `
               <div class="vac-doc-placeholder-box">
                 <button class="detail-action-btn vac-doc-add-btn" onclick="Holiday.promptDocLink('${dateKey}', '')">
-                  + Link zu Google Docs / Sheets / Notion hinzufÃ¼gen
+                  + Link zu Google Docs / Sheets / Notion hinzufügen
                 </button>
               </div>
             `}
@@ -564,7 +564,7 @@ const Holiday = (() => {
         ${showWeather ? `
           <div class="detail-section-box" id="vac-weather-container">
             <div class="detail-section-title">
-              <span>ðŸŒ¤ï¸ Wetter & Klima (${destLocation})</span>
+              <span>🌤️ Wetter & Klima (${destLocation})</span>
             </div>
             <div class="vac-weather-forecast-row" id="vac-weather-forecast-list">
               <div class="detail-notes-empty">Wetterdaten werden geladen...</div>
@@ -579,7 +579,7 @@ const Holiday = (() => {
         ${showCurrency ? `
           <div class="detail-section-box" id="vac-currency-container" style="display: none;">
             <div class="detail-section-title">
-              <span>ðŸ’± Lokale WÃ¤hrung & Wechselkurs</span>
+              <span>💱 Lokale Währung & Wechselkurs</span>
             </div>
             <div id="vac-currency-content" class="vac-currency-box"></div>
           </div>
@@ -588,10 +588,10 @@ const Holiday = (() => {
         <!-- Actions Bar -->
         <div class="detail-actions-bar">
           <button class="detail-action-btn" onclick="Holiday.copyVacationDetails('${dateKey}', '${label.replace(/'/g, "\'")}', '${rangeStr}', '${destLocation.replace(/'/g, "\'")}', this)">
-            ðŸ“‹ Reiseplan kopieren
+            📋 Reiseplan kopieren
           </button>
           <button class="detail-action-btn" onclick="Holiday.closeModal()">
-            SchlieÃŸen
+            Schließen
           </button>
         </div>
       </div>
@@ -669,18 +669,18 @@ const Holiday = (() => {
 
   function copyVacationDetails(dateKey, title, rangeStr, location, btn) {
     const lines = [
-      '­ƒÅû´©Å ' + (title || 'Urlaub'),
-      rangeStr ? '­ƒôà ' + rangeStr : '',
-      location ? '­ƒôì ' + location : ''
+      '✈️ ' + (title || 'Urlaub'),
+      rangeStr ? '📅 ' + rangeStr : '',
+      location ? '📍 ' + location : ''
     ].filter(Boolean);
     const textToCopy = lines.join('\n');
     if (window.copyToClipboard) {
-      window.copyToClipboard(textToCopy, btn, 'Ô£ö Kopiert!');
+      window.copyToClipboard(textToCopy, btn, '✔ Kopiert!');
     } else if (navigator.clipboard) {
       navigator.clipboard.writeText(textToCopy).then(() => {
         if (btn) {
           const origText = btn.innerHTML;
-          btn.innerHTML = 'Ô£ö Kopiert!';
+          btn.innerHTML = '✔ Kopiert!';
           btn.classList.add('copied');
           setTimeout(() => {
             btn.innerHTML = origText;
