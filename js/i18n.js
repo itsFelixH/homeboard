@@ -1,7 +1,7 @@
 /**
  * Internationalization + Theme system
  * Languages: de (German, default), en (English), es (Spanish)
- * Themes: dark (default), light, pixel
+ * Themes: dark (default), light, nord, pixel
  */
 const I18N_STRINGS = {
   de: {
