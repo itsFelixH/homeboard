@@ -243,7 +243,7 @@ const Holiday = (() => {
             <span class="countdown-sublabel">${dateStr}${sublabel ? ' · ' + sublabel : ''}</span>
           </div>
         </div>
-        <button class="countdown-edit-btn" data-date-key="" title="Umbenennen" aria-label="Rename" onclick="Holiday.triggerEdit('', this, event)">✏️</button>
+        <button class="countdown-edit-btn" data-date-key="${dateKey}" title="Umbenennen" aria-label="Rename" onclick="Holiday.triggerEdit('${dateKey}', this, event)">✏️</button>
       </div>`;
     }).join('');
   }
@@ -310,7 +310,27 @@ const Holiday = (() => {
     } catch (e) {}
   }
 
-  function renderPackingList(dateKey) {
+  function renderPackingListSection(dateKey, destHint = '') {
+    return `
+      <div class="detail-section-box">
+        <div class="detail-section-title">
+          <span>🧳 Packliste (${destHint ? destHint + ' ' : ''}Checkliste)</span>
+          <span class="vac-pack-progress-label" id="vac-pack-prog-label"></span>
+        </div>
+        <div class="vac-pack-progress-bar-bg">
+          <div class="vac-pack-progress-bar-fill" id="vac-pack-prog-bar" style="width: 0%;"></div>
+        </div>
+        <div class="vac-pack-list" id="vac-packing-items"></div>
+        <div class="vac-pack-add-row">
+          <input type="text" id="vac-new-pack-item" class="vac-pack-input" placeholder="Gegenstand hinzufügen..." onkeydown="if(event.key==='Enter') Holiday.addCustomPackItem('${dateKey}', '${(destHint || '').replace(/'/g, "\\'")}')" />
+          <button class="detail-action-btn" onclick="Holiday.addCustomPackItem('${dateKey}', '${(destHint || '').replace(/'/g, "\\'")}')">+ Hinzufügen</button>
+          <button class="detail-action-btn" onclick="Holiday.resetPackingList('${dateKey}')" title="Packliste zurücksetzen">↺ Reset</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderPackingList(dateKey, destHint = '') {
     const items = getPackingItems(dateKey, destHint);
     const checkedMap = getPackedChecked(dateKey);
     const total = items.length;
@@ -424,6 +444,28 @@ const Holiday = (() => {
     `;
     const field = document.getElementById('vac-doc-input-field');
     if (field) { field.focus(); field.select(); }
+  }
+
+  function extractDestination(location, summary, label) {
+    if (location && location.trim()) {
+      return location.split(',')[0].trim();
+    }
+    const text = `${label || ''} ${summary || ''}`;
+    const clean = text
+      .replace(/[\p{Extended_Pictographic}\p{Emoji_Presentation}\p{Emoji}]/gu, '')
+      .replace(/urlaub/gi, '')
+      .replace(/vacation/gi, '')
+      .replace(/reise/gi, '')
+      .replace(/trip/gi, '')
+      .replace(/sommer/gi, '')
+      .replace(/winter/gi, '')
+      .replace(/herbst/gi, '')
+      .replace(/ferien/gi, '')
+      .replace(/roadtrip/gi, '')
+      .trim();
+
+    if (clean.length >= 2) return clean.split(/[-–—/]/)[0].trim();
+    return '';
   }
 
   // --- Destination Photo Backdrop Determination ---
@@ -548,7 +590,7 @@ const Holiday = (() => {
                   <span>📄 Dokument öffnen</span>
                   <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
                 </a>
-                <button class="detail-action-btn vac-doc-edit-btn" onclick="Holiday.promptDocLink('', '')" title="Link bearbeiten">✏️</button>
+                <button class="detail-action-btn vac-doc-edit-btn" onclick="Holiday.promptDocLink('${dateKey}', '${(docUrl || '').replace(/'/g, "\\'")}')" title="Link bearbeiten">✏️</button>
               </div>
             ` : `
               <div class="vac-doc-placeholder-box">
@@ -629,6 +671,10 @@ const Holiday = (() => {
 
     document.body.appendChild(overlay);
 
+    if (showPackingList) {
+      renderPackingList(dateKey, destLocation || label);
+    }
+
     // Start precision live countdown timer
     updateLiveCountdown(vac.start);
     _countdownTimer = setInterval(() => updateLiveCountdown(vac.start), 1000);
@@ -640,6 +686,134 @@ const Holiday = (() => {
     if (showCurrency && destLocation) {
       fetchDestinationCurrency(destLocation);
     }
+  }
+
+  function updateLiveCountdown(targetDate) {
+    const now = new Date();
+    const diffMs = targetDate - now;
+
+    const daysEl = document.getElementById('vac-cd-days');
+    const hoursEl = document.getElementById('vac-cd-hours');
+    const minsEl = document.getElementById('vac-cd-mins');
+    const secsEl = document.getElementById('vac-cd-secs');
+
+    if (!daysEl || !hoursEl || !minsEl || !secsEl) return;
+
+    if (diffMs <= 0) {
+      daysEl.textContent = '0';
+      hoursEl.textContent = '00';
+      minsEl.textContent = '00';
+      secsEl.textContent = '00';
+      return;
+    }
+
+    const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    const secs = Math.floor((diffMs % (1000 * 60)) / 1000);
+
+    daysEl.textContent = days;
+    hoursEl.textContent = String(hours).padStart(2, '0');
+    minsEl.textContent = String(mins).padStart(2, '0');
+    secsEl.textContent = String(secs).padStart(2, '0');
+  }
+
+  async function fetchDestinationWeather(location, targetDate) {
+    const listEl = document.getElementById('vac-weather-forecast-list');
+    if (!listEl) return;
+
+    try {
+      const geoUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location)}&limit=1`;
+      const geoRes = await fetch(geoUrl);
+      if (!geoRes.ok) return;
+      const geoData = await geoRes.json();
+      if (!geoData || geoData.length === 0) return;
+
+      const lat = geoData[0].lat;
+      const lon = geoData[0].lon;
+
+      const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto`;
+      const wRes = await fetch(weatherUrl);
+      if (!wRes.ok) return;
+      const wData = await wRes.json();
+
+      if (!wData.daily || !wData.daily.time) return;
+
+      const days = wData.daily.time.slice(0, 5).map((dateStr, i) => {
+        const d = new Date(dateStr);
+        const dow = d.toLocaleDateString('de-DE', { weekday: 'short' });
+        const max = Math.round(wData.daily.temperature_2m_max[i]);
+        const min = Math.round(wData.daily.temperature_2m_min[i]);
+        const code = wData.daily.weathercode[i];
+        const icon = window.getWeatherIcon ? window.getWeatherIcon(code) : '🌤️';
+        const rain = wData.daily.precipitation_probability_max?.[i] || 0;
+
+        return `
+          <div class="vac-weather-day">
+            <span class="vac-w-dow">${dow}</span>
+            <span class="vac-w-icon">${icon}</span>
+            <span class="vac-w-temp">${max}° <small>${min}°</small></span>
+            ${rain > 20 ? `<span class="vac-w-rain">💧${rain}%</span>` : ''}
+          </div>
+        `;
+      }).join('');
+
+      listEl.innerHTML = days;
+    } catch (e) {
+      if (listEl) listEl.innerHTML = '<div class="detail-notes-empty">Wetterdaten konnten nicht geladen werden.</div>';
+    }
+  }
+
+  async function fetchDestinationCurrency(location) {
+    const currBox = document.getElementById('vac-currency-container');
+    const currContent = document.getElementById('vac-currency-content');
+    if (!currBox || !currContent) return;
+
+    const locLower = (location || '').toLowerCase();
+    let targetCurr = null;
+    let currSymbol = '';
+    let currName = '';
+
+    if (/usa|united states|new york|california|florida|hawaii|san francisco|chicago|miami/i.test(locLower)) {
+      targetCurr = 'USD'; currSymbol = '$'; currName = 'US-Dollar';
+    } else if (/uk|england|london|scotland|edinburgh|britain/i.test(locLower)) {
+      targetCurr = 'GBP'; currSymbol = '£'; currName = 'Britisches Pfund';
+    } else if (/schweiz|switzerland|zürich|zurich|bern|genf|geneva|basel/i.test(locLower)) {
+      targetCurr = 'CHF'; currSymbol = 'CHF'; currName = 'Schweizer Franken';
+    } else if (/japan|tokyo|kyoto|osaka/i.test(locLower)) {
+      targetCurr = 'JPY'; currSymbol = '¥'; currName = 'Japanischer Yen';
+    } else if (/norwegen|norway|oslo/i.test(locLower)) {
+      targetCurr = 'NOK'; currSymbol = 'kr'; currName = 'Norwegische Krone';
+    } else if (/dänemark|denmark|kopenhagen/i.test(locLower)) {
+      targetCurr = 'DKK'; currSymbol = 'kr'; currName = 'Dänische Krone';
+    } else if (/schweden|sweden|stockholm/i.test(locLower)) {
+      targetCurr = 'SEK'; currSymbol = 'kr'; currName = 'Schwedische Krone';
+    } else if (/tschechien|czech|prag|prague/i.test(locLower)) {
+      targetCurr = 'CZK'; currSymbol = 'Kč'; currName = 'Tschechische Krone';
+    } else if (/polen|poland|warschau|krakau/i.test(locLower)) {
+      targetCurr = 'PLN'; currSymbol = 'zł'; currName = 'Polnischer Złoty';
+    } else if (/ungarn|hungary|budapest/i.test(locLower)) {
+      targetCurr = 'HUF'; currSymbol = 'Ft'; currName = 'Ungarischer Forint';
+    }
+
+    if (!targetCurr) return;
+
+    try {
+      const res = await fetch(`https://open.er-api.com/v6/latest/EUR`);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.rates && data.rates[targetCurr]) {
+        const rate = data.rates[targetCurr];
+        currBox.style.display = '';
+        currContent.innerHTML = `
+          <div class="vac-curr-row">
+            <span class="vac-curr-badge">1 EUR = <strong>${rate.toFixed(2)} ${targetCurr}</strong> (${currSymbol})</span>
+            <span class="vac-curr-sub">100 ${targetCurr} ≈ ${(100 * (1 / rate)).toFixed(2)} €</span>
+          </div>
+          <div class="vac-curr-name">${currName}</div>
+        `;
+      }
+    } catch (e) {}
   }
 
   function navigateModal(direction) {
