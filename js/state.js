@@ -17,7 +17,7 @@ const State = (() => {
     if (_cache !== null) return _cache;
     try {
       const res = await fetch('/state');
-      if (res.ok) {
+      if (res && res.ok && typeof res.json === 'function') {
         _cache = await res.json();
       } else {
         _cache = {};
@@ -72,3 +72,4 @@ const State = (() => {
 
   return { get, set, remove, invalidate };
 })();
+

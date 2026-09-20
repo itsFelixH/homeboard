@@ -52,8 +52,8 @@ describe('Holiday / Countdown Module', () => {
       label: 'Sommerurlaub Italien'
     };
 
-    Holiday.init();
-    await new Promise(r => setTimeout(r, 2300));
+    await Holiday.init();
+    await Promise.resolve();
 
     const list = document.getElementById('countdown-list');
     expect(list.innerHTML).toContain('Sommerurlaub Italien');

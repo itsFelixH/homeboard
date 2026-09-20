@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Holiday / Vacation Countdown module
  * - Multi-unit live ticking countdown modal (Days, Hours, Min, Sec)
  * - Dynamic Destination Photo Backdrop & Climate Info
@@ -79,7 +79,7 @@ const Holiday = (() => {
       const vacations = findNextVacations(icsText);
 
       if (vacations.length > 0) {
-        renderAll(vacations);
+        await renderAll(vacations);
       } else {
         showFallback();
       }
@@ -90,6 +90,7 @@ const Holiday = (() => {
   }
 
   function findNextVacations(text) {
+    if (!text) return [];
     const lines = text.replace(/\r\n /g, '').split(/\r?\n/);
     const now = new Date();
     const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -689,12 +690,12 @@ const Holiday = (() => {
       }).catch(() => {});
     }
   }
-  function refresh(icsText) {
+  async function refresh(icsText) {
     if (icsText) {
       window._calendarCache = icsText;
       const vacations = findNextVacations(icsText);
       if (vacations.length > 0) {
-        renderAll(vacations);
+        await renderAll(vacations);
       } else {
         showFallback();
       }
@@ -719,3 +720,6 @@ const Holiday = (() => {
     closeModal
   };
 })();
+
+
+
