@@ -80,8 +80,54 @@ const Birthdays = (() => {
       }
     }
 
-    birthdays.sort((a, b) => a.daysUntil - b.daysUntil);
-    return birthdays;
+    // Deduplicate & merge events for the same person on the same date
+    const mergedMap = new Map();
+    for (const b of birthdays) {
+      const cleanName = cleanPersonName(b.summary).toLowerCase();
+      const bdayMonth = b.start ? b.start.getMonth() : 0;
+      const bdayDate = b.start ? b.start.getDate() : 0;
+      const key = `${cleanName}_${bdayMonth}_${bdayDate}`;
+
+      if (!mergedMap.has(key)) {
+        mergedMap.set(key, { ...b, rawSummaries: [b.summary] });
+      } else {
+        const existing = mergedMap.get(key);
+        if (b.summary && !existing.rawSummaries.includes(b.summary)) {
+          existing.rawSummaries.push(b.summary);
+        }
+        // Prefer shorter / cleaner summary as base name
+        const existingClean = cleanPersonName(existing.summary);
+        const incomingClean = cleanPersonName(b.summary);
+        if (incomingClean.length < existingClean.length || (existing.summary.includes('wird') && !b.summary.includes('wird'))) {
+          existing.summary = b.summary;
+        }
+        // Merge descriptions & raw summaries so contact links, IG handles and age notes are preserved
+        const descParts = [
+          ...(existing.description ? existing.description.split('\n') : []),
+          ...(b.description ? b.description.split('\n') : []),
+          ...existing.rawSummaries
+        ].filter(Boolean);
+        existing.description = Array.from(new Set(descParts)).join('\n');
+
+        // Merge location
+        if (!existing.location && b.location) existing.location = b.location;
+
+        // Merge categories
+        if (b.categories) {
+          const cats = new Set([...(existing.categories ? existing.categories.split(',') : []), ...b.categories.split(',')].map(s => s.trim()).filter(Boolean));
+          existing.categories = Array.from(cats).join(', ');
+        }
+
+        // Keep earliest start date (e.g. if birth year is specified in one)
+        if (b.start && existing.start && b.start.getFullYear() < existing.start.getFullYear()) {
+          existing.start = b.start;
+        }
+      }
+    }
+
+    const mergedList = Array.from(mergedMap.values());
+    mergedList.sort((a, b) => a.daysUntil - b.daysUntil);
+    return mergedList;
   }
 
   function parseICSDate(str) {
@@ -108,22 +154,28 @@ const Birthdays = (() => {
 
   function cleanPersonName(rawSummary) {
     let name = rawSummary || '';
+    const emojiStart = /^[\p{Extended_Pictographic}\u2600-\u27BF\s!🎉🎂🥳🎈🎁✨]+/gu;
+    const emojiEnd = /[\p{Extended_Pictographic}\u2600-\u27BF\s!🎉🎂🥳🎈🎁✨]+$/gu;
+
+    name = name.replace(emojiStart, '').replace(emojiEnd, '');
     name = name
       .replace(/'s Birthday$/i, '')
       .replace(/^Birthday of /i, '')
       .replace(/^Geburtstag von /i, '')
       .replace(/ hat Geburtstag!?$/i, '')
       .replace(/'s Geburtstag$/i, '')
-      .replace(/\s+wird\s+\d+\s*(?:Jahre|J\.?)?!?$/i, '')
+      .replace(/\s+wird\s+\d+\s*(?:Jahre|J\.?)?.*$/i, '')
       .replace(/\s*\(\s*(?:19|20)\d{2}\s*\)/g, '')
       .replace(/\s*\(\s*\d+\.?\s*(?:Geburtstag)?\s*\)/gi, '')
       .replace(/[!.]+$/g, '')
+      .replace(emojiStart, '')
+      .replace(emojiEnd, '')
       .trim();
     return name;
   }
 
   function extractBirthYear(b) {
-    const raw = `${b.summary || ''} ${b.description || ''}`;
+    const raw = `${b.summary || ''} ${b.description || ''} ${(b.rawSummaries || []).join(' ')}`;
     // Check "wird 30"
     const wirdMatch = raw.match(/wird\s+(\d+)/i);
     if (wirdMatch && b.start) {
