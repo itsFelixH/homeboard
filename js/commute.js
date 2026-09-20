@@ -1,11 +1,11 @@
-/**
+﻿/**
  * Commute module - shows bike + transit time to multiple work locations
  * - Morning Schedule Aware:
  *   - Current day before 09:30 AM (or targetArrivalToday): shows route arriving <= 09:30 AM
  *   - After 09:30 AM or on weekends: shows next workday (tomorrow or Monday) arriving <= 08:30 AM (or targetArrivalNextDay)
  * - Fixed Visual Hierarchy: Bike always displayed on top, Transit second
  * - Interactive Mode Toggle (Highlighting preferred mode like Calendar card)
- * - Visuals aligned with Calendar transit routes (pill badges, 'los um' departure times)
+ * - Visuals aligned with Calendar transit routes (pill badges, 'los um' departure times with mode emojis & day labels)
  * - Transit: VBB HAFAS API (primary) or Transitous (fallback)
  * - Bike: OSRM speed-based route calculation with schedule times
  */
@@ -85,8 +85,9 @@ const Commute = (() => {
     };
   }
 
-  function formatLeaveHint(depStr, targetDate, lang) {
+  function formatLeaveHint(depStr, targetDate, lang, modeEmoji) {
     if (!depStr) return '';
+    const emoji = modeEmoji ? `${modeEmoji} ` : '';
     const now = new Date();
     const isToday = targetDate && targetDate.toDateString() === now.toDateString();
     if (isToday) {
@@ -94,10 +95,13 @@ const Commute = (() => {
       const depTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), dh, dm, 0, 0);
       const diffMin = Math.round((depTime - now) / 60000);
       if (diffMin > 0 && diffMin <= 30) {
-        return lang === 'de' ? `in ${diffMin} min` : lang === 'es' ? `en ${diffMin} min` : `in ${diffMin} min`;
+        return lang === 'de' ? `${emoji}in ${diffMin} min` : lang === 'es' ? `${emoji}en ${diffMin} min` : `${emoji}in ${diffMin} min`;
       }
+      return lang === 'de' ? `${emoji}los um ${depStr}` : lang === 'es' ? `${emoji}salir a las ${depStr}` : `${emoji}leave at ${depStr}`;
     }
-    return lang === 'de' ? `los um ${depStr}` : lang === 'es' ? `salir a las ${depStr}` : `leave at ${depStr}`;
+    const weekday = targetDate ? targetDate.toLocaleDateString(lang === 'de' ? 'de-DE' : lang === 'es' ? 'es-ES' : 'en-US', { weekday: 'long' }) : '';
+    const dayPrefix = weekday ? `${weekday} ` : '';
+    return lang === 'de' ? `${emoji}${dayPrefix}los um ${depStr}` : lang === 'es' ? `${emoji}${dayPrefix}salir a las ${depStr}` : `${emoji}${dayPrefix}leave at ${depStr}`;
   }
 
   function selectMode(destIdx, mode, evt) {
@@ -292,9 +296,23 @@ const Commute = (() => {
       const hasTransit = !!(r.transit && r.transit > 0);
       const hasBike = !!(r.bike && r.bike > 0);
 
-      // Default preferred mode: bike if available, else transit
+      // Default preferred mode: configured preferredMode / defaultMode or digitalcampus fallback, else bike if available, else transit
+      const destConfig = (HOMEBOARD_CONFIG.commute && HOMEBOARD_CONFIG.commute.destinations && HOMEBOARD_CONFIG.commute.destinations[idx]) || {};
+      const configPref = destConfig.preferredMode || destConfig.defaultMode || destConfig.mode;
+      let preferredMode = 'bike';
+      if (configPref) {
+        const norm = String(configPref).toLowerCase();
+        if (norm === 'transit' || norm === 'öpnv' || norm === 'oepnv' || norm === 'subway' || norm === 'bus') {
+          preferredMode = 'transit';
+        } else if (norm === 'bike' || norm === 'bicycle' || norm === 'fahrrad') {
+          preferredMode = 'bike';
+        }
+      } else if (r.label && /digitalcampus/i.test(r.label)) {
+        preferredMode = 'transit';
+      }
+
       const userPref = _destModeOverrides[idx];
-      const selectedMode = userPref || (hasBike ? 'bike' : 'transit');
+      const selectedMode = userPref || (preferredMode === 'transit' && hasTransit ? 'transit' : preferredMode === 'bike' && hasBike ? 'bike' : (hasBike ? 'bike' : (hasTransit ? 'transit' : 'bike')));
 
       // Mode toggle pills in header if both are available
       const modeNavHtml = (hasBike && hasTransit) ? `
@@ -308,7 +326,7 @@ const Commute = (() => {
       let bikeHtml = '';
       if (hasBike) {
         const isPref = selectedMode === 'bike';
-        const leaveHint = formatLeaveHint(r.bikeDep, sched.targetDate, lang);
+        const leaveHint = isPref ? formatLeaveHint(r.bikeDep, sched.targetDate, lang, '🚲') : '';
         const leaveBadge = leaveHint ? `<span class="commute-route-right">${leaveHint}</span>` : '';
         bikeHtml = `<div class="commute-route-line ${isPref ? 'commute-route-preferred' : ''}" onclick="Commute.selectMode(${idx}, 'bike', event)" title="Fahrrad-Route auswählen">
           <span class="commute-route-left">🚲 <strong>${r.bike} min</strong> · ${r.bikeKm || '--'} km</span>
@@ -331,7 +349,7 @@ const Commute = (() => {
           legsHtml = ` · ${parts.join('<span class="commute-leg-sep">·</span>')}`;
         }
         const isPref = selectedMode === 'transit';
-        const leaveHint = formatLeaveHint(r.transitDep, sched.targetDate, lang);
+        const leaveHint = isPref ? formatLeaveHint(r.transitDep, sched.targetDate, lang, '🚇') : '';
         const leaveBadge = leaveHint ? `<span class="commute-route-right">${leaveHint}</span>` : '';
         transitHtml = `<div class="commute-route-line ${isPref ? 'commute-route-preferred' : ''}" onclick="Commute.selectMode(${idx}, 'transit', event)" title="ÖPNV-Route auswählen">
           <span class="commute-route-left">🚇 <strong>${r.transit} min</strong>${legsHtml}</span>
@@ -345,7 +363,6 @@ const Commute = (() => {
             <span class="commute-dest-title">${r.label}</span>
             ${modeNavHtml}
           </div>
-          <span class="commute-schedule-badge">${sched.badgeText}</span>
         </div>
         ${bikeHtml}
         ${transitHtml}
