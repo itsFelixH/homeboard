@@ -492,15 +492,16 @@ const Holiday = (() => {
     return { gradient: 'linear-gradient(135deg, rgba(6, 182, 212, 0.25), rgba(168, 85, 247, 0.25))', icon: '✈️' };
   }
 
-  async function showVacationDetail(idx) {
+  async function showVacationDetail(idx, navDirection = 0) {
     if (!_vacationsList || !_vacationsList[idx]) return;
     _currentModalIdx = idx;
     const vac = _vacationsList[idx];
 
-    const existing = document.getElementById('vacation-detail-overlay');
-    if (existing) existing.remove();
-    if (_countdownTimer) clearInterval(_countdownTimer);
-    if (_modalKeyHandler) window.removeEventListener('keydown', _modalKeyHandler);
+    if (_countdownTimer) {
+      clearInterval(_countdownTimer);
+      _countdownTimer = null;
+    }
+    const existingOverlay = document.getElementById('vacation-detail-overlay');
 
     const countCfg = HOMEBOARD_CONFIG.countdown || {};
     const modalCfg = HOMEBOARD_CONFIG.modals || {};
@@ -537,14 +538,15 @@ const Holiday = (() => {
     const showPackingList = countCfg.showPackingList !== false;
     const showCurrency = countCfg.showCurrency !== false;
 
-    const animClass = `modal-anim-${modalCfg.animation || 'scale'}`;
+    const animClass = navDirection > 0
+      ? 'modal-nav-next'
+      : navDirection < 0
+      ? 'modal-nav-prev'
+      : `modal-anim-${modalCfg.animation || 'scale'}`;
     const noBlurClass = modalCfg.backdropBlur === false ? 'modal-no-blur' : '';
 
-    const overlay = document.createElement('div');
-    overlay.id = 'vacation-detail-overlay';
-    if (noBlurClass) overlay.className = noBlurClass;
+    const cardHtml = `
 
-    overlay.innerHTML = `
       <div class="event-detail-card vacation-detail-card ${animClass}">
         <div class="detail-modal-header">
           <span class="detail-modal-title">✈️ Urlaubs- & Reiseplaner</span>
@@ -637,39 +639,53 @@ const Holiday = (() => {
           </button>
         </div>
       </div>
+    
     `;
 
-    const closeOnBackdrop = modalCfg.closeOnBackdrop !== false;
-    overlay.addEventListener('click', (e) => {
-      if (e.target.classList.contains('detail-close-btn') || (closeOnBackdrop && e.target === overlay)) {
-        closeModal();
+    if (existingOverlay) {
+      existingOverlay.innerHTML = cardHtml;
+    } else {
+      if (_modalKeyHandler) {
+        window.removeEventListener('keydown', _modalKeyHandler);
+        _modalKeyHandler = null;
       }
-    });
+      const overlay = document.createElement('div');
+      overlay.id = 'vacation-detail-overlay';
+      if (noBlurClass) overlay.className = noBlurClass;
+      overlay.innerHTML = cardHtml;
 
-    const enableKeyboardNav = modalCfg.keyboardNav !== false;
-    if (enableKeyboardNav) {
-      _modalKeyHandler = (e) => {
-        if (e.key === 'Escape') closeModal();
-        else if (e.key === 'ArrowLeft') navigateModal(-1);
-        else if (e.key === 'ArrowRight') navigateModal(1);
-      };
-      window.addEventListener('keydown', _modalKeyHandler);
-    }
+      const closeOnBackdrop = modalCfg.closeOnBackdrop !== false;
+      overlay.addEventListener('click', (e) => {
+        if (e.target.classList.contains('detail-close-btn') || (closeOnBackdrop && e.target === overlay)) {
+          closeModal();
+        }
+      });
 
-    // Auto-close on inactivity
-    const autoCloseSec = modalCfg.autoCloseSeconds || 0;
-    if (autoCloseSec > 0) {
-      function resetTimer() {
-        if (_autoCloseTimer) clearTimeout(_autoCloseTimer);
-        _autoCloseTimer = setTimeout(closeModal, autoCloseSec * 1000);
+      const enableKeyboardNav = modalCfg.keyboardNav !== false;
+      if (enableKeyboardNav) {
+        _modalKeyHandler = (e) => {
+          if (e.key === 'Escape') closeModal();
+          else if (e.key === 'ArrowLeft') navigateModal(-1);
+          else if (e.key === 'ArrowRight') navigateModal(1);
+        };
+        window.addEventListener('keydown', _modalKeyHandler);
       }
-      resetTimer();
-      overlay.addEventListener('pointerdown', resetTimer);
-      overlay.addEventListener('touchstart', resetTimer);
-      overlay.addEventListener('keydown', resetTimer);
-    }
 
-    document.body.appendChild(overlay);
+      // Auto-close on inactivity
+      const autoCloseSec = modalCfg.autoCloseSeconds || 0;
+      if (autoCloseSec > 0) {
+        function resetTimer() {
+          if (_autoCloseTimer) clearTimeout(_autoCloseTimer);
+          _autoCloseTimer = setTimeout(closeModal, autoCloseSec * 1000);
+        }
+        resetTimer();
+        overlay.addEventListener('pointerdown', resetTimer);
+        overlay.addEventListener('touchstart', resetTimer);
+        overlay.addEventListener('keydown', resetTimer);
+      }
+
+      document.body.appendChild(overlay);
+    }
 
     if (showPackingList) {
       renderPackingList(dateKey, destLocation || label);
@@ -820,7 +836,7 @@ const Holiday = (() => {
     if (_currentModalIdx === -1 || !_vacationsList.length) return;
     const next = _currentModalIdx + direction;
     if (next >= 0 && next < _vacationsList.length) {
-      showVacationDetail(next);
+      showVacationDetail(next, direction);
     }
   }
 
