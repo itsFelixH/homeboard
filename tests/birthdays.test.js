@@ -93,6 +93,59 @@ describe('Birthdays Module', () => {
     jest.useRealTimers();
   });
 
+  test('navigates between birthdays smoothly in-place without destroying overlay backdrop', async () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date(2026, 8, 20, 12, 0, 0));
+
+    const multiBdayIcs = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'BEGIN:VEVENT',
+      'UID:b1@test.com',
+      'DTSTART;VALUE=DATE:20260921',
+      'SUMMARY:Alice Geburtstag',
+      'END:VEVENT',
+      'BEGIN:VEVENT',
+      'UID:b2@test.com',
+      'DTSTART;VALUE=DATE:20260922',
+      'SUMMARY:Bob Geburtstag',
+      'END:VEVENT',
+      'END:VCALENDAR'
+    ].join('\r\n');
+
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      text: async () => multiBdayIcs
+    });
+
+    Birthdays.init();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    await Birthdays.showBirthdayDetail(0);
+    const initialOverlay = document.getElementById('birthday-detail-overlay');
+    expect(initialOverlay).not.toBeNull();
+    expect(initialOverlay.innerHTML).toContain('Alice');
+
+    // Navigate to next birthday
+    Birthdays.navigateModal(1);
+    const nextOverlay = document.getElementById('birthday-detail-overlay');
+    expect(nextOverlay).toBe(initialOverlay);
+    expect(nextOverlay.innerHTML).toContain('Bob');
+    expect(nextOverlay.querySelector('.modal-nav-next')).not.toBeNull();
+
+    // Navigate back to prev birthday
+    Birthdays.navigateModal(-1);
+    const prevOverlay = document.getElementById('birthday-detail-overlay');
+    expect(prevOverlay).toBe(initialOverlay);
+    expect(prevOverlay.innerHTML).toContain('Alice');
+    expect(prevOverlay.querySelector('.modal-nav-prev')).not.toBeNull();
+
+    Birthdays.closeModal();
+    expect(document.getElementById('birthday-detail-overlay')).toBeNull();
+    jest.useRealTimers();
+  });
+
   test('renders empty state when no birthdays fall within lookahead window', async () => {
     jest.useFakeTimers();
     jest.setSystemTime(new Date(2026, 5, 1, 12, 0, 0)); // June 1st (none in window)
