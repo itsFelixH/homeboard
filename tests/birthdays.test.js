@@ -1,4 +1,4 @@
-const fs = require('fs');
+﻿const fs = require('fs');
 const path = require('path');
 
 describe('Birthdays Module', () => {
@@ -124,5 +124,40 @@ describe('Birthdays Module', () => {
     const list = document.getElementById('birthdays-list');
     expect(list.innerHTML).toContain('birthday-error');
     consoleSpy.mockRestore();
+  });
+  test('filters out overview events like 🎉🎂 GEBURTSTAGE 🎂🎉', async () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date(2026, 8, 20, 12, 0, 0));
+
+    const icsText = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'BEGIN:VEVENT',
+      'UID:overview-1@google.com',
+      'DTSTART;VALUE=DATE:20260920',
+      'SUMMARY:🎉🎂 GEBURTSTAGE 🎂🎉',
+      'END:VEVENT',
+      'BEGIN:VEVENT',
+      'UID:bday-valid@google.com',
+      'DTSTART;VALUE=DATE:20260921',
+      'SUMMARY:Felix Hoffmann',
+      'END:VEVENT',
+      'END:VCALENDAR'
+    ].join('\r\n');
+
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      text: async () => icsText
+    });
+
+    Birthdays.init();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    const list = document.getElementById('birthdays-list');
+    expect(list.innerHTML).not.toContain('GEBURTSTAGE');
+    expect(list.innerHTML).toContain('Felix Hoffmann');
+
+    jest.useRealTimers();
   });
 });
